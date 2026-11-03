@@ -1,0 +1,1399 @@
+{
+  "schema": "airs-v2/native-checks/1",
+  "description": "Versioned required native acceptance checks per chunk. xtask requires a native-acceptance record to report exactly this ID set, each with result pass, a nonempty observation and at least one evidence file listed in the review packet. Changing a list is a reviewed source change.",
+  "fixture_identifier": "io.cdot.airs-desktop.fixture",
+  "chunks": {
+    "C01": [
+      {
+        "id": "C01-N01",
+        "check": "Fixture app launches from the prepared bundle; window title 'Prisma AIRS Desktop v2 (Fixture)'; rail shows 'Fixture build'."
+      },
+      {
+        "id": "C01-N02",
+        "check": "Native menus: app menu (About, Settings\u2026 Cmd+,, Hide, Quit), Edit, View (Command Palette\u2026 Cmd+K, Appearance, zoom), Go (destinations Cmd+1\u2013Cmd+9), Window."
+      },
+      {
+        "id": "C01-N03",
+        "check": "Keyboard only: Tab reaches the Features navigation; Enter on a destination moves focus to its heading and marks it current; a visible focus ring is rendered on focused controls (fixture WebView self-capture)."
+      },
+      {
+        "id": "C01-N04",
+        "check": "Cmd+K opens the palette with focus in the field; typing filters; Enter navigates and closes; Escape closes and restores focus to the previously focused control."
+      },
+      {
+        "id": "C01-N05",
+        "check": "Go-menu shortcuts (Cmd+2 Academy, Cmd+, Settings) navigate through the native menu and observation channel, including while the palette is open (palette closes, heading receives focus)."
+      },
+      {
+        "id": "C01-N06",
+        "check": "Every product destination not yet implemented states it is not available in this build with its planned chunk and shows no data or service contact; Runtime Security (available since C03) opens its scan view instead."
+      },
+      {
+        "id": "C01-N07",
+        "check": "Settings > Appearance and View > Appearance change the general theme (Paper light / Gruvbox dark / match system) only after the native snapshot arrives."
+      },
+      {
+        "id": "C01-N08",
+        "check": "Accessibility tree: 'Features' navigation landmark; destination buttons expose names (unavailable ones including 'Not available in this build'); the current destination is exposed; page headings are in reading order. Records which AX attributes were inspected; spoken VoiceOver output is not claimed unless separately recorded."
+      },
+      {
+        "id": "C01-N09",
+        "check": "Resizing to the minimum window size (900x600) keeps rail, topbar and content usable without overlap or clipping of controls."
+      },
+      {
+        "id": "C01-N10",
+        "check": "Zoom/large text: View zoom in to 150% and 200% (Cmd+=) keeps navigation, headings and settings readable and operable; Cmd+0 restores."
+      },
+      {
+        "id": "C01-N11",
+        "check": "Reduced motion: with macOS Reduce Motion enabled, every automated C01 flow still passes (no control depends on motion), and the stylesheet built into the same native-prepare run contains the shared prefers-reduced-motion clamp."
+      },
+      {
+        "id": "C01-N12",
+        "check": "No Academy learner or gamification element (XP, credits, streak, notifications, earned skins) appears on general screens."
+      },
+      {
+        "id": "C01-N13",
+        "check": "Startup makes no internet connection (referencing evidence/C01/native/startup-network.json for the same executable)."
+      }
+    ],
+    "C02": [
+      {
+        "id": "C02-N01",
+        "check": "Settings > Tenants: the labelled Add tenant form (Label, TSG ID, destination radios, Region pop-up) is operated by keyboard and creates a tenant that appears in the tenant list and becomes the active tenant."
+      },
+      {
+        "id": "C02-N02",
+        "check": "Keychain scan key: the AIRS API key field is a secure text field whose AX value never exposes the key; saving stores one item under the fixture namespace in the dedicated fixture test keychain (item attributes inspected, secret never read) and reports 'Scan key saved in the Keychain.'; the key appears in no AX snapshot."
+      },
+      {
+        "id": "C02-N03",
+        "check": "Persistence across relaunch: after quitting and relaunching, the tenant, its active selection, its Keychain scan-key status and the Dark appearance are restored (C01 carry-over)."
+      },
+      {
+        "id": "C02-N04",
+        "check": "Session-only scan key: 'Scan key held for this session only.' with no Keychain item added; after relaunch that tenant reports a missing scan key."
+      },
+      {
+        "id": "C02-N05",
+        "check": "Reviewed endpoint override: Change destination with a custom HTTPS origin shows a review naming both origins and the key removal; confirming changes the destination, removes the scan key (its Keychain item is deleted) and requires a new key."
+      },
+      {
+        "id": "C02-N06",
+        "check": "Profile import through the native open sheet attached to the main window: a synthetic airs-cli registry with an embedded synthetic secret and a credential-file reference previews names, TSG IDs and discarded-field counts, the secret appears nowhere in the AX tree, and importing creates keyless tenants."
+      },
+      {
+        "id": "C02-N07",
+        "check": "Locked credential store: with the fixture keychain locked through the app's own keychain reference (fixture-only menu), saving a scan key reports that the Keychain is locked, shows no OS prompt and falls back to nothing; after unlocking, saving succeeds and the retired record is cleaned up."
+      },
+      {
+        "id": "C02-N08",
+        "check": "Reset local data (two-step confirmation) removes the v2 tenants, preference document and every fixture-namespace Keychain item; v1 Application Support data is unchanged."
+      },
+      {
+        "id": "C02-N09",
+        "check": "Corrupt local data: an unreadable state document is reported ('Local desktop data could not be read'), left byte-identical, creating a tenant is refused, and Reset recovers."
+      },
+      {
+        "id": "C02-N10",
+        "check": "Keyboard and VoiceOver attributes of the tenant UI: Tab reaches the tenant form fields, storage-mode radios and actions in order; per-tenant actions are named ('Make \u2026 active', 'Delete \u2026'); a refusal is exposed as an alert."
+      },
+      {
+        "id": "C02-N11",
+        "check": "No internet sockets during startup with tenants and stored scan keys present (C02 makes no scan or validation request)."
+      },
+      {
+        "id": "C02-N12",
+        "check": "At 200% zoom and at the minimum window size the scan-key field and its Save action are reachable by Tab and lie inside the window, clear of the bottom fade."
+      }
+    ],
+    "C03": [
+      {
+        "id": "C03-N01",
+        "check": "Runtime Security is an available destination (no 'Soon'), opens with the heading 'Scan a prompt or response', directs to Settings when no tenant exists, and its scan form is reachable by Tab in order: By name, Profile name or ID, Prompt, Response, Application name (optional), Scan."
+      },
+      {
+        "id": "C03-N02",
+        "check": "Real UI submission through Tauri \u2192 Rust \u2192 SDK to the synthetic TLS endpoint: the endpoint receives exactly one POST /v1/scan/sync/request (application/json, x-pan-token equal to the synthetic key, x-payload-hash the HMAC-SHA256 of the received body, no Authorization header) carrying the entered profile name, prompt and application name; the window shows 'Blocked' with the verbatim action 'block', category 'malicious' and the reported detectors (including an unrecognized one)."
+      },
+      {
+        "id": "C03-N03",
+        "check": "An unrecognized service action, and an allow/benign reply carrying a content-level error while its global timeout and error flags are false, are each shown as 'Not determined' with the explanation that they must not be treated as allowed (the content error listed); 'Allowed' is not shown."
+      },
+      {
+        "id": "C03-N04",
+        "check": "A denied key (HTTP 401) is reported as the tenant not accepting the scan key and as refused (not scanned); the endpoint received exactly one request (no retry)."
+      },
+      {
+        "id": "C03-N05",
+        "check": "Cancelling a scan whose reply is delayed shows that the request may already have reached the service (never that it was sent) with no verdict, re-enables Scan, and nothing further reaches the endpoint after the delayed reply time."
+      },
+      {
+        "id": "C03-N06",
+        "check": "Switching the active tenant while a scan's reply is delayed: the other tenant's Runtime view shows none of the first tenant's scans; after the reply time, the first tenant's record says the reply was discarded and shows no verdict; the endpoint received one request."
+      },
+      {
+        "id": "C03-N07",
+        "check": "A lost response (the endpoint closes the connection) is shown as a connection failure with an unknown outcome and the 'send it again only if' guidance; nothing is resent automatically within 6 s; pressing Scan sends exactly one new request."
+      },
+      {
+        "id": "C03-N08",
+        "check": "T23 offline: with the endpoint stopped the app launches and the scan form is editable; a scan reports an unknown outcome that may or may not have reached the service (never claiming it was sent); after the endpoint returns nothing is sent automatically within 6 s; an explicit Scan sends exactly one request and shows its verdict."
+      },
+      {
+        "id": "C03-N09",
+        "check": "Quitting while a scan is in flight and relaunching: the relaunched app shows no scan history and sends nothing to the endpoint within 6 s of launch (no replay)."
+      },
+      {
+        "id": "C03-N10",
+        "check": "Keyboard-only scan: the operator tabs to the fields, types the profile and prompt and submits with the keyboard; the verdict is announced through the result's live status region."
+      },
+      {
+        "id": "C03-N11",
+        "check": "Working v1-sized input (a 64 KiB prompt and 32 KiB response, typed as real key events) reaches the endpoint intact (exact character counts, valid payload hash) and shows a verdict."
+      },
+      {
+        "id": "C03-N12",
+        "check": "At 200% zoom and at the minimum window size, the Prompt field and the Scan button are reachable by Tab and lie inside the window clear of the bottom fade."
+      },
+      {
+        "id": "C03-N13",
+        "check": "After the scans, no file in the fixture data root other than the fixture keychain contains the synthetic key or any submitted prompt marker, and no AX snapshot contains the key."
+      }
+    ],
+    "C04": [
+      {
+        "id": "C04-N01",
+        "check": "Settings shows a labelled 'Academy account' group, separate from Tenants, stating the learner account is independent of AIRS tenants; signed out it offers 'Sign in to Academy', reachable by Tab."
+      },
+      {
+        "id": "C04-N02",
+        "check": "Starting sign-in shows the device code (accessible name 'Sign-in code \u2026') and the issuer's verification page; 'Open sign-in page' hands exactly the issuer-returned HTTPS page to the browser (fixture build: recorded, not launched); the presentation never sends a URL."
+      },
+      {
+        "id": "C04-N03",
+        "check": "After approval in the browser the window shows 'Signed in to Academy as <name>'; the endpoint saw a public-client device flow (client_id, no client secret, no Authorization on identity requests); the learner Keychain namespace holds exactly one item and the scan namespace none; no token appears in the data root or any AX snapshot."
+      },
+      {
+        "id": "C04-N04",
+        "check": "After quit and relaunch the Academy account is still signed in (from the Keychain) under the same name."
+      },
+      {
+        "id": "C04-N05",
+        "check": "Creating and switching AIRS tenants leaves the Academy account signed in under the same name."
+      },
+      {
+        "id": "C04-N06",
+        "check": "Signing out shows 'Not signed in to Academy', empties the learner Keychain namespace and revokes the refresh token at the issuer."
+      },
+      {
+        "id": "C04-N07",
+        "check": "A sign-in declined in the browser shows 'Sign-in was declined in the browser.' with 'Sign in again', and saves nothing."
+      },
+      {
+        "id": "C04-N08",
+        "check": "With the Academy endpoint unreachable, sign-in reports that Academy could not be reached, and nothing is saved."
+      },
+      {
+        "id": "C04-N09",
+        "check": "Cancelling a sign-in that is waiting for approval returns to 'Not signed in to Academy'; a grant issued afterwards does not sign in and nothing is saved."
+      },
+      {
+        "id": "C04-N10",
+        "check": "Keyboard only: Tab reaches 'Sign in to Academy', Space starts sign-in, Tab reaches 'Open sign-in page' and 'Cancel sign-in'; state changes are exposed through a live status region."
+      },
+      {
+        "id": "C04-N11",
+        "check": "At 200% zoom and at the minimum window size, the Academy sign-in control is reachable by Tab and lies inside the window clear of the bottom fade."
+      },
+      {
+        "id": "C04-N12",
+        "check": "Reset local data signs the Academy account out and empties the learner Keychain namespace."
+      }
+    ],
+    "C05": [
+      {
+        "id": "C05-N01",
+        "check": "Signed out, the Academy destination shows Academy's own catalog ('What will you take up next?') with a note that the learner is browsing as a guest; the endpoint receives only public catalog procedures, none with an Authorization header, and no identity-provider requests."
+      },
+      {
+        "id": "C05-N02",
+        "check": "After signing in, the Academy catalog is read again under the account without the guest note; requests carry the account credential exactly for procedures on the desktop account allowlist."
+      },
+      {
+        "id": "C05-N03",
+        "check": "From the catalog's Courses filter, the course page and its module units open; a lesson exposes its heading and first paragraph and all section headings of a 50 KiB lesson; the trail 'Learn \u203a <course>' links back to the course."
+      },
+      {
+        "id": "C05-N04",
+        "check": "A lesson diagram shows its pre-rendered image ('Lesson diagram') with its source under a disclosure, a diagram without an artifact shows its source, and no diagram video is requested; an external lesson link opens nothing, keeps the window on the lesson and states it was not opened; an in-page anchor stays on the lesson; a learner-path link routes to the catalog in place."
+      },
+      {
+        "id": "C05-N05",
+        "check": "Signed in, a knowledge check starts, takes an answer and submits through the endpoint with the literal fixture request bodies and the account credential; the server's grade ('You scored 100%', '1 of 1 correct') is shown; no answer key appears in any AX snapshot."
+      },
+      {
+        "id": "C05-N06",
+        "check": "As a guest, starting a knowledge check says 'Sign in to take this knowledge check.' and sends nothing to Academy."
+      },
+      {
+        "id": "C05-N07",
+        "check": "A hands-on lab unit is previewed with its title and brief and says no lab sandbox was started; no lab start, step or submit request is made."
+      },
+      {
+        "id": "C05-N08",
+        "check": "Signing out while on a lesson returns the Academy destination to the catalog as a guest with only uncredentialed calls; signing in again reads the catalog under the account."
+      },
+      {
+        "id": "C05-N09",
+        "check": "Navigating Academy \u2192 Runtime Security \u2192 Harness placeholder shows no learner chrome or effects (XP, trail, reading progress, knowledge check, lab, guest note, probe) outside Academy, and no learner request is made while away."
+      },
+      {
+        "id": "C05-N10",
+        "check": "Keyboard only: Tab reaches the Courses filter and the course link, Return opens the course with focus on its heading, Tab reaches a lesson link, and Return opens the lesson with focus on its heading."
+      },
+      {
+        "id": "C05-N11",
+        "check": "In View > Appearance Dark and Light the lesson text uses the light Gruvbox ink and the dark Paper ink respectively (AX text colors)."
+      },
+      {
+        "id": "C05-N12",
+        "check": "At 200% zoom and at the minimum window size, a lesson's 'Complete & continue' control is reachable by Tab and lies inside the window clear of the bottom fade."
+      },
+      {
+        "id": "C05-N13",
+        "check": "Reset local data while signed in signs the learner out, empties the learner Keychain namespace and returns Academy to the guest catalog."
+      },
+      {
+        "id": "C05-N14",
+        "check": "Content access as Academy decides it: a guest at members-only or progression-locked content sees Academy's sign-in gate (endpoint 401, no credential); signed in, locked content shows 'This content is locked' with its progression reason (endpoint 403 FORBIDDEN with the domain code), members-only content opens, and retired content says 'Unit not found.' without any gate."
+      },
+      {
+        "id": "C05-N15",
+        "check": "Failures stay visible and truthful: a guest pressing 'Complete & continue' is asked to sign in, stays on the lesson and sends nothing; a knowledge-check submission the server fails after receiving it says Academy may have recorded it, keeps the answer, hides the server text and is sent once."
+      }
+    ],
+    "C06": [
+      {
+        "id": "C06-N01",
+        "check": "Signed out, Academy's navigation offers Learn only; signed in it offers Academy's Home, Learn and Program and the web shell's Notifications and Settings. Home shows Academy's own briefing (level and XP from Academy) with no failure toast, and Program shows Academy's hub with its five sections."
+      },
+      {
+        "id": "C06-N02",
+        "check": "The final assessment shows Academy's eligibility facts, starts with the learner's consent and shows Academy's question with Academy's countdown ('Time remaining', counted down to Academy's deadline) and the proctored pill in view; a submission the server fails after receiving shows that submission could not be confirmed, keeps the answer, hides the server's text and is sent exactly once; 'Check submission status' reads Academy's submission state and shows Academy's pending review. No answer key or truth canary appears in any captured AX tree."
+      },
+      {
+        "id": "C06-N03",
+        "check": "Keyboard only: Tab reaches the first answer option, Space selects it, Tab reaches 'See results', Return submits once and the unknown outcome is announced, Tab reaches 'Check submission status' and Return shows Academy's pending review."
+      },
+      {
+        "id": "C06-N04",
+        "check": "The certificate's public verify URL (shared to LinkedIn) is on Academy web's origin, not the app's; 'Download PDF' opens exactly one native print sheet (recorded by the fixture build), stays on the certificate, and makes no learner call beyond the certificate and account reads; when the sheet cannot open, the page says so in an alert region, no sheet is opened and nothing is sent."
+      },
+      {
+        "id": "C06-N05",
+        "check": "A guided lab runs through Academy's desktop attempt contract: one start with the lab id and a request id, draft saves naming the base version with a client mutation id, one grading request naming a confirmed draft version with a submission id, and Academy's pass shown; no web lab runtime call is made. A lab Academy refuses to start for lack of a desktop adapter is previewed with no sandbox started."
+      },
+      {
+        "id": "C06-N06",
+        "check": "In Shift, the unstamped alert is served and the learner's answer is sent and answered (Academy's explanation shown) before a slow optional briefing replies; the answer carries only the learner's choice, and the SLA countdown comes from Academy's stamp."
+      },
+      {
+        "id": "C06-N07",
+        "check": "Removing an enrollment shows Academy's confirmation naming the affected certification and every course it covers and stating that earned certificates stay valid; Cancel sends nothing and confirming sends exactly one enrollment.removeByCourse for the course."
+      },
+      {
+        "id": "C06-N08",
+        "check": "Academy's Settings entry opens the learner account page, which offers 'Change photo' on the desktop and says the app sets theme and accent (no theme choice); its Sign out ends the Academy session through the desktop: the destination returns to guest navigation, Settings shows 'Not signed in to Academy.', the refresh token is revoked and the learner keychain namespace is empty."
+      },
+      {
+        "id": "C06-N09",
+        "check": "Across the run every learner request is on the account allowlist or a public query; no assessor, grading, override, award or admin procedure is requested; no exam, Shift, lab or enrollment input carries a hosted decision (deadline, score, pass, award, verdict or clock); public-only queries carry no Authorization header."
+      },
+      {
+        "id": "C06-N10",
+        "check": "Leaving Academy for Runtime Security and Harness shows none of Academy's learner surfaces (Program, assessment, lab, Shift, removal, level) and makes no learner calls."
+      },
+      {
+        "id": "C06-N11",
+        "check": "On the assessment at 200% zoom and at the minimum window size, Tab reaches 'See results' inside the window and above the bottom fade."
+      },
+      {
+        "id": "C06-N12",
+        "check": "Signed in again (a fresh learner cache) with Academy's deadline seconds away, the resumed assessment's countdown shows it and, at the deadline, the runner submits exactly once and reports the server's unknown outcome; nothing is resent and the countdown stays at 00:00."
+      },
+      {
+        "id": "C06-N13",
+        "check": "'Change photo' takes a photo chosen natively (here larger than Academy's 2 MiB cap), prepares it in the core as a 512-pixel JPEG within the cap, presigns with the account credential (the prepared type and size), stores the bytes at the presigned destination with no credential, confirms with Academy, and reads the photo back from Academy's public avatar address (no credential) so the page shows it without a load warning; an extreme 1x8192 portrait is prepared from its centre and uploaded; a later photo the store keeps under the same address but whose reply is lost is reported as possibly changed (never unchanged), is not confirmed or resent, and the photo at the unchanged address is read again; a file with an image signature that does not decode, and a photo within 8192 pixels a side whose decoded pixels exceed the decoder memory budget, send nothing and says the photo is unchanged; a cancelled pick sends nothing and shows no error; 'Remove photo' removes it with one learner call."
+      },
+      {
+        "id": "C06-N14",
+        "check": "'Reset course progress' asks 'Reset your progress?' with Academy's counts and that earned certificates stay valid; Cancel sends nothing and confirming sends exactly one progress.resetCourse for the course."
+      },
+      {
+        "id": "C06-N15",
+        "check": "A completed lesson asks 'How was this module?' (an unfinished one does not); rating it and submitting thanks the learner and sends exactly one admin.feedback.submit with the module, lesson and rating."
+      }
+    ],
+    "C07": [
+      {
+        "id": "C07-N01",
+        "check": "Signed in, Academy's navigation offers the desktop's Downloads; the page says what still needs Academy (videos, walkthroughs, live labs); a course is downloaded by keyboard (Tab to 'Download <course>', Return) and listed ready offline with its unit count after exactly one desktop.access and one desktop.bundle, both with the account credential; one offline key item is added to the fixture learner keychain."
+      },
+      {
+        "id": "C07-N02",
+        "check": "Every file under the offline root is a sealed record in a 0700 directory with mode 0600; no lesson text, course id or title, account id or display name appears in any file's bytes or path."
+      },
+      {
+        "id": "C07-N03",
+        "check": "With Academy unreachable, quit and relaunched: still signed in, Academy says it cannot be reached, Downloads lists the course ready offline and offers no download, 'Open' shows the first lesson with its text from the download, and its contents open the second."
+      },
+      {
+        "id": "C07-N04",
+        "check": "Offline, the lab opens from the attempt read while online and an edit says it is saved on this device only; quit and relaunched offline, Downloads names one lab draft saved on this Mac only and the lab reopens with the edit and that status; no request reaches Academy meanwhile."
+      },
+      {
+        "id": "C07-N05",
+        "check": "With Academy back, nothing is sent by itself; 'Save now' sends exactly one draft save on the attempt's base version with a client mutation id and the edit, Academy's confirmation clears the local copy, reconnecting re-checks the download (access and manifest) and shows that a newer version is on Academy, and 'Update' downloads it again."
+      },
+      {
+        "id": "C07-N06",
+        "check": "Signing out removes Downloads (guest navigation offers Learn only); another account sees no downloads and the first account's sealed files are unchanged; the first account signed in again sees its download."
+      },
+      {
+        "id": "C07-N07",
+        "check": "Size and retention limits: a course past Academy's bundle cap (413) is assembled from its manifest and unit bundles each within Academy's 7 MiB cap, and fetching stops as soon as it cannot fit the desktop's 16 MiB record (three of four 6 MiB parts fetched), with 'There is not enough room' and nothing kept; once a download's lease ends its lessons are not read offline and Downloads says offline access ended; a course Academy no longer gives the account says so after relaunch and offers no Open."
+      },
+      {
+        "id": "C07-N08",
+        "check": "'Reset local data' removes the offline root and every learner keychain item, including the offline key."
+      },
+      {
+        "id": "C07-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches 'Download <course>' on Downloads inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C07-N10",
+        "check": "Every learner request is an allowlisted or public procedure, and every desktop offline procedure carries the account credential."
+      }
+    ],
+    "C08": [
+      {
+        "id": "C08-N01",
+        "check": "Administration is an available destination (no 'Soon'); without a tenant it directs to Settings; for a scan-only tenant it says no management client is ready and offers Open Settings, and a scan through the UI is allowed using the scan key alone (no Authorization header) while the management endpoint receives nothing."
+      },
+      {
+        "id": "C08-N02",
+        "check": "Management onboarding by keyboard in Settings: the status first says no management client is needed for scans; the client ID and secret are typed and Return saves them; the status says the secret is in the Keychain and shows the client ID; the secret field is empty afterwards; exactly one more fixture credential item exists while the scan key's item is kept and the scan key stays saved."
+      },
+      {
+        "id": "C08-N03",
+        "check": "Verify sends exactly one POST /oauth2/access_token to the configured token origin with HTTP Basic client authentication equal to the synthetic client (form-encoded), grant_type client_credentials and a scope naming the tenant's TSG, with no secret in the body, then exactly one profiles read under /aisec with the issued bearer token and limit 1 and no scan key; the window says the client can read this tenant."
+      },
+      {
+        "id": "C08-N04",
+        "check": "Profiles open at 'Items 1\u201325 of 25+' with rows Profile 00\u201324 and a note that unread rows are not assumed absent; Next page reads offset 25 (limit 25, issued bearer token) and shows 'Items 26\u201330 of 30' with Next page disabled and no partial note; exactly those two profile reads were made."
+      },
+      {
+        "id": "C08-N05",
+        "check": "A profile's details show its fields and say directional and customized prompt-injection settings were local previews and are not sent; an API key's details show its unknown status value 'FUTURE_STATUS' and last8 while none of the service's secret field values (api_key, auth_code) appear anywhere in the window; deployment profiles (local paging, 1\u20133 of 3) and DLP data patterns (Spring paging, 1\u20131 of 2) are listed."
+      },
+      {
+        "id": "C08-N06",
+        "check": "A 403 on custom topics is shown as the client not being allowed to read them, without server text and not as an empty inventory; after the service returns an empty list, Refresh shows that the service reports no custom topics."
+      },
+      {
+        "id": "C08-N07",
+        "check": "With profile rows shown, a denied Refresh shows the denial and keeps the earlier rows, marked with the time they were read and that they may be out of date."
+      },
+      {
+        "id": "C08-N08",
+        "check": "Replacing the management client in Settings while page 2 of profiles is delayed in flight: back in Administration the inventory restarts at 'Items 1\u201325 of 25+', the delayed reply for the retired credential neither shows its page nor an alert after it arrives, and exactly one new token grant is made for the new credential."
+      },
+      {
+        "id": "C08-N09",
+        "check": "A refused token grant (401) is reported as the management client not being accepted, without server text, after only the token request; a scan afterwards is still allowed with the scan key."
+      },
+      {
+        "id": "C08-N10",
+        "check": "After quitting and relaunching, the Keychain-held management client reads profiles again; 'Remove management client' returns the status to no management client while the scan key stays saved, leaves only the scan key's fixture credential item, Administration says no management client is ready, and a scan is still allowed."
+      },
+      {
+        "id": "C08-N11",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches Administration's 'Next page' inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C08-N12",
+        "check": "No file in the fixture data root other than the fixture keychain, and no fixture WebKit data, contains the client secret, the scan key or any redacted secret field value; no AX snapshot contains them; no management request carried the scan key and no scan request carried an Authorization header; v1 data is unchanged."
+      }
+    ],
+    "C09": [
+      {
+        "id": "C09-N01",
+        "check": "Editing a custom topic in Administration: Edit\u2026 opens the item as a JSON draft; Review change reads the current item and shows its current and expected JSON with v1's impact text and the typed confirmation (the topic name); nothing is written by reviewing."
+      },
+      {
+        "id": "C09-N02",
+        "check": "Apply\u2026 opens a native AppKit sheet on the main window (not a WebView dialog) titled with Rust's stored summary (action, kind and name) and the tenant; while it is open the main window takes no input; Escape cancels it and nothing is written; a second Apply\u2026 and Return (the default for a non-destructive change) apply it: exactly one PUT with the management client as author, and the window says it was applied and read back."
+      },
+      {
+        "id": "C09-N03",
+        "check": "A topic changed by another writer between Review and Apply is reported as changed since review after the operator confirms, and nothing is written; text edited in the draft after Review is refused at Apply without opening the sheet."
+      },
+      {
+        "id": "C09-N04",
+        "check": "Deleting a topic: the sheet is destructive and Return chooses Cancel (nothing deleted); choosing Delete sends exactly one DELETE and the window says the item is no longer in the inventory."
+      },
+      {
+        "id": "C09-N05",
+        "check": "Creating an API key: the deployment profile's auth code is added by the desktop (the POST carries the profile's code and the client as author; the code is never shown); the window says a new key is held in memory only, and no AX snapshot or data-root file holds the one-time key."
+      },
+      {
+        "id": "C09-N06",
+        "check": "Show new key\u2026 opens a native sheet showing the issued key (hash-equal to what the service issued); Copy and Close puts it on the general clipboard marked concealed; the key is then shown once and no longer offered (the desktop keeps no copy); another key's sheet left open is taken off screen after 60 s, and the copied key is cleared from the clipboard after 60 s when nothing else was copied."
+      },
+      {
+        "id": "C09-N07",
+        "check": "Rotating a key: the rotation sheet is destructive (Return cancels; Rotate key applies); Clear key forgets a held key and the window says so; after copying another key, text copied by the operator in the meantime is left on the clipboard after 60 s."
+      },
+      {
+        "id": "C09-N08",
+        "check": "T23: with the management endpoint stopped, a confirmed create (it needs no baseline read) reports that the service could not be reached and that the change may or may not have been applied (a transport failure's outcome is unknown, as for scans), to refresh before retrying, and nothing is queued; after the endpoint returns nothing is sent by itself within 6 s; an explicit Review prepares the change again without sending it."
+      },
+      {
+        "id": "C09-N09",
+        "check": "Quitting while a confirmed create is in flight and relaunching: no change review or result is shown and nothing is sent again within 6 s of launch (exactly the one in-flight POST)."
+      },
+      {
+        "id": "C09-N10",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the workbench's Review change inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C09-N11",
+        "check": "Retiring the context ends open sheets: with the confirmation sheet open, switching the active tenant (through Accessibility) dismisses it, a late Return applies nothing and nothing is written; with the one-time key sheet open, the switch dismisses it, the clipboard is untouched and the key is not offered again."
+      },
+      {
+        "id": "C09-N12",
+        "check": "Sheet ownership: a key revealed and closed, then a second key revealed 40 s later, the second sheet stays shown past the first reveal's 60 s expiry until the operator closes it."
+      }
+    ],
+    "C10": [
+      {
+        "id": "C10-N01",
+        "check": "Editing a data pattern: Edit\u2026 opens it as a JSON draft; Review change reads it by its own get; Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-patterns/<id> with the draft (no authorship added) and the window says it was read back."
+      },
+      {
+        "id": "C10-N02",
+        "check": "Creating a dictionary from typed keywords: the endpoint receives exactly one multipart/form-data POST (boundary scm-sdk-\u2026) with a json part (metadata.json, application/json) holding the metadata and a file part named by original_file_name (text/plain) whose bytes are exactly the typed keywords; the window says it was read back."
+      },
+      {
+        "id": "C10-N03",
+        "check": "Native file selection: Choose keyword file\u2026 reads the staged text file (the window shows its name, size and line count), Use the chosen file and Review/Apply upload exactly its bytes as the file part; the source file is unchanged afterwards and no AX snapshot holds its path."
+      },
+      {
+        "id": "C10-N04",
+        "check": "A chosen file that is not UTF-8 text is reported ('That file is not UTF-8 text.') and nothing is staged or sent; a cancelled sheet stages nothing."
+      },
+      {
+        "id": "C10-N05",
+        "check": "Unavailable operations are not offered: data profiles have Edit\u2026 but no Delete\u2026, data filtering profiles have no New, and deployment profiles say they are read only."
+      },
+      {
+        "id": "C10-N06",
+        "check": "A data pattern changed by another writer between Review and Apply is reported as changed since review after confirming, and nothing is written."
+      },
+      {
+        "id": "C10-N07",
+        "check": "A denied dictionary upload (403) is reported as not allowed, without server text, with nothing changed."
+      },
+      {
+        "id": "C10-N08",
+        "check": "T23: with the endpoint stopped, a confirmed data pattern create reports that the service could not be reached and may or may not have been applied, nothing is queued, and nothing is sent within 6 s after the endpoint returns."
+      },
+      {
+        "id": "C10-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the dictionary workbench's Choose keyword file\u2026 and Review change inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C10-N10",
+        "check": "The production NSOpenPanel (rfd) opens from Choose keyword file\u2026: the file chosen through it is staged by name and line count, and Use the chosen file, Review and Apply with the native confirmation upload exactly its bytes as the multipart file part and read the dictionary back, with the source file unchanged and focus returned to the window; Cancel stages nothing; a file over the 256 KiB read bound is refused as too large."
+      }
+    ],
+    "C11": [
+      {
+        "id": "C11-N01",
+        "check": "Sessions lists the last 24 hours in pages of 25 ('Sessions 1\u201325 of 60', Next page 'Sessions 26\u201350 of 60'); every inventory read asks for time_interval=1, time_unit=day, limit=25; the Malicious filter shows only this page's malicious sessions."
+      },
+      {
+        "id": "C11-N02",
+        "check": "Opening a session lists its scans without reading content: no scancontent request and no prompt text in the AX tree until Show content; then exactly one content read and the prompt is shown; Hide removes it from the AX tree, and leaving Sessions and returning shows none."
+      },
+      {
+        "id": "C11-N03",
+        "check": "Searches say what they covered: a detector search over a 60-session day reports its matches among every session of the last 24 hours; an unknown session ID reports none among the 60 sessions of 30 days read (time_interval=30); a scan ID shows the scan's metadata with no prompt or response in the AX tree."
+      },
+      {
+        "id": "C11-N04",
+        "check": "A report saved from a scan appears in FP/FN reports with the scan's metadata; Remove then Undo restores it; Export CSV\u2026 saves an owner-only (0600) file with v1's 16-column header, CRLF line endings and no prompt or response."
+      },
+      {
+        "id": "C11-N05",
+        "check": "With a Keychain management client the investigation is sealed in the data root (no prompt or session ID in plaintext); after relaunch a revealed scan is shown again without a new content read; removing the management client removes the sealed file."
+      },
+      {
+        "id": "C11-N06",
+        "check": "Export metadata\u2026 saves the investigation's sessions and transactions without any prompt or response; Clear cache empties the counts and removes the sealed file, and the next reveal reads the content again."
+      },
+      {
+        "id": "C11-N07",
+        "check": "Reports write nothing to the tenant: over the whole run the management endpoint receives only GET reads and token grants."
+      },
+      {
+        "id": "C11-N08",
+        "check": "Exception patterns is labelled 'Synthetic data \u00b7 Memory only \u00b7 No live integrations' and opening it sends no request."
+      },
+      {
+        "id": "C11-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches the Sessions Refresh and Next page buttons inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C11-N10",
+        "check": "The production NSSavePanel (rfd) opens from Export CSV\u2026: saving writes an owner-only file; a second export into the same folder is confirmed with Replace and the file is replaced owner-only; Cancel saves nothing and says so; focus returns to the window."
+      },
+      {
+        "id": "C11-N11",
+        "check": "Context switch: with A's scan content revealed and a report saved, switching to tenant B through Settings and reopening Sessions shows none of A's sessions or content (B has no client) and an empty FP/FN reports list; switching back to A shows A's report again and no revealed content."
+      }
+    ],
+    "C12": [
+      {
+        "id": "C12-N01",
+        "check": "Create a case authors a Runtime Security case and a Model Security specification from the fields read at Save; both are listed, the tenant's library is sealed on disk (no prompt in plaintext, owner-only) and both are listed again after relaunch."
+      },
+      {
+        "id": "C12-N02",
+        "check": "Load fills the Runtime scan form with a Runtime case (profile, prompt, application) and says nothing was scanned (no scan request); a specification offers Inspect, not Load, and its details say execution belongs to that product."
+      },
+      {
+        "id": "C12-N03",
+        "check": "Import bundled examples adds v1's eleven examples, a second import reports they are already present; Import public examples reads the fixture catalog snapshot without any credential and adds its example; a malformed catalog is reported and changes nothing."
+      },
+      {
+        "id": "C12-N04",
+        "check": "Export library\u2026 saves an owner-only version 2 file; after a case is removed, Import cases\u2026 restores it from that file; another tenant's file is refused with v1's message."
+      },
+      {
+        "id": "C12-N05",
+        "check": "An empty library offers v1's three starters; Try in Playground fills the scan form without scanning; Save this case adds it to the tenant's library."
+      },
+      {
+        "id": "C12-N06",
+        "check": "Overview & Inbox reads the sessions chart and API keys: totals and detection events are shown, an API key expiring within 30 days is an Inbox item and needs attention; Acknowledge sets it aside and Restore reopens it; the activity item's action opens Sessions."
+      },
+      {
+        "id": "C12-N07",
+        "check": "A failed chart read is stated as Runtime activity unavailable and Can\u2019t confirm all clear (never zeros); with the endpoint stopped a refresh failure is reported while the last read stays visible, and nothing is sent within 6 s after the endpoint returns."
+      },
+      {
+        "id": "C12-N08",
+        "check": "Deleting the tenant removes its sealed library; over the run the management endpoint receives only reads and token grants, and no secret appears in any AX snapshot."
+      },
+      {
+        "id": "C12-N09",
+        "check": "At 200% zoom and at the minimum window size, Tab reaches Create a case and Refresh Runtime insights inside the window and clear of the bottom fade."
+      },
+      {
+        "id": "C12-N10",
+        "check": "The production panels for the Library: Export library\u2026 saves an owner-only file through NSSavePanel, Import cases\u2026 restores a removed case through NSOpenPanel, Cancel changes nothing, a file over 256 KiB is refused, and focus returns to the window."
+      },
+      {
+        "id": "C12-N11",
+        "check": "The Library offline: with the scan and management services stopped, the app launches and lists the saved cases, a case authored and saved offline survives a relaunch still offline, and after reconnecting no scan, catalog read or remote write is made on its own."
+      }
+    ],
+    "C13": [
+      {
+        "id": "C13-N01",
+        "check": "Red Team & Models opens on Red Teaming and reads the last 30 days' scan statistics and the first 100 scans: summary tiles, scans by status, targets by type and risk profile, source coverage, attack results offered only for finished scans; no tenant header on the Red Teaming plane and no scan, target or error text from the service in the window."
+      },
+      {
+        "id": "C13-N02",
+        "check": "Choosing another statistics window reads that window (LAST_7_DAYS) and says which window is shown."
+      },
+      {
+        "id": "C13-N03",
+        "check": "A finished scan's attack results open with focus on their heading, are read 100 per page until the service's total is covered (at most ten pages), count only reported successes, and never show attack prompts or the target's replies."
+      },
+      {
+        "id": "C13-N04",
+        "check": "Models & skills reads Model Security scans (a partial sample shown as such), AgentGuard 30-day skill statistics and skill scans named by per-read pseudonyms; v1's queries, the tenant header only on AgentGuard, and no model URI, security group, skill name or finding in the window."
+      },
+      {
+        "id": "C13-N05",
+        "check": "A refused source is stated while the others are shown; a refresh where every source fails keeps the last read with its time; absent statistics while scans exist are stated as unavailable, never zero."
+      },
+      {
+        "id": "C13-N06",
+        "check": "No control starts a Red Teaming or Model Security workflow (scan, ASR verification, target, adapter, channel, prompt set, model scan, security group); both tabs disclose that these are not available, and only GET requests reach the services."
+      },
+      {
+        "id": "C13-N07",
+        "check": "Refresh and the first attack-results action are reachable by keyboard and clear of the bottom fade at 200% zoom and at the minimum window size."
+      },
+      {
+        "id": "C13-N08",
+        "check": "Without a management client the page asks for one and nothing is read; no secret or private service marker appears in any saved Accessibility snapshot, and v1 data is unchanged."
+      }
+    ],
+    "C14": [
+      {
+        "id": "C14-N01",
+        "check": "The API Client destination opens a v1 collection through the folder sheet (fixture: the staged folder) and lists its requests by method and path, its folders and its problems (an invalid request file is reported, not shown); opening a request shows its method, URL, params, headers, body and auth/variables under accessible names."
+      },
+      {
+        "id": "C14-N02",
+        "check": "Typing a new URL and pressing Cmd+S at once (inside the protection debounce) writes exactly the typed snapshot to the request file, keeping its comment, trailing comment and extension key; the status says Saved."
+      },
+      {
+        "id": "C14-N03",
+        "check": "An invalid header row is refused with 'Fix to save' naming Headers and the row; the request file is unchanged and the editor keeps what was typed."
+      },
+      {
+        "id": "C14-N04",
+        "check": "An edit protected by a typing pause survives quitting and relaunching: reopening the collection from Recent restores the request as a recovered draft with the typed text; Discard draft returns to the saved version."
+      },
+      {
+        "id": "C14-N05",
+        "check": "Close guard: quitting right after typing (before protection) shows the native sheet 'Quit with unprotected API Client edits?'; Cancel keeps the app and the text; once protected, Cmd+Q quits without the sheet."
+      },
+      {
+        "id": "C14-N06",
+        "check": "A request changed on disk after it was opened is not overwritten: Save reports Changed on disk; Keep mine rebases the edits and the next Save writes them; Use disk on another conflict shows the disk version."
+      },
+      {
+        "id": "C14-N07",
+        "check": "A workbench secret value is entered in a secure field and stored in the Keychain: the Secrets list says 'value stored', the preview masks it, and the value appears in no accessibility snapshot or private/project file; tenant.* references are shown as tenant-managed with no field."
+      },
+      {
+        "id": "C14-N08",
+        "check": "A pasted cURL command with credentials becomes an unsaved draft with secret references and a conversion report (no file until Save); a staged Insomnia v5 export previews its resources, refuses a scripted request, creates the selected ones as drafts and leaves the export file unchanged."
+      },
+      {
+        "id": "C14-N09",
+        "check": "Open Strata Cloud Manager writes the built-in collection privately and opens its 193 generic request specifications; an OAuth request's preview names tenant-managed references and nothing is sent."
+      },
+      {
+        "id": "C14-N10",
+        "check": "Offline and no replay (T23): no request reaches any network endpoint during API Client work, and after relaunch no save is repeated (project files are byte-identical to before the relaunch)."
+      },
+      {
+        "id": "C14-N11",
+        "check": "Keyboard and accessibility: the tools tab list, navigator, open-request tabs (method, name and unsaved/conflict marks in their names) and editor fields are reachable by Tab; Save stays reachable and clear of the bottom fade at 200% zoom and at the minimum window size."
+      },
+      {
+        "id": "C14-N12",
+        "check": "The Git view reads the collection's repository read-only (branch and changed files) and runs no repository-configured program (a core.fsmonitor script leaves no marker)."
+      },
+      {
+        "id": "C14-N13",
+        "check": "Profile adoption previews the staged v1 API Client profile, imports the selected collection into Recent with its private environment, never changes the source files and transfers no secret value."
+      }
+    ],
+    "C15": [
+      {
+        "id": "C15-N01",
+        "check": "Typing into a request's URL and sending at once from the keyboard (the Send button focused and activated with Space) sends exactly the typed, unsaved input to the loopback endpoint and shows the response status, size, time and body in a region named Response; the request file is unchanged and the window says the fixture build sends to loopback addresses only."
+      },
+      {
+        "id": "C15-N02",
+        "check": "A cookie set by one response is sent with the collection's next request to the same host."
+      },
+      {
+        "id": "C15-N03",
+        "check": "A 64 MiB response streams to private storage with only its first 256 KiB held for display (shown as not text), is saved through the save sheet (fixture: the staged path) byte-for-byte, and is never stored in the clear in the private folder."
+      },
+      {
+        "id": "C15-N04",
+        "check": "A running request shows its progress and a Cancel request control; cancelling ends it as Cancelled and nothing is sent again."
+      },
+      {
+        "id": "C15-N05",
+        "check": "A POST whose response is lost is reported as possibly having reached the server, is sent exactly once and offers no resend control."
+      },
+      {
+        "id": "C15-N06",
+        "check": "With the tenant's management credential: an unknown operation and an edited token URL are refused before anything is sent; a known read mints the token from the tenant credential (Basic client auth, the tenant's TSG scope, the secret never in the body) and sends the read with that bearer token."
+      },
+      {
+        "id": "C15-N07",
+        "check": "A known tenant change shows its masked review (role alert); Send to tenant opens the native AppKit confirmation sheet titled with the method; Escape sends nothing; Return sends it exactly once and the review is gone."
+      },
+      {
+        "id": "C15-N08",
+        "check": "After quitting while a request runs and relaunching, the collection's history lists earlier runs and the in-flight one as Interrupted (not sent again); nothing is replayed."
+      },
+      {
+        "id": "C15-N09",
+        "check": "No Node, Bun or Deno process runs beside the app while requests are sent, and v1 data is unchanged."
+      }
+    ],
+    "C16": [
+      {
+        "id": "C16-N01",
+        "check": "Without a management client AI Gateway asks for one in Settings and reads nothing."
+      },
+      {
+        "id": "C16-N02",
+        "check": "AI Gateway lists the tenant's workspaces on opening; choosing one reads its providers with the workspace query and the tenant header, and the chosen workspace is shown checked; nothing is chosen for the operator."
+      },
+      {
+        "id": "C16-N03",
+        "check": "A route's detail opens with focus on its heading and says the configuration carries credentials without showing them; Close returns focus to its Details button; the tenant-wide integrations and an integration's models are read; no key value, provider key, model configuration or credential-bearing setting from the service reaches the window."
+      },
+      {
+        "id": "C16-N04",
+        "check": "Choosing another workspace while a read of the first is in flight shows the second workspace's reads and never the first's late reply; a partial inventory is shown as part of a larger one, never as all of it."
+      },
+      {
+        "id": "C16-N05",
+        "check": "Inference prerequisites state the IAM scope binding, each plane's access and each source as read: a scope that does not list the workspace is unbound, a refused admin or IAM plane is stated as not allowed while the data plane's reads stand, and the management client is never offered for inference."
+      },
+      {
+        "id": "C16-N06",
+        "check": "A pending Runtime change review stays protected across Gateway use: after choosing workspaces, the reviewed change is still held (Review again)."
+      },
+      {
+        "id": "C16-N07",
+        "check": "After a restart the remembered workspace is restored only because a new listing lists it, and says so; a complete listing without it clears the choice and says it is no longer listed."
+      },
+      {
+        "id": "C16-N08",
+        "check": "At 200% zoom and at the minimum window size the workspace refresh and an inventory row's Details are reached by keyboard inside the window."
+      },
+      {
+        "id": "C16-N09",
+        "check": "Every Gateway request is a GET (only the token grant is a POST); no secret or synthetic private marker appears in any Accessibility snapshot; v1 data is unchanged."
+      },
+      {
+        "id": "C16-N10",
+        "check": "With two integrations, opening the second while the first's models are shown, or while the first's model read is still out, shows none of the first's models, loading state or count, and its late reply is dropped; reading the second shows only its own models."
+      },
+      {
+        "id": "C16-N11",
+        "check": "The Workspace tab shows the chosen workspace's own settings with its defaults and embedded limits; Refresh workspace is reached and pressed by keyboard and keeps focus; choosing another workspace shows only that workspace's settings."
+      }
+    ],
+    "C17": [
+      {
+        "id": "C17-N01",
+        "check": "Editing a provider from its details opens the change with focus on its heading; Review shows the exact workspace (name, slug and IAM scope) with no credential; nothing is written until the native confirmation, which names the workspace and its IAM scope; confirming sends exactly one PUT of the reviewed fields with the tenant header, and the result reads the item back."
+      },
+      {
+        "id": "C17-N02",
+        "check": "Choosing another workspace while a change is prepared in the first closes it (no Review again or Apply\u2026 remains) and nothing is written."
+      },
+      {
+        "id": "C17-N03",
+        "check": "A provider a route still references lists that route in its review and Apply\u2026 is disabled; an unreferenced provider's delete names the workspace in a destructive sheet whose Return cancels, and Delete sends exactly one DELETE, read back as absent."
+      },
+      {
+        "id": "C17-N04",
+        "check": "A new service key is created in the chosen workspace and tenant; its one-time value is held in memory, appears in no Accessibility snapshot, is shown once in the native secret sheet (matching the issued key) and is no longer held afterwards; closing the change returns focus to New service key\u2026."
+      },
+      {
+        "id": "C17-N05",
+        "check": "Provisioning a workspace opens with focus on its heading, names the IAM scope in its review and native confirmation, sends the scope create, the workspace create and the scope binding once each, reports every step done and read back, and the workspace listing then lists the new workspace."
+      },
+      {
+        "id": "C17-N06",
+        "check": "When the workspace create's reply is lost the result says not every step's outcome is known and nothing was undone, reports the workspace step as unknown and what the readback found, and nothing is retried or deleted."
+      },
+      {
+        "id": "C17-N07",
+        "check": "An applying provisioning offers Stop waiting, saying stopping undoes nothing already sent; stopping it reports the stop, that nothing was undone and what reading the tenant back found, and sends no cleanup."
+      },
+      {
+        "id": "C17-N08",
+        "check": "The Workspace tab reads the chosen workspace and shows its defaults and embedded usage and rate limits, with its Edit and Archive actions; no credential or private marker is shown."
+      },
+      {
+        "id": "C17-N09",
+        "check": "At 200% zoom and at the minimum window size Provision workspace\u2026 and Edit workspace\u2026 are reached by keyboard inside the window."
+      },
+      {
+        "id": "C17-N10",
+        "check": "The only Gateway and IAM writes are the reviewed and confirmed ones, in order; no secret, one-time key or synthetic private marker appears in any saved Accessibility snapshot; v1 data is unchanged."
+      },
+      {
+        "id": "C17-N11",
+        "check": "Gateway work kept on this Mac (T23): a provider draft edited in the window and the two uncertain provisionings are listed after a relaunch with the management service unreachable (the workspaces cannot be read, which the window says); each record says the service has not been read since; the draft opens with focus on its heading and its kept text, cannot be reviewed until its workspace is chosen from a fresh listing, keeps its offline edit, and Close returns focus to it; nothing reaches the service."
+      },
+      {
+        "id": "C17-N12",
+        "check": "Reconnecting replays nothing (T23): after a relaunch with the service reachable no Gateway or IAM write is sent, the draft (with its offline edit) and both records are still listed, a record goes only when dismissed, and the kept draft's action is reachable by keyboard inside the window."
+      }
+    ],
+    "C18": [
+      {
+        "id": "C18-N01",
+        "check": "The Playground offers no run without a workspace inference key and never the management client; the key is entered for the chosen workspace with its runtime endpoint, stored natively and never shown, and nothing is sent by storing it."
+      },
+      {
+        "id": "C18-N02",
+        "check": "One run is sent only when Run is pressed: once, with the inference key (no management authorization) to the stored endpoint, streaming, at most 256 tokens; its output, served model, token counts and trace are shown and the trace matches the request."
+      },
+      {
+        "id": "C18-N03",
+        "check": "Stop ends a run mid-stream: the stream is closed, the response says the Gateway may have run and charged for it, and the run is kept on this Mac without its output."
+      },
+      {
+        "id": "C18-N04",
+        "check": "A guardrail refusal (HTTP 446) is named as blocked and never retried; a Gateway failure (HTTP 503) is named, said to be possibly run and charged, kept on this Mac as uncertain with its trace, and never retried."
+      },
+      {
+        "id": "C18-N05",
+        "check": "Choosing another workspace mid-stream stops the run (the stream is closed) and nothing of it is shown again under either workspace; nothing is replayed."
+      },
+      {
+        "id": "C18-N06",
+        "check": "Usage shows each series' total with an accessible chart name and its values reachable by keyboard; a failed source says it was not read instead of a zero; errors and the busiest models are shown."
+      },
+      {
+        "id": "C18-N07",
+        "check": "Find in logs reads the chosen workspace's logs filtered by the run's trace; Limits shows the usage- and rate-limit policies of the workspace."
+      },
+      {
+        "id": "C18-N08",
+        "check": "Home/Inbox shows the chosen Gateway workspace's last day (requests, errors, cost, policies) and a Gateway errors item."
+      },
+      {
+        "id": "C18-N09",
+        "check": "An offline relaunch shows the Playground draft and the uncertain runs kept on this Mac (no output) and sends nothing; the kept draft is opened and edited offline by keyboard without a workspace listing, the edit survives another offline relaunch and opens in the Playground once online, and reconnecting sends no inference."
+      },
+      {
+        "id": "C18-N10",
+        "check": "Run prompt is keyboard-reachable at 200% zoom and Remove key at the minimum window size, inside the window; a chart's values disclosure is keyboard-reachable."
+      },
+      {
+        "id": "C18-N11",
+        "check": "No AX snapshot carries the inference key, the management secret or the scan key; the synthetic server never logged the prompt or the key; the runtime requests are exactly the runs pressed; v1 data is unchanged."
+      },
+      {
+        "id": "C18-N12",
+        "check": "Choosing the Responses API sends one streamed /responses run with the inference key and store false (at most 256 output tokens); its output, API, served model and tokens are shown, and nothing goes to chat completions. A run the Gateway ends at the output token limit is shown as incomplete with its reason (max_output_tokens), its partial output and tokens, never as completed; a run the model fails is shown as failed. Each is sent once."
+      },
+      {
+        "id": "C18-N13",
+        "check": "The workspace's Files tab reads its files with the inference key; a file chosen in the sheet shows only its name and size, is uploaded once by keyboard (multipart, purpose assistants, the chosen bytes) and the status takes focus; a Responses run attaches it as an input_file; Delete asks first (focus on Delete file, Cancel sends nothing and returns focus to the row) and deletes one file once; an upload answered 503 is named as possibly stored, kept on this Mac with its trace and never sent again."
+      }
+    ],
+    "C19": [
+      {
+        "id": "C19-N01",
+        "check": "The bundle's engine resource is the pinned engine (its SHA-256 and sealed inventory match the compiled pin) and the bundle holds no Node, Bun, npm or managed CLI. The Harness is an available destination naming the engine's version, commit and protocol, and offers no conversation without a tenant, a chosen Gateway workspace and the inference key stored for it; once those exist it shows the workspace and the only endpoint the engine is given."
+      },
+      {
+        "id": "C19-N02",
+        "check": "Start conversation launches exactly one engine as a child of the app, leading its own process group, with `desktop-server` as its only argument, a fixed PATH, its own runtime home under the app's data and no credential in its environment or arguments; the conversation becomes ready and focus moves to the message box."
+      },
+      {
+        "id": "C19-N03",
+        "check": "A message sent with Command-Return is answered through the engine: exactly one streamed Responses request reaches the Gateway with the workspace key and a read-only sandbox, and the operator's message, the streamed answer, its end and the token counts are shown."
+      },
+      {
+        "id": "C19-N04",
+        "check": "Stop answer interrupts only the answer being streamed: the Gateway stream is closed by the client, the answer is marked as stopped, and the same conversation then answers another message."
+      },
+      {
+        "id": "C19-N05",
+        "check": "End conversation stops and reaps the engine (no engine process remains) and removes its runtime home; the status says the conversation ended and takes focus, and a new conversation is offered."
+      },
+      {
+        "id": "C19-N06",
+        "check": "Choosing another Gateway workspace retires the conversation at once (its engine is reaped, its view withdrawn and its home removed), and the system will-sleep notification ends a conversation the same way and says so."
+      },
+      {
+        "id": "C19-N07",
+        "check": "Quitting with a conversation open leaves no engine process and no runtime home; no prompt, answer or key is found anywhere in the app's data on disk; a relaunch restores no conversation and starts a new one."
+      },
+      {
+        "id": "C19-N08",
+        "check": "The transcript is a list named Messages, the message box is labelled, the status is an accessible status, a message is sent by keyboard, and End conversation is reached by Tab and pressed with Space, reaping the engine."
+      },
+      {
+        "id": "C19-N09",
+        "check": "No secret appears in any captured accessibility tree, the Gateway log holds neither prompt nor key, the engine reached only the Responses endpoint, no engine process outlives the run, and v1 data is unchanged."
+      },
+      {
+        "id": "C19-N10",
+        "check": "An engine killed from outside is named as having stopped unexpectedly, its processes and runtime home are gone, and a new conversation starts a new engine."
+      }
+    ],
+    "C20": [
+      {
+        "id": "C20-N01",
+        "check": "Company sign-in is configured for the chosen workspace (an http issuer is refused) and opens exactly one HTTPS authorization URL at the configured issuer, with the client ID, PKCE S256, fresh state and nonce, and a 127.0.0.1 loopback redirect; a callback with another state is refused; the real callback signs the account in, adds one Keychain item, and the app's state holds no token."
+      },
+      {
+        "id": "C20-N02",
+        "check": "A conversation with company sign-in is answered by the pinned engine with an access token the identity provider issued (not the workspace key), and the conversation says it was saved."
+      },
+      {
+        "id": "C20-N03",
+        "check": "Once the token is inside its renewal margin, the next message renews it (one refresh), stops the old engine and starts a new one with the new token, restores the conversation (the Gateway request carries the first turn) and answers, with one runtime home at a time."
+      },
+      {
+        "id": "C20-N04",
+        "check": "A refused renewal sends nothing: the message is given back to the box and the reason is announced; signing in again as the same account continues the same conversation, restored, in a new engine."
+      },
+      {
+        "id": "C20-N05",
+        "check": "Signing out withdraws the running conversation and reaps its engine, revokes the refresh token at the provider and deletes its Keychain item."
+      },
+      {
+        "id": "C20-N06",
+        "check": "Every conversation is saved after each answer as one sealed file (0600 in a 0700 directory) with no plaintext of the conversation, the key or the tokens anywhere in the app's data; quitting leaves no engine, and after a relaunch the saved conversation is listed again."
+      },
+      {
+        "id": "C20-N07",
+        "check": "After a relaunch, a saved conversation opens as a list of its messages and continues in a new engine with its history restored (the Gateway request carries the first turn); the same record is updated."
+      },
+      {
+        "id": "C20-N08",
+        "check": "Export saves the opened conversation's transcript (Markdown) through the save sheet, with no key, token or replay; Delete asks first, then removes the record from the list and from disk."
+      },
+      {
+        "id": "C20-N09",
+        "check": "The credential choice is a labelled radio group, Saved conversations is a heading with a named list, and Sign in is reached by Tab from the credential choice."
+      },
+      {
+        "id": "C20-N10",
+        "check": "No key, token or refresh token appears in any accessibility snapshot, the synthetic servers' logs hold only hashes and no prompt, v1 data is unchanged, and no engine process is left."
+      },
+      {
+        "id": "C20-N11",
+        "check": "An unreadable saved conversation (a record that does not open with its workspace's key) is deleted only when confirmed, by keyboard: activating Delete unreadable conversation\u2026 only asks, Keep it keeps the file, and Delete permanently removes it while the readable record stays."
+      },
+      {
+        "id": "C20-N12",
+        "check": "Offline (T23): relaunched with the synthetic Gateway and identity provider stopped, the Harness lists the last chosen workspace's history from this Mac; a record opens, says it cannot be continued and exports its transcript, and no engine starts. Reconnected, the history is the chosen workspace's again and nothing is resumed or replayed."
+      }
+    ],
+    "C21": [
+      {
+        "id": "C21-N01",
+        "check": "The project folder is chosen in the native 'Choose project folder' sheet (the production NSOpenPanel) and shown with its path, read-only; a system folder (/usr) chosen there is refused with the reason and the earlier folder is kept. No Accessibility tree is saved while the panel lists folders."
+      },
+      {
+        "id": "C21-N02",
+        "check": "A desktop read tool the model asks for (the tenant's security profiles) runs through the tenant's management client: the transcript shows an App tool entry, the turn is answered, and the output the engine returned to the Gateway names the tenant's profiles and carries no management secret."
+      },
+      {
+        "id": "C21-N03",
+        "check": "In a read-only folder, a command the engine asks to run waits for the operator with its command and folder: Decline declines it (the entry reads declined and nothing ran); an allowed write still cannot change the folder."
+      },
+      {
+        "id": "C21-N04",
+        "check": "Allowing changes is a new binding: the running conversation ends and its engine is reaped. In the next conversation an allowed command writes inside the folder; a file outside it cannot be read and a child process cannot be started; the engine's own patch writer writes nothing: asked with its files named, the approval's Files list shows exactly the patch's file, whole, before Allow (its tree is kept), and, allowed, the write fails in the engine's sandbox; asked before they are named, it is declined at once and never shown."
+      },
+      {
+        "id": "C21-N05",
+        "check": "A proposed change is staged, never applied: it is listed under Proposed changes and no management write is sent; Review opens it in Administration's own review with the proposal's exact draft, and only the operator's Apply through the native confirmation writes it (one PUT, read back); the proposal then reads closed."
+      },
+      {
+        "id": "C21-N06",
+        "check": "Forged or unknown tool calls run nothing: an unknown tool, a credential-bearing argument and a Gateway change proposal are each answered as unavailable, with no management request and no proposal."
+      },
+      {
+        "id": "C21-N07",
+        "check": "Keyboard and accessibility: the project folder, its change checkbox, the approval Allow and Decline buttons and the proposal's Review button are named and reachable by Tab; the waiting approvals and proposals are labelled regions."
+      },
+      {
+        "id": "C21-N08",
+        "check": "Removing the folder ends the running conversation and reaps its engine; quitting leaves no engine; no secret appears in AX snapshots or the server log; the folder holds only the driver's files and the allowed write; v1 data is unchanged."
+      },
+      {
+        "id": "C21-N09",
+        "check": "Offline and reconnecting (T23): with a command waiting for its approval and a proposal open in review, the app quits and relaunches with the synthetic services stopped. The engine is gone, no conversation, approval or review is restored, and this Mac's history is listed. Reconnected, nothing is resumed or resubmitted: no Gateway turn, no management write, and the folder is unchanged."
+      }
+    ],
+    "C22": [
+      {
+        "id": "C22-N01",
+        "check": "The chosen workspace's MCP catalog is read through the management client and lists only its servers (the upstream URL never shown); a server is turned on; signing in opens one authorization URL at the server's own OAuth origin with PKCE S256, state, the server URL as resource, only the tool scopes, a client registered for this attempt and a 127.0.0.1 redirect; a callback with another state is refused; the real callback signs in, adds one Keychain item, and the state document holds no token."
+      },
+      {
+        "id": "C22-N02",
+        "check": "A conversation gives the engine the server with its bearer in memory and its startup reads ready; the model's MCP tool call waits for the operator as 'Run a workspace MCP tool' naming the server, tool and the call's arguments: Decline runs nothing (no tools/call) and the entry reads declined; Approve once runs exactly one tools/call carrying the issued bearer and its result is shown; no inference request carries the bearer."
+      },
+      {
+        "id": "C22-N03",
+        "check": "Once the MCP token is inside its renewal margin, the next message renews it (one refresh), stops the engine and starts a new one that restores the conversation (the Gateway request carries the first turn) without asking again for changes in the folder, and the new engine's server runs with the renewed bearer."
+      },
+      {
+        "id": "C22-N04",
+        "check": "An expired MCP sign-in (its renewal refused) keeps inference: the engine gets the signed-out placeholder, the server reads not signed in, its requests carry no issued bearer, and the conversation still answers."
+      },
+      {
+        "id": "C22-N05",
+        "check": "Signing out of a server retires the running conversation, reaps its engine, deletes its Keychain item and revokes both tokens; signing in again, turning the server off, or a new catalog revision (read again) each retire the conversation too, and after a revision change the sign-in reads stale."
+      },
+      {
+        "id": "C22-N06",
+        "check": "Keyboard and accessibility: the Workspace MCP servers region, each server's checkbox and its sign-in and sign-out buttons are named and reachable by Tab, as are the MCP approval's Approve once and Decline buttons; Approve once is reached with Shift-Tab from Decline and activated with Space, and the call then runs once."
+      },
+      {
+        "id": "C22-N07",
+        "check": "No MCP or Gateway token appears in AX snapshots, the server log (a bearer is recorded only as issued, placeholder, other or none) or the engine's runtime home; no engine is left after quitting; v1 data is unchanged."
+      }
+    ],
+    "C23": [
+      {
+        "id": "C23-N01",
+        "check": "Import from v1 is available in the shell. Look for v1 data finds the staged fixture v1 folder without reading its Keychain (the fixture keychain's read log stays empty), names what it will not import (navigation), lists both v1 tenants with the session-only one marked, and offers each category as a checkbox with its count or reason."
+      },
+      {
+        "id": "C23-N02",
+        "check": "Choosing the protected categories shows the Allow-not-Always-Allow note; Review what would be imported reads exactly the selected protected items of the targeted tenants (the read log) and states each item's status and counts as text: ready items and Academy drafts blocked until the same account signs in. A second review after the import shows the imported cases and reports as already here. No secret from v1's credential appears in any Accessibility tree."
+      },
+      {
+        "id": "C23-N03",
+        "check": "After the import, the new tenant carries v1's TSG ID with no key (Settings asks for its scan key), its cases are in the Case Library and its report in Sessions & Reports, and the Imports list shows the receipt as imported."
+      },
+      {
+        "id": "C23-N04",
+        "check": "An import stopped by the fixture's crash hook after its first item (the new tenant) was written shows nothing of it while it is stopped: Settings does not list the tenant although it is in the app's data. On relaunch the import reads as not finished and undone, the tenant is gone from the app's data, and Import again writes everything anew with every entry present exactly once."
+      },
+      {
+        "id": "C23-N05",
+        "check": "Roll back asks in a native sheet; Cancel keeps the import and returns focus to Roll back; confirming rolls the import back: the tenant it created is removed while the operator's own tenant created before the import stays, and the receipt reads rolled back."
+      },
+      {
+        "id": "C23-N06",
+        "check": "v1 is preserved: every file of the fixture v1 folder has the same bytes, modification time and mode after inspection, review, import, relaunch and rollback, no file was created in it, the fixture v1 keychain's items have the same data, and the real v1 folder and login Keychain were never touched."
+      },
+      {
+        "id": "C23-N07",
+        "check": "No credential or sign-in is carried over: the imported tenant has no scan, management or inference key and the synthetic scan and management services receive no request during the import; Academy drafts are blocked with a sign-in reason while no account is signed in."
+      },
+      {
+        "id": "C23-N08",
+        "check": "The import view works by keyboard alone in tab order (category checkboxes, tenant targets, Review, item checkboxes, Import, Import again after a relaunch, Roll back with its confirmation sheet cancelled by Return and confirmed by Tab and Space under macOS Keyboard navigation), focus moves to what replaces each pressed control, every control and status has an Accessibility name, progress is announced as a status, and the view stays usable at 200% text size and the minimum window size with reduced motion."
+      },
+      {
+        "id": "C23-N09",
+        "check": "Lost import records fail closed and are said: with a receipt damaged in both of its files the import view names it in an alert, Remove damaged record \u2026 is reached by Tab and pressed with Space, both files are removed, the alert clears and focus stays in the window; with neither receipt folder readable the view says the records can't be read and to restore access and reopen the app."
+      }
+    ],
+    "C24": [
+      {
+        "id": "C24-N01",
+        "check": "Settings \u203a Diagnostics states that diagnostics stay on this Mac for 14 days and are never sent, with the count kept; Export diagnostics saves a JSON document (schema, app version, events of kinds and codes only; in the fixture build without a sheet, into its data root), and Clear diagnostics leaves only the record of clearing."
+      },
+      {
+        "id": "C24-N02",
+        "check": "Seeded canaries put through the real window (a scan key, and a prompt scanned against the synthetic endpoint) never appear as the secret in any file the app keeps (data folder, diagnostics, exports) or in any Accessibility tree, and neither the secret nor the prompt appears in the diagnostics or their export."
+      },
+      {
+        "id": "C24-N03",
+        "check": "Startup and reconnect network inventory: across 15 s of startup with a configured tenant, the app and every WebKit process that appeared with its launch (each sampled, named and counted, so an empty WebKit set fails) open no internet socket (sampled lsof); after an offline launch the synthetic services receive no request once they are reachable again until the operator acts, and the same processes hold no socket while nothing is asked."
+      },
+      {
+        "id": "C24-N04",
+        "check": "T23 across local categories: with imported cases, FP/FN reports and a receipt kept, an offline launch (no synthetic service reachable) shows the cases in the Case Library, the reports in Sessions & Reports, the import receipt and the diagnostics count, and nothing is sent or replayed on reconnect."
+      },
+      {
+        "id": "C24-N05",
+        "check": "The prepared bundle is Node-free: no node, bun, npm, npx or airs-cli executable, no node_modules, .mjs or .cjs file, and no JavaScript source map anywhere in it."
+      },
+      {
+        "id": "C24-N06",
+        "check": "The cumulative T09 matrix: every earlier chunk's native acceptance (C01\u2013C23) passes again on this bundle (their records under this chunk's evidence), covering menus, shortcuts, keyboard and focus, Accessibility roles and names, zoom, minimum window size, themes and reduced motion for every workflow."
+      },
+      {
+        "id": "C24-N07",
+        "check": "Diagnostics by keyboard alone: Export diagnostics\u2026 is reached by Tab and pressed with Space, the production save sheet (NSSavePanel) saves the document into a chosen folder and Diagnostics saved. is announced; a second export cancelled in the sheet saves nothing and Nothing was saved. is announced; focus returns to Export diagnostics\u2026 each time; Clear diagnostics is reached and pressed the same way and Diagnostics cleared. is announced; both controls are reachable and clear at 200% zoom and at the minimum window size."
+      }
+    ],
+    "C25": [
+      {
+        "id": "C25-N01",
+        "check": "Editing a data filtering profile as read (unset fields null, plus the service's own id, name, tenant_id, type, version, audit_metadata and is_parent_managed): Edit\u2026 opens it as a JSON draft, Review change accepts it unchanged, Apply\u2026 opens the native sheet and Return applies it: exactly one PUT /dlp/v2/api/data-filtering-profiles/<id> whose body holds the draft without the nulls or the service's own fields, and the window says it was read back."
+      },
+      {
+        "id": "C25-N02",
+        "check": "A security profile saved inactive: reviewing a New security profile draft with \"active\": false shows the impact 'Saves this profile inactive. The service does not list inactive profiles, so it will not appear in the profile list or read back after saving; note its name and ID first.' (an active draft shows the ordinary 'Applies only to this tenant' impact)."
+      },
+      {
+        "id": "C25-N03",
+        "check": "Academy device sign-in when desktop.me names the account by a UUID (as live Academy does): after approval the Academy account group says 'Signed in to Academy as' with the display name, and the learner is kept across a relaunch."
+      },
+      {
+        "id": "C25-N04",
+        "check": "T09 for the change review: keyboard only, Tab reaches the draft, Review again, Close, the confirmation field and Apply\u2026 in order and Shift-Tab returns in reverse; the focused control shows a visible accent focus ring; the impact text and every button carry accessible names; Escape on the native confirmation sheet cancels it and nothing is sent."
+      }
+    ],
+    "C28": [
+      {
+        "id": "C28-N01",
+        "check": "Settings \u203a Interface \u203a 'Use the new interface' switches the window to the v2 shell without a relaunch: the rail named 'Destinations' lists Home \u23181, Inbox \u23182, Harness \u23183, Academy \u23184, Test Cases \u23185, API Client \u23186, Administration \u23187 in that order (the Rust catalogue), the tenant switcher is above it, and the Home heading receives the page; the preference survives a relaunch and 'Return to the classic interface' restores the legacy rail named 'Features'."
+      },
+      {
+        "id": "C28-N02",
+        "check": "The native Go menu follows the presentation: in v2 it offers Switch Tenant\u2026 (\u2318T) and then Home (\u23181) \u2026 Administration (\u23187) followed by the non-sidebar destinations without accelerators; Go \u203a Harness moves the page (a `navigate` intent; the sidebar marks Harness current) and Go \u203a Home returns; after returning to classic the Go menu is the legacy one again (Runtime Security \u23181)."
+      },
+      {
+        "id": "C28-N03",
+        "check": "Keyboard only (I8): Tab reaches the tenant switcher, every rail destination, the palette trigger, the three appearance toggles, 'Show the calls' and the classic-interface control, each with a visible focus ring (band pixels change when focused, for the selected Home too); Enter on the trigger opens the command palette as the one topmost modal with focus in its field and Tab contained; ArrowDown traverses to the last entry with the active row inside the dialog and Enter dispatches only that row; Escape returns focus to the trigger; Go \u203a Switch Tenant\u2026 while the palette is open closes it and leaves focus in the tenant list, and Escape returns focus to the switcher without selecting; the unavailable Inbox destination is disabled."
+      },
+      {
+        "id": "C28-N04",
+        "check": "The accessibility tree carries every status as a word (I9): with no tenant the Home read-status line exposes 'Add a tenant to start reading it.', with a tenant 'First read pending', the warn toast exposes its text with a 'Warning:' prefix, and no verdict is colour-only."
+      },
+      {
+        "id": "C28-N05",
+        "check": "Toasts (I10): a refused navigation (Go \u203a Inbox, catalogued but unavailable, refused by the core) shows one warn toast naming the refusal that expires within 6 s; with macOS Reduce Motion enabled and the app relaunched the same toast persists past 8 s until dismissed; the setting is restored afterwards."
+      },
+      {
+        "id": "C28-N06",
+        "check": "Dark and Light appearance from the rail toggles apply the shared theme attribute the v2 tokens key on: AX text ink is the Gruvbox ink in Dark and the Paper ink in Light; the body background follows the --v2-bg token (self-capture)."
+      },
+      {
+        "id": "C28-N07",
+        "check": "At the interim 900\u00d7600 minimum and at 200% zoom in both themes the v2 shell shows no horizontal scroll (no node past the window's right edge, no horizontal scrollbar), the rail collapses to one 32px control per row with every control's frame inside the rail's frame (nothing clipped), focusing the last appearance toggle does not scroll the rail, destination labels stay in the accessible names, and the page heading stays reachable; with a configured tenant the collapsed switcher still names the tenant."
+      }
+    ],
+    "C29": [
+      {
+        "id": "C29-N01",
+        "check": "First run in the v2 presentation (onboarding needed, no tenant) opens on Welcome with the API-builder framing and three cards, no shell rail and no Back; it opens again after a relaunch; 'Set up a tenant' moves to the Tenant step, the heading takes focus, the rail marks the step current, and Continue is disabled naming what is missing ('Create the tenant to continue')."
+      },
+      {
+        "id": "C29-N02",
+        "check": "Tenant step: Create tenant with an empty name and a 9-digit TSG marks each field aria-invalid with its message and drafts nothing; a valid name and TSG draft the tenant in the core (status, rail 'Name \u00b7 Environment \u00b7 TSG \u2026', the profile stays editable with 'Save changes', Continue reads 'Save the scan key to continue'); the scan key is typed once into a secure field and attaches to the draft (Saved, Replace/Remove offered, Continue enabled); the management client saves; the Gateway section reads the workspaces through the client, chooses one and saves its key; editing the name updates the rail and keeps the credentials; no secret appears in any AX tree or in a data file outside the Keychain."
+      },
+      {
+        "id": "C29-N03",
+        "check": "Products step: Runtime Security is checked and not uncheckable ('Always on'), AIS and AES are 'Not available in this release' with disabled checkboxes, the licence note is shown; Verify shows planned rows ('Not run yet'; AIS/AES 'Not available') with Continue disabled; with the management client replaced by a rejected secret the core-owned run fails that optional line (scan key reported Stored, never Pass) and offers both 'Continue with warnings' and 'Fix and verify again', which returns to the editable Tenant step where the client is replaced; the rerun authenticates with the new secret (management Pass) and reads the chosen workspace's prerequisites (Pass); changing the products afterwards marks the run stale (Continue closed, Done unreachable) until a rerun finishes clean."
+      },
+      {
+        "id": "C29-N04",
+        "check": "Starter cases lists one pack per chosen product with its case count, checked; the Academy step is the reviewed account component (sign-in offered, 'syncs your Academy progress only'); Done summarises the draft; 'Open Prisma AIRS' sends one completion intent, after which Home shows the new tenant in the switcher and Test Cases lists the imported cases; a relaunch shows Home, not the wizard."
+      },
+      {
+        "id": "C29-N05",
+        "check": "Add a tenant\u2026 from the switcher opens the sheet as the one topmost modal (244px rail, no Welcome, Academy or Back), keyboard traversal stays inside it; Cancel before a draft changes nothing; a drafted and keyed tenant cancelled leaves the tenant list and the active tenant unchanged and its key gone; a draft without a key (optional in add mode) verifies with a warning, and Finish commits it once, makes it active with a toast and lists it beside the first."
+      },
+      {
+        "id": "C29-N06",
+        "check": "T09 matrix: every wizard step and the add sheet captured in light and dark at 100% and 200% zoom; Tab reaches each step's controls; at the 900\u00d7600 minimum the sheet's Cancel is inside the window once focused (the dialog scrolls within the viewport)."
+      }
+    ],
+    "C30": [
+      {
+        "id": "C30-N01",
+        "check": "With a Harness conversation waiting for the operator's approval (the real pinned engine against the synthetic Gateway), switching tenants through the switcher, through the palette's 'Switch to \u2026' entry and through Go \u203a Switch Tenant\u2026 each shows the one guard dialog ('A Harness decision is waiting') rendered from the core's refusal; Stay keeps the tenant and the approval; 'Archive and switch' ends the conversation and makes the other tenant active; the decision was never taken for the operator."
+      },
+      {
+        "id": "C30-N02",
+        "check": "A tenant that was never read shows 'First read pending' on Home and an empty Inbox saying the same (never sample data); 'Read now' runs the core's read against the synthetic endpoint and announces its completion from the core's read status (all sources complete, or the partial sources named); the Inbox then lists the read's items in tabs with counts and a detail pane whose action navigates with context."
+      },
+      {
+        "id": "C30-N03",
+        "check": "Snooze is a core intent: snoozing an item from Home and reading its return time in the Inbox row, the Inbox detail pane and the toast all state the same core-computed time; Acknowledge marks the item and takes it off Home; Unsnooze brings it back; every step captured in light and dark at 100% and 200%."
+      },
+      {
+        "id": "C30-N04",
+        "check": "The accessibility additions (DESIGN-V2 \u00a78, T09) on the changed UI: from Read now, Tab reaches the Inbox tabs, the rows and the detail actions with every focused frame inside the window and Enter opens a row's detail; the read-status line is in the tree; the guard is the one topmost modal (the rail and page hidden beneath it, initial focus on Stay, the safe default, so Enter on arrival ends nothing) and Escape (Stay) returns focus to the switcher that asked; with macOS Reduce Motion on and the app relaunched a snooze toast persists past 8 s until dismissed (setting restored); at the 900\u00d7600 minimum and 200% zoom in both themes the Inbox columns stack so rows, the detail text and facts and every action stay inside the window with no horizontal scroll."
+      }
+    ],
+    "C31": [
+      {
+        "id": "C31-N01",
+        "check": "Administration renders the core's inventory: Agentic Identity and Endpoint Security show their gate and nothing else; each tab offers exactly its admitted actions with per-tab labels (Custom topics 'New topic\u2026', API keys 'New API key\u2026', no 'New application\u2026', an API key's 'Issue additional key\u2026', 'Regenerate\u2026' and 'Remove\u2026' but never 'Edit\u2026'); the Gateway tabs omit the removed Limits tab and its keys never offer 'Issue additional key\u2026' or 'Finish rotation\u2026'; Codebase scans is unavailable with its gate."
+      },
+      {
+        "id": "C31-N02",
+        "check": "A custom topic edit opens the review sheet; Apply stays disabled until the typed name matches exactly (empty and wrong case refused); Apply opens the native confirmation titled for the topic; Return applies once; the applied panel says 'Live. The item was read back.'; Done closes the sheet."
+      },
+      {
+        "id": "C31-N03",
+        "check": "The staged Runtime key rotation: 'Issue additional key\u2026' reviewed with CREATE and confirmed natively issues one key and shows 'Additional key issued \u00b7 old key still active'; Reveal opens the host secret sheet with the issued key (never in the web view); Escape ends the review; the Inbox lists the distinct reminder; 'Finish rotation\u2026' resumes without any secret control; 'Application updated' records the local acknowledgement and opens the old key's removal review; its native Delete removes the key once and the panel reads 'Rotation complete \u00b7 old key removed' with both labelled timestamps."
+      },
+      {
+        "id": "C31-N04",
+        "check": "The accessibility additions (DESIGN-V2 \u00a78) on the changed UI: the review sheet is the one topmost modal (the rail hidden beneath it) and Escape closes it with focus returned to the page; the rotation reminder leaves the Inbox once the old key is read back gone; Tab from a product header reaches its tabs; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Administration screen lies past the window's right edge; a focused review-sheet control shows its focus ring (pixels around it change against the unfocused capture); the applied result and the rotation's completion sit in polite status regions; with Reduce Motion on, the applied change's toast stays past 6 s until dismissed, and the system setting is restored."
+      }
+    ],
+    "C32": [
+      {
+        "id": "C32-N01",
+        "check": "The Harness renders in the v2 shell on the existing engine: the title row names the tenant, the engine and the workspace; the prerequisites checklist is hidden once satisfied; a fresh tenant shows no seeded conversation, and its first send through the composer starts a user conversation that the real engine answers, titled from that message in the rail (I12)."
+      },
+      {
+        "id": "C32-N02",
+        "check": "A command the engine asks to run while the project is read-only is decided in the page (Approve once / Decline) after a project is chosen through the embedded project panel; while it waits, a tenant switch through the switcher, the palette and Go \u203a Switch Tenant\u2026 each shows the guard (Stay, Discard and switch, Archive and switch) and Stay keeps the tenant and the decision (I1, V2-N01); Decline records it and runs nothing, Approve once runs it. With changes allowed, a command is shown as May change things: Approve\u2026 opens the native confirmation, Cancel keeps it pending and runs nothing, Allow once runs it; the guard is the one topmost modal (the rail and the page hidden beneath it) with initial focus on Stay, and Escape closes it with focus returned to the switcher."
+      },
+      {
+        "id": "C32-N03",
+        "check": "The workspace MCP catalog read the engine asks for (airs_desktop.mcpServers) is shown as read-only and read only once approved in the page; a change the engine proposes appears as a follow-up and writes nothing; Open the review shows it as the operator's typed review in Administration (Apply gated, still nothing written) and leaving it closes the follow-up; End conversation seals it (its transcript saved, the rail marks it ended, the engine is gone) and the next send starts a new conversation; the ended conversation is announced in a status region."
+      },
+      {
+        "id": "C32-N04",
+        "check": "Keyboard: Tab from the message box reaches Send or End; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Harness screen lies past the window's right edge and there is no horizontal scroll bar; a focused changed control (New investigation) shows its focus ring (pixels around it change against the unfocused capture); with Reduce Motion on, the ended conversation's toast stays past 6 s until dismissed, and the system setting is restored."
+      }
+    ],
+    "C33": [
+      {
+        "id": "C33-N01",
+        "check": "Test Cases in the v2 shell: Add starter packs lists the tenant's starter cases with their pack name and Not run; the product filter and search narrow the rows; a non-Runtime case offers Inspect only, whose details name the product that runs it (Red Team: hand the spec to a scan) and dispatch no scan; a Runtime case's Open in Playground opens Administration's Runtime Playground with the case loaded and sends nothing; the operator's Scan sends exactly one request and Test Cases then shows the case's recorded result (V2-T15, V2-T16)."
+      },
+      {
+        "id": "C33-N02",
+        "check": "API Client in the v2 shell: Send announces \"<request> \u00b7 <code> \u00b7 <duration>\" in a status region with the response body outside it (known gap 5, V2-T14); after a topic is applied a new send reflects it while the history entry of the earlier send shows exactly its first response; nothing is resent (I5, V2-R05, V2-T05)."
+      },
+      {
+        "id": "C33-N03",
+        "check": "Show the calls: hidden by default once a tenant exists; while chosen, a panel beside the destination lists the calls made for the tenant (the scan's request line and its credential by kind, the core having attached it), never a secret, a query or a body; Hide the calls removes it."
+      },
+      {
+        "id": "C33-N04",
+        "check": "Keyboard and layout on both screens (T09): Test Cases' search and product filter in Tab order with the focus ring on a changed control; the API Client's Send reached by Tab from the URL and pressed with Space, its completion announced, with the focus ring on Send; the calls panel's control reachable with the ring and Space hiding the panel; Test Cases and the API Client at 900x600 and 200% in light and dark with no horizontal overflow."
+      },
+      {
+        "id": "C33-N05",
+        "check": "The library's workflows in the v2 Test Cases (C12 parity): a Runtime case and a specification created through the form, a case removed, an export saved, cancelled and failed (each said), the exported file imported, and a case copied explicitly to another tenant; no scan request is sent throughout."
+      }
+    ],
+    "C35": [
+      {
+        "id": "C35-N01",
+        "check": "The ported shell (R2App) with a tenant: the rail lists Home, Inbox, Harness, Academy, Test Cases, API Client and Administration with their \u2318 hints and the six products as Administration's children (the two gated ones tagged New), hidden and shown by the chevron; the status block shows Connected with the read status, Harness, Keychain and Jobs rows, and its Settings \u2318, button opens Settings; the 56px header shows the destination's title, the 260px 'Search or go to\u2026 \u2318K' button, the Explain switch (the show-the-calls preference: on shows the calls panel, off hides it) and Ask Harness, which opens the Harness; the rail's theme toggle switches the shown appearance between light and dark (D059 parity: the owner's approval of the composites is recorded in evidence/C35/parity/notes.md)."
+      },
+      {
+        "id": "C35-N02",
+        "check": "Overlays as the prototype draws them: the tenant button opens the 360px tenant menu naming the tenant with its environment and TSG, Tenant settings and credentials\u2026, Change Gateway workspace\u2026, the tenant rows under Switch tenant with \u2303n hints and the current one checked, and Add a tenant; Escape closes it and returns focus to the button; the header's search button opens the 640px palette with its search row, grouped rows (Go to, Tenants, Actions) with \u2318 hints and the key-hint footer; typing narrows the rows and Enter navigates; Escape closes it."
+      },
+      {
+        "id": "C35-N03",
+        "check": "Keyboard and layout (T09): Tab from the tenant button reaches the destinations, the status block, the header's search button, the Explain switch and Ask Harness in that order, with the focus ring on the search button; Space on the Explain switch flips the preference; Home, Inbox and Administration at 1440 wide by the display's full working height, and at 900\u00d7600 with 200% zoom, in light and dark with no horizontal overflow. Every row records the WebView's measured size from the accessibility tree and asserts it (1440 wide; exactly 900\u00d7600): a clamped resize never passes as the requested size."
+      }
+    ],
+    "C36": [
+      {
+        "id": "C36-N01",
+        "check": "Home as the prototype draws it (R2App start=home) with a tenant whose read has landed: the heading, the one-line read summary (products, the core's read status, the needs-action count) and Refresh; the Explain banner while the calls are shown and gone when they are not; six product cards in three columns, each naming its product, its pill (Connected, Partial, Needs a role, Connecting, Failed or Not available), a figure or an em dash with its metric, and a last line; the Runtime card's figure is the read's detection events and the Gateway card's its day's requests; the two gated products carry their gate and the New tag; opening a card opens that product in Administration; Needs attention lists the items needing action with their own action, Acknowledge and Snooze sending the core intents, or its empty state naming the read; Quick actions open the Playground, the Harness, the API Client and Academy (D059 parity: the owner's approval of the composites is recorded in evidence/C36/parity/notes.md)."
+      },
+      {
+        "id": "C36-N02",
+        "check": "Keyboard and layout (T09): Tab from the heading reaches Refresh, each card, the attention row's controls and the quick actions in order, with the focus ring on a card; Enter on a card opens its product; Home at 1440 wide by the display's full working height and at 900\u00d7600 with 200% zoom, in light and dark, with no horizontal overflow; every row records the WebView's measured size from the accessibility tree and asserts it."
+      }
+    ],
+    "C37": [
+      {
+        "id": "C37-N01",
+        "check": "The Inbox as the prototype draws it (R2App start=inbox) with a tenant whose read has landed: the heading and its line naming the tenant; a 430px list card with the filter tabs (All, Needs action, Updates, Snoozed, each with its count) over the rows (severity tile and word, title, product and source, when; an acknowledged row marked) and a footer naming the read's coverage; selecting a row fills the detail card (severity tile and word, product and source, the 22px title, the body, the facts as a three-column grid, the entry's own action, Acknowledge or Mark as needing action, Snooze or Unsnooze); the empty states name the read (first read pending; the failed first read, every source answering 500; with the sessions chart denied, AI Runtime Security needing a role: Open role issue offered, the footer's partial coverage, the empty pane qualifying what was read and naming the unread source rather than a bare all-clear, and the issue opening that product in Administration); snooze, acknowledge and unsnooze stay the C30 core intents with the core's return time stated the same in the row, the detail and the toast (D059 parity: the composites under evidence/C37/parity are captured by this script from the populated state with the first row opened, parity/bundle.json rewritten with the bundle they came from, and the owner's approval of them is recorded in parity/notes.md)."
+      },
+      {
+        "id": "C37-N02",
+        "check": "Keyboard and layout (T09): the Inbox at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the list populated; at each layout no horizontal overflow, the list card at least 160 CSS px tall with its tabs, first row and footer inside its own frame (nothing clipped), Tab from Read now reaching a tab then a row, and Enter on a focused row the detail does not show (scrolled into the viewport by its focus) changing the detail to it; the focus ring on the first row; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C38": [
+      {
+        "id": "C38-N01",
+        "check": "The Harness as the prototype board draws it (R2App start=harness) with a tenant, the Gateway workspace Team A chosen and its inference key stored, on the real pinned engine against the synthetic Gateway: the title band (heading; the tenant \u00b7 engine \u00b7 workspace line; End conversation beside the heading only while a conversation runs) over three columns; the rail labelled 'Saved conversations \u00b7 encrypted' with New investigation and the live conversation's row; the transcript with the operator's message and the Harness's answer, and the composer whose Send is a button; the Decisions aside saying 'Nothing to decide yet' and listing the workspace's MCP catalog (both synthetic servers, each 'Not signed in') until a read-only desktop read waits, then holding that decision (airs_desktop.mcpServers, Read-only, Approve once / Decline) with the transcript's pending line; allowed in the aside the read is made once and the answer follows, the aside empty again. The parity composites (evidence/C38/parity, prototype left, app right at the WebView's measured size, light and dark) are captured from the state with the decision waiting; the owner's judgement is recorded in parity/notes.md before the gate (D059)."
+      },
+      {
+        "id": "C38-N02",
+        "check": "Keyboard and layout (T09) with a decision waiting: Tab from End conversation reaches New investigation, the composer (Message) and its reachable action (Stop answering while the engine's turn waits on the decision, since Send is disabled until nothing is pending), then the aside's Approve once and Decline, in that order; the focus ring on that action; the Harness at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the decision card populated, no horizontal overflow, New investigation, Send and Approve once each at least 32 CSS px, the rail, the composer and the aside side by side at 100% and one below the other at 200%; every row records the WebView's measured size and the viewport from its own tree and asserts them; the decision declined and the conversation ended leaves no engine."
+      },
+      {
+        "id": "C38-N03",
+        "check": "The tenant-switch guard (invariant I1) on the board with a Harness decision waiting: choosing the other tenant from the switcher, from the palette's Switch to entry and from Go \u203a Switch Tenant\u2026 each shows the one guard dialog (Stay, Discard and switch, Archive and switch; naming the target tenant; focus on Stay); Escape and Stay keep the first tenant and the waiting decision; Archive and switch ends the conversation with the decision untaken, lands the other tenant on Home and leaves no engine, with nothing further run (C30-N01 carried onto the C38 board in C44)."
+      }
+    ],
+    "C39": [
+      {
+        "id": "C39-N01",
+        "check": "Administration as the prototype board draws it (R2App start=admin) with a tenant whose read has landed through the synthetic management plane: the heading and its line (tenant \u00b7 every change is reviewed before it is applied) with Expand all and Collapse all; the six product cards in order, each with its description, headline figure, status pill and alerts (AI Runtime Security: its detection events from the read, Connected; the agentic products Not available); AI Runtime Security open on Custom topics: the tab strip (Overview, Playground, Security profiles, Custom topics, Applications, API keys, DLP, Deployment profiles), the search field, New topic\u2026, the table's rows from the plane with View per row and the footer's count and read time; View opens the detail with exactly the admitted actions; the Overview tab's three tiles and 24-hour bars from the same read; the Playground tab's form (profile, prompt, response, application, Scan, Save as test case\u2026) and the verdict card after a synthetic scan; Expand all opens every available product and Collapse all closes them (D059 parity: the composites under evidence/C39/parity are captured by this script from this state, the owner's judgement recorded in parity/notes.md). Other products' tab bodies remain C39b's."
+      },
+      {
+        "id": "C39-N02",
+        "check": "A change through the prototype's review sheet (R2App start=review): Edit\u2026 on a custom topic's detail opens the sheet docked to the window's right edge under the header, 620 CSS px wide, titled 'Review a change' with the review's state pill (Draft, then Ready for review, then Applied) and a Close review control; Review change prepares the review in the core, Apply\u2026 stays disabled while the typed name is empty or wrong and enables on the exact name, the native confirmation names the update, and the applied result is read back live with one write to the plane; Done closes the sheet. The review composites (parity/review-*) are captured with the sheet open on the draft."
+      },
+      {
+        "id": "C39-N03",
+        "check": "The other products on the card pattern (C39b): AI Gateway with the workspace Team A chosen \u2014 the Workspaces tab's chooser and the chosen workspace's settings read with its admitted Edit\u2026 / Archive\u2026, the Routes tab as a table with search, New route\u2026 and a detail whose actions are the inventory's, the Keys tab with the service / user kinds; AI Red Teaming \u2014 the Overview's summary tiles and ranked bars, the Targets table with Results per target (identifiers only), the Scans tab's list without the tiles; Model and skill scans \u2014 the Model scans table (or the plane's 'none read') and Codebase scans not available in this release. Every table is read through the management client and says its coverage."
+      },
+      {
+        "id": "C39-N04",
+        "check": "Keyboard and layout (T09): Tab from the heading reaches Expand all, the Runtime card's header, its tabs and the table's first View in order, the focus ring on the first View; Administration at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with Runtime open on Custom topics and no horizontal overflow, the tab strip scrolling within the card rather than widening it, the table's header, first row and footer inside the card; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C40": [
+      {
+        "id": "C40-N01",
+        "check": "Test Cases as the prototype board draws it (R2App start=cases) with a tenant: the title row (heading; 'n cases in <tenant> \u00b7 sealed on this Mac, per tenant'; Load starter packs\u2026 and New case), the empty card first; the Explain banner shown while the shell's Show the calls switch is on and gone when it is off, captured in both themes; Load starter packs\u2026 opens the 560px dialog with the bundled packs and the public examples as checks (the bundled checked) and Import\u2026 / Export\u2026 for the operator's own cases, Load selected adds the packs; the one table card: search, the product pills with their counts, the rows (name with the pack under it, product, input in mono, the result pill or Not run, Open in Playground for a Runtime Security case or Inspect for the others, and the \u22ef menu), the footer's range and pages; a filter and a search with Clear search and filters; Inspect opens the 520px detail sheet docked right (the rows, which product runs it, the never-run note) and dispatches no scan; Open in Playground fills the Playground without scanning, the scan run there records the verdict on the case; New case opens the dialog, a Runtime case and a specification are saved (the specification without profile or application, inspect-only); the \u22ef menu removes a case and copies one to another tenant; Export\u2026 saves or is cancelled through the native sheet and Import\u2026 of the exported file says its cases are already here; nothing on this screen scans (D059 parity: the composites under evidence/C40/parity are captured by this script from the populated list, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C40-N02",
+        "check": "Keyboard and layout (T09): Tab from Load starter packs\u2026 reaches New case, the search field and the first product pill in order; the focus ring on New case; Test Cases at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the packs loaded, no horizontal overflow, the row action at least 32 CSS px inside the table card and the footer's pages present; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C41": [
+      {
+        "id": "C41-N01",
+        "check": "The API Client as the prototype board draws it (R2App start=api) with a collection opened through the native sheet: the title row (heading; the Collection chip naming the collection and its folder, the Environment chip), the 286px request tree (Find request, +, the folder with its count, the requests with their methods), the open requests' tabs, the request line (Method, URL, Send, Save, the save state), the Params / Headers / Body / Auth / Variables / Preview sub-tabs and the response pane with Body / Headers / Details / History; Send announces '<request> \u00b7 <code> \u00b7 <duration>' in the status region with the body outside it, pretty by default and exact under Raw; after the service changes a new send reflects it while History lists both runs and the older one shows exactly the first response; + creates a request draft (a new tab, 'New \u00b7 not saved yet') and a Params row added in the table is written as a name=value line and shown by Preview; the Collection chip's menu opens Environments in a docked sheet, from the keyboard too (Space on the chip, Tab to Environments\u2026, Space), and Escape or the sheet's close control returns focus to the Collection chip (I8, T09); nothing is sent by itself (D059 parity: the composites under evidence/C41/parity are captured by this script from the sent state, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C41-N02",
+        "check": "Keyboard and layout (T09): from the URL field Tab reaches Send, Space sends and the completion is announced; the focus ring on Send; the API Client at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, with the request open and sent, no horizontal page overflow, the tree, the request line and the response pane present with Send at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C42": [
+      {
+        "id": "C42-N01",
+        "check": "The Academy as the prototype board draws it (R2App start=academy) around Academy's own learner pages with the Rust-owned theme: the title row (heading, lead, the account pill saying Browsing as a guest then the signed-in learner's name), the 1.4fr/1fr frame (the learner pages on the left with Academy's catalog heading and its trail; Your place on the right with the guest note and Open Settings, then signed in the sections Home \u00b7 Learn \u00b7 Program \u00b7 Downloads \u00b7 Notifications \u00b7 Settings), the Learning paths row listing the synthetic catalog's paths as cards with their units and a card opening its path page; the guest generation reads the public catalog with no credential and the account generation after Sign in to Academy from Settings; the learner chrome stays inside the Academy region; the theme follows the appearance (light and dark captures) (D059 parity: the composites under evidence/C42/parity are captured by this script from the signed-in catalog state, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C42-N02",
+        "check": "Keyboard and layout (T09): Tab from the first section link reaches the next section and a path card in order, the focus ring on a section link; the Academy at 1440 wide by the display's working height and at 900\u00d7600 with 200% zoom, in light and dark, signed in on the catalog, no horizontal page overflow, the frame's two cards and the Learning paths cards present with a path card at least 32 CSS px tall; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C43": [
+      {
+        "id": "C43-N01",
+        "check": "The first-run wizard as the prototype board draws it (R2Onboard, every step): the 320px rail with the brand tile, the numbered steps turning to checks as they are done, the Optional tags on Starter cases and Academy (Skipped once skipped), the privacy note and the appearance button; the pinned footer with Back, the hint, Step n of m, Skip for now and the primary; Welcome (tile, two paragraphs, three cards, no import box (D060)); Connect your tenant (the Tenant card's 2-column grid with the Environment segmented control and the Region select, Create tenant; then the scan key card tagged Required, the Management credentials card with Where do I find these?, the AI Gateway workspace card with its switch); Which products will you manage? (the 3-column product cards as checkboxes, Runtime always on, AIS and AES unavailable, the no-scan-key banner before a key is saved); Check the connection (the status banner, the Checks card with one row per line, Run the checks, Fix and verify again after a failure, Continue with warnings); Load starter test cases (the pack rows as checkboxes with counts, the summary, Skip for now); Join the AI Security Academy (Your account and What is sent cards, Skip for now); <name> is ready (the summary card with Change links, the three next-up cards, Open Prisma AIRS completing once) \u2014 the C29 behaviour unchanged (D059 parity: the composites under evidence/C43/parity are captured by this script per step, parity/bundle.json rewritten per capture, the owner's judgement recorded in parity/notes.md)."
+      },
+      {
+        "id": "C43-N02",
+        "check": "The add-tenant sheet: a 1160\u00d7780 dialog without the modal's padding, the 244px rail (Tenant, Products, Verify, Starter cases, Done; no Welcome or Academy), Cancel in the footer on every step and no Back on the first; Cancel before a draft sends nothing; a drafted tenant's scan card is Optional and Continue is open; Cancel after a draft discards it in the core; Finish commits once and the sheet closes with the toast."
+      },
+      {
+        "id": "C43-N03",
+        "check": "Keyboard and layout (T09): Tab from the rail reaches the step's first field and the footer's primary in order; the focus ring on the primary; the wizard at 1440\u00d7900 and at 900\u00d7600 with 200% zoom, in light and dark, on the Tenant and Verify steps, no horizontal page overflow, the footer's primary inside the window and at least 32 CSS px; every row records the WebView's measured size and the viewport from its own tree and asserts them."
+      }
+    ],
+    "C44": [
+      {
+        "id": "C44-N01",
+        "check": "One presentation (P09 closure): the fixture app's first run is the wizard with no Features rail and no 'Use the new interface' switch anywhere; after the tenant is set up, every destination the catalogue lists is opened from the Go menu (Home, Inbox, Harness, Academy, Test Cases, API Client, Administration; Runtime Security, AI Gateway and Red Team & Models opening Administration on their product; Sessions & Reports and Settings framed by the v2 shell (Import from v1 removed, D060)) under the v2 Destinations rail, each captured in light and dark at 1440\u00d7900 as the whole-app screenshot set under evidence/C44/parity/app, with no plaintext secret and no learner chrome (outside Academy) in any destination's tree; \u23182 opens the Inbox and \u2318, Settings through the native menu; the built stylesheet carries the reduced-motion clamp; the bundle is Node-free and no Node, Bun or Deno process runs beside the app; after a quit and relaunch 15 s of startup open no internet socket from the app or its WebKit processes, Home shows with the tenant active and Administration reads with the kept client; every pre-P09 native assertion has its standing in evidence/C44/legacy-script-map.md (exercised by a named v2 check, self-run through legacy_v2 \u2014 C03, C04, C05, C06, C07, C10, C11, C24 \u2014 ported into this check, or retired with its reason) and the mapped drivers' records on this bundle bind the gate: an exercised, self-run or ported assertion without a passing target fails this check."
+      }
+    ],
+    "C45": [
+      {
+        "id": "C45-N01",
+        "check": "Prepared real fixture is Prisma AIRS Desktop Fixture1.0.0, identifierio.cdot.airs-desktop.fixture, binaryprisma-airs-desktop. Production config independently names Prisma AIRS Desktop1.0.0/io.cdot.airs-desktop. Native About/menu/title and Home-first catalogue agree; startup/settings/sessions focus and headings use the one presentation. Exact candidate process identity, executable and complete bundle are bound."
+      },
+      {
+        "id": "C45-N02",
+        "check": "Fresh synthetic setup starts with the wizard and no adopted tenants, credentials, sessions or approvals. Controlled prior alpha/v2 root/service canaries remain byte-identical across setup/relaunch/reset. Old real application roots, login Keychain and live endpoints are never inspected. Namespace isolation and non-adoption require passing production-interface FileStore/authority and disposable-file Keychain regressions, not only absence of UI."
+      },
+      {
+        "id": "C45-N03",
+        "check": "No alternate presentation selector or alpha/tenant-profile/API-profile-adoption surface or native intent remains. Ordinary current-format collection open/create/import/editor behavior is retained, along with active Settings/Sessions/Diagnostics/Academy behavior and C44 scope/commit-phase guards. Every current mapped legacy/modern target is accounted by the same candidate baseline or explicit valid coverage proof; no assertion disappears via omission."
+      }
+    ]
+  }
+}

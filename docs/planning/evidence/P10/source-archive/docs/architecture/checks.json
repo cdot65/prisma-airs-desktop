@@ -1,0 +1,3830 @@
+{
+  "schema_version": 1,
+  "status": "executable contract; C01 implements the runner and targets. Entries describe commands, not results.",
+  "target": "aarch64-apple-darwin",
+  "fixture_only_features": [
+    "test-fixtures"
+  ],
+  "setup_commands": [
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "shared-prepare",
+      "--input",
+      ".inputs/academy",
+      "--scratch",
+      ".work/academy"
+    ],
+    [
+      "pnpm",
+      "install",
+      "--frozen-lockfile",
+      "--ignore-scripts"
+    ]
+  ],
+  "common_commands": [
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "bindings",
+      "--check"
+    ],
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "ledger",
+      "--check"
+    ],
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "notices",
+      "--check"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop-contracts",
+      "typecheck"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "typecheck"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.config.ts"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "build"
+    ],
+    [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--locked",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    [
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--locked",
+      "--all-targets",
+      "--features",
+      "desktop-core/test-fixtures,desktop-host/test-fixtures,xtask/test-fixtures",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    [
+      "cargo",
+      "test",
+      "--locked",
+      "-p",
+      "desktop-core",
+      "--lib"
+    ]
+  ],
+  "controller": "controller commands with validated C01-C45/P01-P10 subjects; P10 selects C45 baseline and explicit risk-based coverage instead of replaying retired targets",
+  "shared_source_commands": [
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "shared-prepare",
+      "--input",
+      ".inputs/academy",
+      "--scratch",
+      ".work/academy"
+    ],
+    [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "install",
+      "--frozen-lockfile",
+      "--ignore-scripts"
+    ],
+    [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "shared-lifecycle",
+      "--allowlist",
+      "docs/architecture/shared-lifecycle.json",
+      "--scratch",
+      ".work/academy"
+    ],
+    [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "tsc",
+      "-p",
+      "tsconfig.typecheck.json",
+      "--noEmit"
+    ],
+    [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "-r",
+      "--fail-if-no-match",
+      "--filter",
+      "@ai-security-academy/cli",
+      "--filter",
+      "@ai-security-academy/presentation",
+      "--filter",
+      "@ai-security-academy/rag-svc",
+      "--filter",
+      "@ai-security-academy/shared",
+      "--filter",
+      "@ai-security-academy/ui",
+      "--filter",
+      "@ai-security-academy/video",
+      "run",
+      "typecheck"
+    ],
+    [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vitest",
+      "run",
+      "--config",
+      "vitest.presentation.config.ts"
+    ],
+    [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "tsx",
+      "scripts/copy-excalidraw-assets.ts"
+    ],
+    [
+      "pnpm",
+      "--dir",
+      ".work/academy",
+      "exec",
+      "vite",
+      "build"
+    ]
+  ],
+  "artifact_build": [
+    "pnpm",
+    "--filter",
+    "@prisma-airs/desktop",
+    "exec",
+    "tauri",
+    "build",
+    "--target",
+    "aarch64-apple-darwin",
+    "--bundles",
+    "dmg"
+  ],
+  "chunks": {
+    "C01": {
+      "rust_target": "shell_controller",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "shell_controller"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C01",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/contracts/invoke.test.ts",
+          "src/v2/v2-shell.test.tsx"
+        ]
+      ],
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "permission_manifest"
+        ]
+      ]
+    },
+    "C02": {
+      "rust_target": "context_credentials",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "context_credentials"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C02",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "keychain_access"
+        ],
+        [
+          "cargo",
+          "run",
+          "--locked",
+          "-p",
+          "xtask",
+          "--",
+          "sdk-test",
+          "--package",
+          "scm-sdk",
+          "--features",
+          "scan",
+          "--scratch",
+          ".work/scm-sdk"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/tenants/credential-entry.test.tsx",
+          "src/modules/tenants/reset.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ]
+      ]
+    },
+    "C03": {
+      "rust_target": "sync_scan",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "sync_scan"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C03",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts",
+          "src/v2/v2-shell.test.tsx"
+        ]
+      ],
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
+    },
+    "C04": {
+      "rust_target": "academy_identity",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "academy_identity"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C04",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "browser_callback"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "sync_scan"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/academy/desktop-link.test.ts",
+          "src/modules/academy/learner-provider.test.tsx",
+          "src/modules/academy/academy-account.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts",
+          "src/v2/v2-shell.test.tsx"
+        ]
+      ]
+    },
+    "C05": {
+      "rust_target": "academy_learner",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "academy_learner"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C05",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/academy/trpc-link.test.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ]
+      ]
+    },
+    "C06": {
+      "rust_target": "academy_program",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "academy_program"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C06",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/academy/learner-interactions.test.tsx",
+          "src/modules/academy/learner-routes.test.tsx",
+          "src/v2/academy/academy.test.tsx",
+          "src/modules/academy/academy-generations.test.tsx",
+          "src/modules/academy/trpc-link.test.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ]
+      ]
+    },
+    "C07": {
+      "rust_target": "academy_offline",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "academy_offline"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C07",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/academy/offline-work.test.tsx",
+          "src/modules/academy/host-actions.test.ts",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/modules/academy/learner-routes.test.tsx",
+          "src/v2/academy/academy.test.tsx",
+          "src/modules/academy/learner-interactions.test.tsx"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ]
+    },
+    "C08": {
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "management_reads"
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/settings/management-credential.test.tsx",
+          "src/modules/tenants/credential-entry.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/v2/v2-shell.test.tsx"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ]
+      ],
+      "rust_target": "management_reads",
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C08",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
+    },
+    "C09": {
+      "rust_target": "runtime_changes",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "runtime_changes"
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/admin/dlp-authoring.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/v2/v2-shell.test.tsx"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "native_confirmation"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "clipboard_secret"
+        ]
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C09",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
+    },
+    "C10": {
+      "rust_target": "dlp_subset",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "dlp_subset"
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/dlp-authoring.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "runtime_changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C10",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
+    },
+    "C11": {
+      "rust_target": "sessions_reports",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "sessions_reports"
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/sessions/sessions-view.test.tsx",
+          "src/v2/v2-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "sessions"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C11",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
+    },
+    "C12": {
+      "rust_target": "library_observation",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "library_observation"
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/workbench/workbench.test.tsx",
+          "src/v2/home.test.tsx",
+          "src/v2/inbox/inbox.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/v2-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "library"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "observation"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "sessions_reports"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C12",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
+    },
+    "C13": {
+      "rust_target": "redteam_model_reads",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "redteam_model_reads"
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/v2-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "red_team"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C13",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only"
+    },
+    "C14": {
+      "rust_target": "workbench_documents",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "workbench_documents"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C14",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/workbench/document-save.test.tsx"
+        ]
+      ]
+    },
+    "C15": {
+      "rust_target": "workbench_execution",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "workbench_execution"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C15",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/modules/workbench/request-send.test.tsx"
+        ]
+      ]
+    },
+    "C16": {
+      "rust_target": "gateway_reads",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "gateway_reads"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C16",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/v2-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "management_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "redteam_model_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "workbench_execution"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
+    },
+    "C17": {
+      "rust_target": "gateway_changes",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "gateway_changes"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C17",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/admin/dlp-authoring.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway_local"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "runtime_changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "dlp_subset"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "gateway_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
+    },
+    "C18": {
+      "rust_target": "gateway_inference",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "gateway_inference"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C18",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/home.test.tsx",
+          "src/v2/inbox/inbox.test.tsx",
+          "src/contracts/snapshot-validation.test.ts"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway_observe"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway_inference"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "gateway_local"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "observation"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "gateway_changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "gateway_reads"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
+    },
+    "C19": {
+      "rust_target": "harness_process",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "harness_process"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C19",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "sidecar_supervision"
+        ]
+      ]
+    },
+    "C20": {
+      "rust_target": "harness_identity_history",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "harness_identity_history"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C20",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "browser_callback"
+        ]
+      ]
+    },
+    "C21": {
+      "rust_target": "harness_tools",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "harness_tools"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C21",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/harness/harness.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts"
+        ]
+      ],
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "harness_identity_history"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ]
+      ]
+    },
+    "C22": {
+      "rust_target": "workspace_mcp",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "workspace_mcp"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C22",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "browser_callback"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "harness"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "harness_tools"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "harness_identity_history"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/harness/harness.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts"
+        ]
+      ]
+    },
+    "C23": {
+      "rust_target": "c45_fresh_setup",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "c45_fresh_setup"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C23",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "Historical alpha import transaction retired under D060/C45; current fresh-setup/non-adoption replacement is C45-N01/N02 with the production-interface FileStore and disposable-file Keychain tests. Existing historical native/source inventories remain unchanged; ordinary collection import coverage and unrelated C23 regression targets remain.",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "library"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "ipc_admission"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "library_observation"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "sessions_reports"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "academy_offline"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "workbench_documents"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "harness_identity_history"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts",
+          "src/v2/v2-shell.test.tsx",
+          "src/contracts/snapshot-validation.test.ts",
+          "src/contracts/invoke.test.ts",
+          "src/v2/harness/harness.test.tsx"
+        ]
+      ]
+    },
+    "C24": {
+      "rust_target": "native_quality",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "native_quality"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C24",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--lib",
+          "diagnostics"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ]
+      ]
+    },
+    "C25": {
+      "rust_target": "controlled_live",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "controlled_live"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C25",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "controlled L01-L18 manifest only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "live_run"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--lib"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "runtime_changes"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "dlp_subset"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "gateway_inference"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "academy_identity"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "academy_learner"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "academy_offline"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "context_credentials"
+        ]
+      ]
+    },
+    "C26": {
+      "rust_target": "signed_artifact",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "signed_artifact"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C26",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "live_requirement": "final signed-byte F01-F09 manifest"
+    },
+    "C27": {
+      "rust_target": "docs_only",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "xtask",
+        "--lib"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C27",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "not applicable: documentation and controller registration only (no UI change)",
+      "live_requirement": "no product endpoint calls",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--lib"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "docs_only": true
+    },
+    "C28": {
+      "rust_target": "ui_v2_shell",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_shell"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C28",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C29": {
+      "rust_target": "ui_v2_onboarding",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_onboarding"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C29",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required",
+      "live_requirement": "designated read-only tenant verify only (owner scope 2026-10-25); no writes",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C30": {
+      "rust_target": "ui_v2_inbox",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_inbox"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C30",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C31": {
+      "rust_target": "ui_v2_reviews",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_reviews"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C31",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required",
+      "live_requirement": "one prefixed review apply and read-back on the designated change-allowed tenant with cleanup (owner scope 2026-10-25)",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C32": {
+      "rust_target": "ui_v2_harness",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_harness"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C32",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixture engine only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C33": {
+      "rust_target": "ui_v2_workbench",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_workbench"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C33",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C34": {
+      "rust_target": "ui_v2_closure",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_closure"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C34",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78); real CUA/operator record required; cumulative for every destination",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C35": {
+      "rust_target": "ui_v2_shell_port",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_shell_port"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C35",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C36": {
+      "rust_target": "ui_v2_home",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_home"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C36",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C37": {
+      "rust_target": "ui_v2_inbox_port",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_inbox_port"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C37",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C38": {
+      "rust_target": "ui_v2_harness_port",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_harness_port"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C38",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C39": {
+      "rust_target": "ui_v2_admin",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_admin"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C39",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C40": {
+      "rust_target": "ui_v2_workbench",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_workbench"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C40",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C41": {
+      "rust_target": "ui_v2_api",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_api"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C41",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C42": {
+      "rust_target": "ui_v2_academy",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_academy"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C42",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C43": {
+      "rust_target": "ui_v2_wizard",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_wizard"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C43",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C44": {
+      "rust_target": "ui_v2_closure",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_closure"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C44",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions (including the UI v2 accessibility additions, DESIGN-V2 \u00a78) after the owner's visual-parity approval of the chunk's composites (docs/planning/p09-recut.md); real CUA/operator record required; cumulative for every destination",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ]
+      ]
+    },
+    "C45": {
+      "rust_target": "c45_fresh_setup",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "c45_fresh_setup"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C45",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "ONE broad current identity/isolation/cleanup baseline: G11 mapped20 including restoredC32 plusC45-N01/N02/N03; all required assertion coverage accounted under docs/planning/verification-policy.md. Followup fixes/merge/P10 use affected verification and explicit exact-artifact or honest unaffected carry, not automatic full repetition.",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--",
+          "--skip",
+          "the_classic_login_keychain_api_is_available_read_only",
+          "--skip",
+          "records_round_trip_in_the_v2_namespace_without_touching_the_search_list"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--lib",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ]
+      ]
+    }
+  },
+  "phases": {
+    "P01": [
+      "C01",
+      "C02",
+      "C03"
+    ],
+    "P02": [
+      "C04",
+      "C05",
+      "C06",
+      "C07"
+    ],
+    "P03": [
+      "C08",
+      "C09",
+      "C10",
+      "C11",
+      "C12"
+    ],
+    "P04": [
+      "C13",
+      "C14",
+      "C15"
+    ],
+    "P05": [
+      "C16",
+      "C17",
+      "C18"
+    ],
+    "P06": [
+      "C19",
+      "C20",
+      "C21",
+      "C22"
+    ],
+    "P07": [
+      "C23",
+      "C24"
+    ],
+    "P08": [
+      "C25",
+      "C26"
+    ],
+    "P09": [
+      "C27",
+      "C28",
+      "C29",
+      "C30",
+      "C31",
+      "C32",
+      "C33",
+      "C34",
+      "C35",
+      "C36",
+      "C37",
+      "C38",
+      "C39",
+      "C40",
+      "C41",
+      "C42",
+      "C43",
+      "C44"
+    ],
+    "P10": [
+      "C45"
+    ]
+  },
+  "phase_native_prepare": [
+    "cargo",
+    "run",
+    "--locked",
+    "-p",
+    "xtask",
+    "--",
+    "native-prepare",
+    "--phase",
+    "{phase}",
+    "--target",
+    "aarch64-apple-darwin",
+    "--features",
+    "test-fixtures"
+  ],
+  "invariants": [
+    "missing targets/results block completion",
+    "no application/native/live/artifact result claimed",
+    "changed source/dependency/feature/build flags invalidate receipts",
+    "live/final artifacts use production configuration; fixture flag prohibited",
+    "native_prepare exit does not prove UI acceptance",
+    "completion state lives only in the append-only completion ledger, never in this manifest"
+  ],
+  "requested_production_features": [],
+  "effective_features": "Capture exact Cargo/Tauri effective features/defaults from each build; requested list alone is not proof",
+  "controller_commands": {
+    "check": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "check",
+      "--chunk",
+      "{chunk}",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "test": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "test",
+      "--chunk",
+      "{chunk}",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "native": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "native",
+      "--chunk",
+      "{chunk}",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "complete": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "complete",
+      "--chunk",
+      "{chunk}",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "review": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "review",
+      "--chunk",
+      "{chunk}",
+      "--reviewer",
+      "codex",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "package_preview": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "package",
+      "--kind",
+      "preview",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "package_release-candidate": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "package",
+      "--kind",
+      "release-candidate",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "review_phase": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "review",
+      "--phase",
+      "{phase}",
+      "--reviewer",
+      "codex",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ],
+    "complete_phase": [
+      "cargo",
+      "run",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      "complete",
+      "--phase",
+      "{phase}",
+      "--manifest",
+      "docs/architecture/checks.json"
+    ]
+  },
+  "reviewer": {
+    "decision": "D026",
+    "identity": "codex",
+    "executable": "codex (resolved absolute path, version and SHA-256 recorded per attempt; flags verified against its --help)",
+    "verdict_schema": "docs/architecture/review-verdict.schema.json",
+    "threshold": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 9,
+      "overall": 9
+    },
+    "preferred_transport": {
+      "kind": "codex-thread",
+      "thread": "01a141e8-0412-7b30-8ebc-db2ade105d6d",
+      "argv": [
+        "{codex}",
+        "queue",
+        "--thread",
+        "01a141e8-0412-7b30-8ebc-db2ade105d6d",
+        "--message",
+        "{transport_message}"
+      ],
+      "submit_timeout_seconds": 30,
+      "requires": "reviewer-authored route-ready.json matching a fresh handshake request ID",
+      "forbidden": [
+        "--last"
+      ],
+      "note": "queue exit status is submission only; the verdict file is the only completion signal"
+    },
+    "fallback_transport": {
+      "kind": "codex-exec-fresh",
+      "argv": [
+        "{codex}",
+        "exec",
+        "--cd",
+        "{repo}",
+        "--sandbox",
+        "read-only",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "-c",
+        "approval_policy=\"never\"",
+        "-c",
+        "web_search=\"disabled\"",
+        "--ephemeral",
+        "--output-schema",
+        "{schema_path}",
+        "--json",
+        "--output-last-message",
+        "{verdict_path}",
+        "-"
+      ],
+      "stdin": "controller-rendered transport message plus packet path; never reviewer text",
+      "capture": [
+        "stdout.jsonl",
+        "stderr.log"
+      ],
+      "forbidden": [
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--dangerously-bypass-hook-trust",
+        "--approve-for-me",
+        "--last",
+        "workspace-write",
+        "danger-full-access"
+      ]
+    },
+    "wait": {
+      "poll_seconds": 15,
+      "max_wait_seconds": 7200,
+      "progress_every_seconds": 120
+    },
+    "freeze": "source, dependency, build-flag and evidence fingerprints are recomputed after the verdict arrives; any change fails the attempt",
+    "expiry": "switching transport or retrying creates a new attempt ID and writes expired.json into the prior attempt; verdicts for expired attempts are rejected"
+  },
+  "shared_lifecycle_contract": "C01 creates the allowlist after exact consumed lock and script review. Absent/unknown hashes fail closed. No root prepare/prebuild or Git hook scripts; no automatic lifecycle execution.",
+  "shared_source_required_chunks": [
+    "C01",
+    "C05",
+    "C06",
+    "C07",
+    "C24"
+  ],
+  "shared_source_requirement": "Run shared_source_commands at C01/C05/C06 and every chunk changing Academy consumed bytes/revision. C05/C06 extend vitest.presentation.config.ts to learner export and both consumer regressions.",
+  "environment_contract": {
+    "default": "clear inherited environment; reject undeclared overrides; never read .env files",
+    "preserve_unchanged": [
+      "HOME",
+      "USER",
+      "LOGNAME",
+      "TMPDIR",
+      "LANG",
+      "LC_ALL"
+    ],
+    "build_values": {
+      "PATH": "selected preflight tool directories only, fingerprinted in run manifest",
+      "RUSTUP_TOOLCHAIN": "1.99.0",
+      "CI": "1",
+      "SOURCEMAPS": "0",
+      "VITE_BASE_PATH": "/",
+      "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+      "npm_package_version": "verified Academy package.json version"
+    },
+    "synthetic_fixture_values": "C01 approved versioned test-environment manifest only; record nonsecret values/hash; no real Clerk/IdP/tenant credentials",
+    "review_auth": "actual Codex authenticated CLI profile (CODEX_HOME auth only for the fresh fallback, user config ignored); never inherit application secrets or record credential values",
+    "signing_and_live": "C25/C26 private execution manifests provide explicitly scoped secret inputs; public evidence records names/source references, never values",
+    "enforcement": "xtask records command cwd, executable/version/hash, resolved nonsecret env and private-input references; missing required env or unexpected .env is a failed check"
+  }
+}

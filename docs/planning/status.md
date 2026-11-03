@@ -1,4 +1,4 @@
-Current acceptance update — 2026-11-03: P09 attempt-02 and C45 attempt-03 each passed actual independent 9/9/9/9/9 with empty required fixes/blockers/gaps and audited full gates. C45 attempt-01 (9/9/9/8/8) and attempt-02 (9/8/9/8/8), their D034 acceptances and all raw findings remain unchanged. Narrow synthetic-test and archival-proof corrections passed affected checks; one exact application/native baseline retained. P10 independent phase review remains pending; C26/P08 open, no release/live/publication authorized.
+Current acceptance update — 2026-11-03: P09attempt02, C45attempt03 and P10attempt01 each passed actual independent9/9/9/9/9 with empty requiredfixes/blockers/evidencegaps and audited fullgates. C45 is integrated on main; exact C45/P10 reviewed source and completion proof are archived under evidence/P10/. Prior C45attempt01/02 scores, D034acceptances, all findings and original qualification records remain unchanged. One exact application/native baseline plus affected synthetic/Python proof checks satisfied150coverage items; merge did not trigger repeats. C30/C41 owner standing unchanged; C31/C32 actual full9 preserved. C26/P08 remains open/manualfallback. No product calls, publication, signing, notarization or installation performed.
 
 # Current state
 
@@ -154,3 +154,7 @@ C45 attempt-02 audit complete: actual full_gate_pass=False, D034 eligible=True. 
 C45 attempt-03 actual independent returned scores {"architecture": 9, "authority_security": 9, "behavior": 9, "overall": 9, "validation": 9}; audit pending. Raw verdict retained at docs/planning/reviews/C45/attempt-03/verdict-returned.json.
 
 C45 attempt-03 audit complete: actual full_gate_pass=True, D034 eligible=True. P10 actual independent phase review remains; no controller completion or owner score override inferred.
+
+P10attempt01 actual independent returned scores {"architecture": 9, "authority_security": 9, "behavior": 9, "overall": 9, "validation": 9}; audit pending. Every raw finding retained at docs/planning/reviews/P10/attempt-01/verdict-returned.json.
+
+P10attempt01 audit actual full_gate_pass=True. No phase owner override/controller completion or release inferred.
