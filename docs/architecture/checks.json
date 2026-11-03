@@ -123,7 +123,7 @@
       "--lib"
     ]
   ],
-  "controller": "controller_commands.check with a validated C01-C26 chunk substitution",
+  "controller": "controller commands with validated C01-C45/P01-P10 subjects; P10 selects C45 baseline and explicit risk-based coverage instead of replaying retired targets",
   "shared_source_commands": [
     [
       "cargo",
@@ -271,7 +271,7 @@
           "--config",
           "vitest.config.ts",
           "src/contracts/invoke.test.ts",
-          "src/shell/desktop-shell.test.tsx"
+          "src/v2/v2-shell.test.tsx"
         ]
       ],
       "host_commands": [
@@ -378,9 +378,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/tenants/credential-entry.test.tsx",
-          "src/features/tenants/profile-import.test.tsx",
-          "src/features/tenants/reset.test.tsx",
+          "src/modules/tenants/credential-entry.test.tsx",
+          "src/modules/tenants/reset.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ]
       ]
@@ -425,10 +424,10 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/runtime/scan-submit.test.tsx",
+          "src/v2/admin/administration.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
           "src/contracts/invoke.test.ts",
-          "src/shell/desktop-shell.test.tsx"
+          "src/v2/v2-shell.test.tsx"
         ]
       ],
       "host_commands": [
@@ -542,12 +541,12 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/academy/desktop-link.test.ts",
-          "src/features/academy/learner-provider.test.tsx",
-          "src/features/academy/academy-account.test.tsx",
+          "src/modules/academy/desktop-link.test.ts",
+          "src/modules/academy/learner-provider.test.tsx",
+          "src/modules/academy/academy-account.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
           "src/contracts/invoke.test.ts",
-          "src/shell/desktop-shell.test.tsx"
+          "src/v2/v2-shell.test.tsx"
         ]
       ]
     },
@@ -591,7 +590,7 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/academy/trpc-link.test.ts"
+          "src/modules/academy/trpc-link.test.ts"
         ],
         [
           "pnpm",
@@ -645,11 +644,11 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/academy/learner-interactions.test.tsx",
-          "src/features/academy/learner-routes.test.tsx",
-          "src/features/academy/academy-view.test.tsx",
-          "src/features/academy/academy-generations.test.tsx",
-          "src/features/academy/trpc-link.test.ts"
+          "src/modules/academy/learner-interactions.test.tsx",
+          "src/modules/academy/learner-routes.test.tsx",
+          "src/v2/academy/academy.test.tsx",
+          "src/modules/academy/academy-generations.test.tsx",
+          "src/modules/academy/trpc-link.test.ts"
         ],
         [
           "pnpm",
@@ -703,12 +702,12 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/academy/offline-work.test.tsx",
-          "src/features/academy/host-actions.test.ts",
+          "src/modules/academy/offline-work.test.tsx",
+          "src/modules/academy/host-actions.test.ts",
           "src/contracts/snapshot-validation.test.ts",
-          "src/features/academy/learner-routes.test.tsx",
-          "src/features/academy/academy-view.test.tsx",
-          "src/features/academy/learner-interactions.test.tsx"
+          "src/modules/academy/learner-routes.test.tsx",
+          "src/v2/academy/academy.test.tsx",
+          "src/modules/academy/learner-interactions.test.tsx"
         ],
         [
           "pnpm",
@@ -755,12 +754,11 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/administration/administration-view.test.tsx",
-          "src/features/tenants/management-credential.test.tsx",
-          "src/features/tenants/credential-entry.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/settings/management-credential.test.tsx",
+          "src/modules/tenants/credential-entry.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
-          "src/shell/desktop-shell.test.tsx",
-          "src/features/runtime/scan-submit.test.tsx"
+          "src/v2/v2-shell.test.tsx"
         ],
         [
           "cargo",
@@ -827,10 +825,10 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/runtime/review-apply.test.tsx",
-          "src/features/administration/administration-view.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/admin/dlp-authoring.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
-          "src/shell/desktop-shell.test.tsx"
+          "src/v2/v2-shell.test.tsx"
         ],
         [
           "cargo",
@@ -929,9 +927,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/administration/dlp-authoring.test.tsx",
-          "src/features/runtime/review-apply.test.tsx",
-          "src/features/administration/administration-view.test.tsx",
+          "src/v2/admin/dlp-authoring.test.tsx",
+          "src/v2/admin/administration.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1007,8 +1004,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/sessions/sessions-view.test.tsx",
-          "src/shell/desktop-shell.test.tsx",
+          "src/modules/sessions/sessions-view.test.tsx",
+          "src/v2/v2-shell.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1084,10 +1081,11 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/library/library-view.test.tsx",
-          "src/features/runtime/overview-inbox.test.tsx",
-          "src/features/runtime/scan-submit.test.tsx",
-          "src/shell/desktop-shell.test.tsx",
+          "src/v2/workbench/workbench.test.tsx",
+          "src/v2/home.test.tsx",
+          "src/v2/inbox/inbox.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/v2-shell.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1172,8 +1170,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/red-team/red-team-view.test.tsx",
-          "src/shell/desktop-shell.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/v2-shell.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1266,7 +1264,7 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/workbench/document-save.test.tsx"
+          "src/modules/workbench/document-save.test.tsx"
         ]
       ]
     },
@@ -1310,7 +1308,7 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/workbench/request-send.test.tsx"
+          "src/modules/workbench/request-send.test.tsx"
         ]
       ]
     },
@@ -1354,8 +1352,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/gateway/gateway-view.test.tsx",
-          "src/shell/desktop-shell.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/v2-shell.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1453,10 +1451,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/gateway/gateway-view.test.tsx",
-          "src/features/runtime/review-apply.test.tsx",
-          "src/features/administration/administration-view.test.tsx",
-          "src/features/administration/dlp-authoring.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/admin/dlp-authoring.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1563,9 +1559,9 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/gateway/gateway-inference.test.tsx",
-          "src/features/gateway/gateway-view.test.tsx",
-          "src/features/runtime/overview-inbox.test.tsx",
+          "src/v2/admin/administration.test.tsx",
+          "src/v2/home.test.tsx",
+          "src/v2/inbox/inbox.test.tsx",
           "src/contracts/snapshot-validation.test.ts"
         ],
         [
@@ -1778,8 +1774,8 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/harness/harness-view.test.tsx",
-          "src/features/administration/administration-view.test.tsx",
+          "src/v2/harness/harness.test.tsx",
+          "src/v2/admin/administration.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
           "src/contracts/invoke.test.ts"
         ]
@@ -1904,14 +1900,14 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/harness/harness-view.test.tsx",
+          "src/v2/harness/harness.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
           "src/contracts/invoke.test.ts"
         ]
       ]
     },
     "C23": {
-      "rust_target": "imports_rollback",
+      "rust_target": "c45_fresh_setup",
       "fixture_command": [
         "cargo",
         "test",
@@ -1921,7 +1917,7 @@
         "--features",
         "test-fixtures",
         "--test",
-        "imports_rollback"
+        "c45_fresh_setup"
       ],
       "native_prepare": [
         "cargo",
@@ -1938,18 +1934,9 @@
         "--features",
         "test-fixtures"
       ],
-      "native_acceptance": "T09 relevant changed-UI checklist plus chunk-specific native assertions; real CUA/operator record required",
+      "native_acceptance": "Historical alpha import transaction retired under D060/C45; current fresh-setup/non-adoption replacement is C45-N01/N02 with the production-interface FileStore and disposable-file Keychain tests. Existing historical native/source inventories remain unchanged; ordinary collection import coverage and unrelated C23 regression targets remain.",
       "live_requirement": "no product endpoint calls; fixtures only",
       "host_commands": [
-        [
-          "cargo",
-          "test",
-          "--locked",
-          "-p",
-          "desktop-core",
-          "--lib",
-          "import_v1"
-        ],
         [
           "cargo",
           "test",
@@ -2047,11 +2034,10 @@
           "run",
           "--config",
           "vitest.config.ts",
-          "src/features/import-v1/import-view.test.tsx",
-          "src/shell/desktop-shell.test.tsx",
+          "src/v2/v2-shell.test.tsx",
           "src/contracts/snapshot-validation.test.ts",
           "src/contracts/invoke.test.ts",
-          "src/features/harness/harness-view.test.tsx"
+          "src/v2/harness/harness.test.tsx"
         ]
       ]
     },
@@ -3426,6 +3412,96 @@
           "vitest.config.ts"
         ]
       ]
+    },
+    "C45": {
+      "rust_target": "c45_fresh_setup",
+      "fixture_command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "c45_fresh_setup"
+      ],
+      "native_prepare": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "native-prepare",
+        "--chunk",
+        "C45",
+        "--target",
+        "aarch64-apple-darwin",
+        "--features",
+        "test-fixtures"
+      ],
+      "native_acceptance": "ONE broad current identity/isolation/cleanup baseline: G11 mapped20 including restoredC32 plusC45-N01/N02/N03; all required assertion coverage accounted under docs/planning/verification-policy.md. Followup fixes/merge/P10 use affected verification and explicit exact-artifact or honest unaffected carry, not automatic full repetition.",
+      "live_requirement": "no product endpoint calls; fixtures only",
+      "host_commands": [
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-host",
+          "--features",
+          "test-fixtures",
+          "--",
+          "--skip",
+          "the_classic_login_keychain_api_is_available_read_only",
+          "--skip",
+          "records_round_trip_in_the_v2_namespace_without_touching_the_search_list"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "xtask",
+          "--lib",
+          "--features",
+          "test-fixtures",
+          "--test",
+          "shell_controller"
+        ]
+      ],
+      "frontend_commands": [
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.config.ts"
+        ],
+        [
+          "pnpm",
+          "--filter",
+          "@prisma-airs/desktop",
+          "exec",
+          "vitest",
+          "run",
+          "--config",
+          "vitest.truth.config.ts"
+        ]
+      ]
     }
   },
   "phases": {
@@ -3490,6 +3566,9 @@
       "C42",
       "C43",
       "C44"
+    ],
+    "P10": [
+      "C45"
     ]
   },
   "phase_native_prepare": [

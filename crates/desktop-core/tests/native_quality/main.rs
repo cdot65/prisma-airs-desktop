@@ -90,7 +90,6 @@ impl Desk {
             a.sessions_root.clone(),
             a.library_root.clone(),
             a.workbench_root.clone(),
-            a.import_root.clone(),
             a.logs_root.clone(),
         ]
     }

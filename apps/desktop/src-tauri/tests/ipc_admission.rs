@@ -502,48 +502,29 @@ fn ambient_environment_credentials_are_never_adopted() {
     }
 }
 
-/// C28 (D058): the native Go menu follows the presentation even when the
-/// shell observation that would have carried the change was replaced by a
-/// `Resync` (an overflowing stream): every new shell subscription reconciles
-/// the menu with the fresh snapshot, so the client's resubscribe repairs it.
-/// The mock runtime installs no native menu; the host records the variant it
-/// reconciled with, which is what `menu::rebuild` is then called with.
+/// C45: one catalogue survives resubscription; the retired selector is refused at IPC.
 #[test]
-fn the_go_menu_is_reconciled_on_every_shell_subscription() {
+fn one_catalogue_survives_resubscription_and_rejects_the_retired_selector() {
     let h = harness();
     let session = register(&h);
-    let host = h.app.state::<desktop_host::Host>();
-    assert_eq!(
-        host.menu_variant(),
-        None,
-        "nothing reconciled before a shell observation"
-    );
     call(
         &h.main,
         "desktop_observe",
         raw(&fixture("observe-shell-request.json")),
     )
     .expect("observe");
-    assert_eq!(
-        host.menu_variant(),
-        Some(desktop_core::features::UiVariant::V2)
-    );
-    // C44: a variant intent is accepted and changes nothing; this subscription's
-    // update is treated as lost (the client resubscribes as it does after a
-    // Resync) and the menu is reconciled with the one presentation again.
+    let before = snapshot(&h, 20);
+    assert_eq!(before["features"][0]["id"], "home");
+    assert!(before.get("uiVariant").is_none());
     let mut body = fixture("dispatch-request.json");
     body["session"] = json!(session);
     body["sequence"] = json!("1");
-    body["intent"] = json!({"kind": "setUiVariant", "variant": "legacy"});
-    call(&h.main, "desktop_dispatch", raw(&body)).expect("accepted, no-op");
+    body["intent"] = json!({"kind":"setUiVariant","variant":"legacy"});
+    assert!(call(&h.main, "desktop_dispatch", raw(&body)).is_err());
     let mut again = fixture("observe-shell-request.json");
     again["scope"]["updates"] = json!("__CHANNEL__:9");
     call(&h.main, "desktop_observe", raw(&again)).expect("resubscribe");
-    assert_eq!(
-        host.menu_variant(),
-        Some(desktop_core::features::UiVariant::V2)
-    );
-    let _ = &h.adapters;
+    assert_eq!(snapshot(&h, 21)["features"], before["features"]);
 }
 
 /// C29: the setup draft's credential intents cross IPC under the draft's own

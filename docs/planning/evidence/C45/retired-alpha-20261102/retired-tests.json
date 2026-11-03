@@ -1,0 +1,18 @@
+{
+  "owner_scope": "D060/C45 removal of alpha import, tenant-profile import and API profile adoption; ordinary collection imports and unrelated authority/history/reset tests retained",
+  "files": {
+    "crates/desktop-core/tests/context_credentials/main.rs": {
+      "sha256": "040fe6fa56a0f6da2290828ced97d2203557a9b25dd65c40dca1e01d7f803034",
+      "removed_functions": [
+        "profile_import_previews_whitelisted_metadata_and_creates_keyless_tenants",
+        "cancelled_or_unsupported_import_leaves_tenants_unchanged"
+      ]
+    },
+    "crates/desktop-core/tests/workbench_documents/main.rs": {
+      "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+      "removed_functions": [
+        "adoption_previews_v1s_profile_and_never_changes_it"
+      ]
+    }
+  }
+}

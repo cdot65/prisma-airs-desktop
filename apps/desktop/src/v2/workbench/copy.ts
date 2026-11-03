@@ -351,13 +351,7 @@ export const API_COPY = {
         builtIn: 'Open Strata Cloud Manager',
         builtInNote: "Strata Cloud Manager: the built-in collection of 193 SCM and Prisma AIRS request specifications, kept in this app's private folder.",
         recent: 'Recent collections',
-        adoption: 'Import your v1 API Client profile',
-        adoptionLead:
-            'Recent collections and their private environments are copied. The v1 profile is only read. Secret values, drafts, history and cookies do not transfer: store secret values again here.',
-        adoptionNone: 'The v1 profile lists no collections that still exist.',
-        importSelected: 'Import selected',
-        startEmpty: 'Start empty',
-        readAdoption: 'Import v1 API Client profile…',
+
     },
     footer: {
         ready: 'Ready',

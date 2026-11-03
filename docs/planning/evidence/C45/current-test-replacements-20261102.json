@@ -1,0 +1,99 @@
+{
+  "owner_scope": "D060/C45 current-source catalogue repair; C44 previously excluded legacy suites retain their approved current replacements. Original commands/results/source inventories remain historical and unchanged.",
+  "frontend_targets": {
+    "src/shell/desktop-shell.test.tsx": [
+      "src/v2/v2-shell.test.tsx"
+    ],
+    "src/features/tenants/credential-entry.test.tsx": [
+      "src/modules/tenants/credential-entry.test.tsx"
+    ],
+    "src/features/tenants/profile-import.test.tsx": [],
+    "src/features/tenants/reset.test.tsx": [
+      "src/modules/tenants/reset.test.tsx"
+    ],
+    "src/features/runtime/scan-submit.test.tsx": [
+      "src/v2/admin/administration.test.tsx"
+    ],
+    "src/features/academy/desktop-link.test.ts": [
+      "src/modules/academy/desktop-link.test.ts"
+    ],
+    "src/features/academy/learner-provider.test.tsx": [
+      "src/modules/academy/learner-provider.test.tsx"
+    ],
+    "src/features/academy/academy-account.test.tsx": [
+      "src/modules/academy/academy-account.test.tsx"
+    ],
+    "src/features/academy/trpc-link.test.ts": [
+      "src/modules/academy/trpc-link.test.ts"
+    ],
+    "src/features/academy/learner-interactions.test.tsx": [
+      "src/modules/academy/learner-interactions.test.tsx"
+    ],
+    "src/features/academy/learner-routes.test.tsx": [
+      "src/modules/academy/learner-routes.test.tsx"
+    ],
+    "src/features/academy/academy-view.test.tsx": [
+      "src/v2/academy/academy.test.tsx"
+    ],
+    "src/features/academy/academy-generations.test.tsx": [
+      "src/modules/academy/academy-generations.test.tsx"
+    ],
+    "src/features/academy/offline-work.test.tsx": [
+      "src/modules/academy/offline-work.test.tsx"
+    ],
+    "src/features/academy/host-actions.test.ts": [
+      "src/modules/academy/host-actions.test.ts"
+    ],
+    "src/features/administration/administration-view.test.tsx": [
+      "src/v2/admin/administration.test.tsx"
+    ],
+    "src/features/tenants/management-credential.test.tsx": [
+      "src/v2/settings/management-credential.test.tsx"
+    ],
+    "src/features/runtime/review-apply.test.tsx": [
+      "src/v2/admin/administration.test.tsx",
+      "src/v2/admin/dlp-authoring.test.tsx"
+    ],
+    "src/features/administration/dlp-authoring.test.tsx": [
+      "src/v2/admin/dlp-authoring.test.tsx"
+    ],
+    "src/features/sessions/sessions-view.test.tsx": [
+      "src/modules/sessions/sessions-view.test.tsx"
+    ],
+    "src/features/library/library-view.test.tsx": [
+      "src/v2/workbench/workbench.test.tsx"
+    ],
+    "src/features/runtime/overview-inbox.test.tsx": [
+      "src/v2/home.test.tsx",
+      "src/v2/inbox/inbox.test.tsx"
+    ],
+    "src/features/red-team/red-team-view.test.tsx": [
+      "src/v2/admin/administration.test.tsx"
+    ],
+    "src/features/workbench/document-save.test.tsx": [
+      "src/modules/workbench/document-save.test.tsx"
+    ],
+    "src/features/workbench/request-send.test.tsx": [
+      "src/modules/workbench/request-send.test.tsx"
+    ],
+    "src/features/gateway/gateway-view.test.tsx": [
+      "src/v2/admin/administration.test.tsx"
+    ],
+    "src/features/gateway/gateway-inference.test.tsx": [
+      "src/v2/admin/administration.test.tsx"
+    ],
+    "src/features/harness/harness-view.test.tsx": [
+      "src/v2/harness/harness.test.tsx"
+    ],
+    "src/features/import-v1/import-view.test.tsx": []
+  },
+  "retired_core_targets": [
+    "imports_rollback",
+    "--lib import_v1"
+  ],
+  "replacements": [
+    "c45_fresh_setup",
+    "c45_namespace_isolation"
+  ],
+  "retained": "Unrelated C23 library/sessions/offline/workbench/history/context tests and ordinary collection imports remain."
+}

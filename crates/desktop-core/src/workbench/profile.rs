@@ -73,8 +73,6 @@ pub struct Profile {
     pub secrets: Vec<(String, String)>,
     /// Built-in collection files and the hash this desktop last wrote.
     pub scm: BTreeMap<String, String>,
-    /// A profile was adopted (or the offer declined).
-    pub adoption_settled: bool,
 }
 
 impl Profile {

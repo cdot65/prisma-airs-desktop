@@ -1,0 +1,277 @@
+{
+  "source_commit": "c8b804d37d45da5183a47ab7e5f145854b6e8d65",
+  "meaning": "Owner-approved C45 port/removal of named legacy source. Exact original bytes retained before changes; active helpers and maintained tests ported, old C44-excluded tests retired, profile import removed under D060. No historical review/source inventory edited.",
+  "files": {
+    "apps/desktop/src/features/academy/academy-account.test.tsx": {
+      "sha256": "364026fa7c735c28acdb68d0a3faeb703dfd6a19c3c04887b0057cdfafd2498f",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/academy-account.test.tsx"
+    },
+    "apps/desktop/src/features/academy/academy-account.tsx": {
+      "sha256": "c740653b6edabf899b2b3f3bf86dd925e1ff45062aedcfe313787bf05a6a5deb",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/academy-account.tsx"
+    },
+    "apps/desktop/src/features/academy/academy-generations.test.tsx": {
+      "sha256": "681858c7c687c1455c0694d5ddb681ff41d3855d1015d5950f4090602e24f1b1",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/academy-generations.test.tsx"
+    },
+    "apps/desktop/src/features/academy/desktop-link.test.ts": {
+      "sha256": "d0b865e23ab55c791d81a779bb8d4cae316ee146471246f85a14a0796c75b374",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/desktop-link.test.ts"
+    },
+    "apps/desktop/src/features/academy/desktop-link.ts": {
+      "sha256": "4ce08240103f688606ffa77507b77acc98da1fd77d829209f5b3009871670da0",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/desktop-link.ts"
+    },
+    "apps/desktop/src/features/academy/host-actions.test.ts": {
+      "sha256": "d63f5f5f4ff8accd46b4fe645fce043ef4c898bc3880df016782c1bf00122d8b",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/host-actions.test.ts"
+    },
+    "apps/desktop/src/features/academy/host-actions.ts": {
+      "sha256": "7403577c7065a92761e6e95bb65d81bcf31ba564fd5764acaad7f92e12a1ea3d",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/host-actions.ts"
+    },
+    "apps/desktop/src/features/academy/learner-bundle.truth.ts": {
+      "sha256": "73649b9bc561e48088a77b2030e59c37d40865de1de5b6e7df4f7368b7c46657",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/learner-bundle.truth.ts"
+    },
+    "apps/desktop/src/features/academy/learner-call-probe.tsx": {
+      "sha256": "2f0170aef02451b583f8ae1429b83e58b4c56451c6041db4b642b61171b26a9f",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/learner-call-probe.tsx"
+    },
+    "apps/desktop/src/features/academy/learner-interactions.test.tsx": {
+      "sha256": "1de9f1b548325af6ee9825a7d405f81d2183a9bca0b4adac07bf90a064cc4a4d",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/learner-interactions.test.tsx"
+    },
+    "apps/desktop/src/features/academy/learner-provider.test.tsx": {
+      "sha256": "de64bc866e4f72b90ce8b3e65f9be34d6c249500c006b4a233a5a3312af1eda3",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/learner-provider.test.tsx"
+    },
+    "apps/desktop/src/features/academy/learner-provider.tsx": {
+      "sha256": "fa7fcf4172762a9adb79e53525ce51136567b14f4b7ec7f93b489c22008d60b3",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/learner-provider.tsx"
+    },
+    "apps/desktop/src/features/academy/learner-routes.test.tsx": {
+      "sha256": "c180776704f8b873453b7173be11c16a51e6f58671d39562b2051f649b328066",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/learner-routes.test.tsx"
+    },
+    "apps/desktop/src/features/academy/offline-work.test.tsx": {
+      "sha256": "1291a0d0709081d9f2cd7de8ee41f55010f493d4b4dfd6250b9eb18e6a7044c3",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/offline-work.test.tsx"
+    },
+    "apps/desktop/src/features/academy/offline-work.tsx": {
+      "sha256": "277d6a1a64767c60f650efdea69b92a3f7696225cd39921ea324510b1bb42f46",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/offline-work.tsx"
+    },
+    "apps/desktop/src/features/academy/presentation-storage.ts": {
+      "sha256": "ab9e13fbe56b4c0a2d4e62b6f46a513bf05391eb91866f31358923c6d4a2944f",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/presentation-storage.ts"
+    },
+    "apps/desktop/src/features/academy/test-support.tsx": {
+      "sha256": "08e776d45144500b14c8ab197d833d63d3a8587948ab537771dca0954e156c36",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/test-support.tsx"
+    },
+    "apps/desktop/src/features/academy/trpc-link.test.ts": {
+      "sha256": "ce2f6ee0f241e9402154934cb74283e87f9eb00cd58ef53a2e7ec7da05a098db",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/academy/trpc-link.test.ts"
+    },
+    "apps/desktop/src/features/administration/management-read.ts": {
+      "sha256": "de2e8168bf26ee7f380b44f0ea95ee362dbffa923863142eca964521b1be7057",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/administration/management-read.ts"
+    },
+    "apps/desktop/src/features/administration/runtime-changes.tsx": {
+      "sha256": "a3d441179ba826bd7b4930559efc64cb8a5e26c53a737af2ad8072cf20c69102",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/administration/runtime-changes.tsx"
+    },
+    "apps/desktop/src/features/diagnostics/diagnostics-panel.test.tsx": {
+      "sha256": "eb2006792bfe478aa53c8dd46c88bbb4975016e749b66339ecda616e1a2006aa",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/diagnostics/diagnostics-panel.test.tsx"
+    },
+    "apps/desktop/src/features/diagnostics/diagnostics-panel.tsx": {
+      "sha256": "efa13fa9aec3098aee960750f7e6fc631f1e24638d087f98c1197ab48addf36e",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/diagnostics/diagnostics-panel.tsx"
+    },
+    "apps/desktop/src/features/gateway/gateway-files.tsx": {
+      "sha256": "66005ae76627dfc1052db43971c8707cdda7cb231775ddd81e7cf0c758e1b504",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/gateway/gateway-inference.test.tsx": {
+      "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/gateway/gateway-observe.tsx": {
+      "sha256": "83554f087877e5feb2cb947bc1996a6e83a43e64f02b15bb7a0f693a5e63755f",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/gateway/gateway-view.test.tsx": {
+      "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/gateway/gateway-view.tsx": {
+      "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/gateway/playground.tsx": {
+      "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/decisions-panel.tsx": {
+      "sha256": "04e4514c559f812faa09e54b1f4f9115d60bedb6e2787f62b7dfea966e661751",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/harness-view.test.tsx": {
+      "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/harness-view.tsx": {
+      "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/history-panel.tsx": {
+      "sha256": "1c53c4fa720cba1ffc29e7be905ce0eac470af87cfc8fd0ae09f7717218ab9eb",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/mcp-panel.tsx": {
+      "sha256": "036a8349fc09a73fcf5a3b2751cd9704f89a41603450bba0d4e6d5e67d1c4f20",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/prerequisites.tsx": {
+      "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/project-panel.tsx": {
+      "sha256": "772b3cf96bdceea1d305f6fe8f413e4a7618a1ee19758cfd650c0315551e0ea8",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/harness/sign-in-panel.tsx": {
+      "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/library/library-view.test.tsx": {
+      "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/library/library-view.tsx": {
+      "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/runtime/scan-text.ts": {
+      "sha256": "af00d6c6b7946c8f8b4cc1a3df5c10ef42b6486f6d130898d2012de90db0d915",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/runtime/scan-text.ts"
+    },
+    "apps/desktop/src/features/sessions/sessions-model.ts": {
+      "sha256": "31ac5889f4f22d0beb399e025bdb0d911718a442478ab3242c10d260943fdab6",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/sessions/sessions-model.ts"
+    },
+    "apps/desktop/src/features/sessions/sessions-view.test.tsx": {
+      "sha256": "455cad7864d372a59c2398cd447ccab5b78e1e34b9b1e04ba317f1cd11db8b15",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/sessions/sessions-view.test.tsx"
+    },
+    "apps/desktop/src/features/sessions/sessions-view.tsx": {
+      "sha256": "73a42b7814a919a1fb4e253043a9f9544e1465ed8d4da630f22992b419196d35",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/sessions/sessions-view.tsx"
+    },
+    "apps/desktop/src/features/tenants/credential-entry.test.tsx": {
+      "sha256": "d77e5dc41d16ba7da415538201d79ca156e578363d4bd64a2a5732bf3fc4ffa6",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/tenants/credential-entry.test.tsx"
+    },
+    "apps/desktop/src/features/tenants/credential-entry.tsx": {
+      "sha256": "6839deb35f684c3bd30548168d953f39d733d7e71e289645b72a4358c32523db",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/tenants/credential-entry.tsx"
+    },
+    "apps/desktop/src/features/tenants/dispatch.ts": {
+      "sha256": "aad1fd77a5344a033e246975f3dd461bcc282343170ef6c7f2c83455e83ea437",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/tenants/dispatch.ts"
+    },
+    "apps/desktop/src/features/tenants/management-credential.test.tsx": {
+      "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/tenants/management-credential.tsx": {
+      "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/tenants/management-credential.tsx"
+    },
+    "apps/desktop/src/features/tenants/profile-import.test.tsx": {
+      "sha256": "7e8847008c9a8d44721dc9e8b6209da888f1445bf9309c9a26256f369ba7b2d2",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/tenants/profile-import.tsx": {
+      "sha256": "6203e9e2151e5319bbc1cca48fcbcbd288c917a435e40cae12c9b72dd570cca1",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/tenants/reset.test.tsx": {
+      "sha256": "1b4300b3b8138d040b8d032fe806f6c3236e34043c18caba428cd6fffa481b0c",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/tenants/reset.test.tsx"
+    },
+    "apps/desktop/src/features/tenants/tenants-settings.tsx": {
+      "sha256": "c8f106a6c1b71877107eb3a1522b5c95e28392a78f3024ad75e6039641c4e7ab",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/tenants/tenants-settings.tsx"
+    },
+    "apps/desktop/src/features/workbench/document-editor.tsx": {
+      "sha256": "f2ed7510320671df6381ff4ec2dec478a312580692c70992cbd1de5018366c4d",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/workbench/document-save.test.tsx": {
+      "sha256": "7271333ee65ffcb3935d9c44da55e547672230f2e227ee145078f5a7fb8c661f",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/workbench/document-save.test.tsx"
+    },
+    "apps/desktop/src/features/workbench/request-send.test.tsx": {
+      "sha256": "e06210ca00a6801494615674b86f96c0e9a2a6c983c879d391c1447d907da381",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/workbench/request-send.test.tsx"
+    },
+    "apps/desktop/src/features/workbench/request-send.tsx": {
+      "sha256": "4595a0ebc73a887230b9b88d6bd346560a19f3488ed128ca6e74e8a035a99aea",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/workbench/workbench-call.ts": {
+      "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+      "disposition": "ported",
+      "ported_to": "apps/desktop/src/modules/workbench/workbench-call.ts"
+    },
+    "apps/desktop/src/features/workbench/workbench-start.test.tsx": {
+      "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/features/workbench/workbench-view.tsx": {
+      "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    },
+    "apps/desktop/src/shell/presentation.ts": {
+      "sha256": "469204171983f9847993b4aae96a5d4f9897ddd04111a2cb6c698eadb167f395",
+      "disposition": "retired under approved C45/D060 scope; current replacements retain behavior"
+    }
+  }
+}

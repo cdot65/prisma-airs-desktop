@@ -12,9 +12,9 @@ use crate::manifest::Manifest;
 use crate::runner::Artifact;
 use crate::{Repo, Result, Subject, invalid, io_err, now_utc, read_json, sha256_hex, write_json};
 
-pub const FIXTURE_IDENTIFIER: &str = "io.cdot.prisma-airs-desktop.v2.fixture";
-pub const PRODUCTION_IDENTIFIER: &str = "io.cdot.prisma-airs-desktop.v2";
-const EXECUTABLE: &str = "prisma-airs-desktop-v2";
+pub const FIXTURE_IDENTIFIER: &str = "io.cdot.airs-desktop.fixture";
+pub const PRODUCTION_IDENTIFIER: &str = "io.cdot.airs-desktop";
+const EXECUTABLE: &str = "prisma-airs-desktop";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -119,7 +119,7 @@ pub fn prepare(
     for argv in &commands {
         run(env, repo, argv)?;
     }
-    let bundle = bundle_path(repo, target, "Prisma AIRS Desktop v2 Fixture");
+    let bundle = bundle_path(repo, target, "Prisma AIRS Desktop Fixture");
     let identifier = plist_value(&bundle, "CFBundleIdentifier")?;
     if identifier != FIXTURE_IDENTIFIER {
         return Err(invalid(format!(

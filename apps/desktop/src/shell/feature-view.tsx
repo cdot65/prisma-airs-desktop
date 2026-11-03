@@ -1,13 +1,12 @@
 import { forwardRef, useId, useState } from 'react'
-import { Button, Callout, Kicker } from '@ai-security-academy/presentation'
+import { Button, Callout } from '@ai-security-academy/presentation'
 import { Info } from 'lucide-react'
 import type { FeatureEntry, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
-import { type Dispatch, outcomeMessage } from '../features/tenants/dispatch'
-import { DiagnosticsPanel } from '../features/diagnostics/diagnostics-panel'
-import { AcademyAccount } from '../features/academy/academy-account'
-import { TenantsSettings } from '../features/tenants/tenants-settings'
-import type { ObserveManagement } from '../features/administration/management-read'
-import { useV2Layout } from './presentation'
+import { type Dispatch, outcomeMessage } from '../modules/tenants/dispatch'
+import { DiagnosticsPanel } from '../modules/diagnostics/diagnostics-panel'
+import { AcademyAccount } from '../modules/academy/academy-account'
+import { TenantsSettings } from '../modules/tenants/tenants-settings'
+import type { ObserveManagement } from '../modules/administration/management-read'
 
 interface HeadingProps {
     id: string
@@ -16,27 +15,10 @@ interface HeadingProps {
 }
 
 /** Page heading that receives focus after navigation (tabIndex -1). */
-export const PageHeading = forwardRef<HTMLHeadingElement, HeadingProps>(function PageHeading({ id, kicker, title }, ref) {
-    // In the v2 shell: its title row (26px/700, no kicker), like every other destination (C33).
-    if (useV2Layout()) {
-        return (
-            <header className='mb-4 flex flex-col gap-1' data-slot='page-header-v2'>
-                <h1 ref={ref} id={id} tabIndex={-1} data-slot='page-heading' className='font-bold outline-none' style={{ fontSize: 'var(--v2-title)' }}>
-                    {title}
-                </h1>
-            </header>
-        )
-    }
+export const PageHeading = forwardRef<HTMLHeadingElement, HeadingProps>(function PageHeading({ id, title }, ref) {
     return (
-        <header className='mb-6 flex flex-col gap-2'>
-            <Kicker>{kicker}</Kicker>
-            <h1
-                ref={ref}
-                id={id}
-                tabIndex={-1}
-                data-slot='page-heading'
-                className='font-display text-academy-ink text-[28px] leading-tight font-semibold tracking-[-0.01em] outline-none'
-            >
+        <header className='mb-4 flex flex-col gap-1' data-slot='page-header'>
+            <h1 ref={ref} id={id} tabIndex={-1} data-slot='page-heading' className='font-bold outline-none' style={{ fontSize: 'var(--v2-title)' }}>
                 {title}
             </h1>
         </header>

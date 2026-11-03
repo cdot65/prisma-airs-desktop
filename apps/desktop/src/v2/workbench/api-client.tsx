@@ -1,8 +1,8 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DocumentView, ImportNote, ShellSnapshot, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../../features/tenants/dispatch'
-import { type ObserveWorkbench, type WorkbenchCall, resultText, workbenchCall } from '../../features/workbench/workbench-call'
+import type { Dispatch } from '../../modules/tenants/dispatch'
+import { type ObserveWorkbench, type WorkbenchCall, resultText, workbenchCall } from '../../modules/workbench/workbench-call'
 import { Btn } from '../controls'
 import { Glyph } from '../icons'
 import { Modal } from '../modal'
@@ -636,9 +636,8 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     )
 })
 
-/** No collection open: open, create, the built-in, recents and the v1 profile import. */
+/** No collection open: open, create, the built-in, recents. */
 function Start({ state, run, message, offerNew }: { state: WorkbenchState; run: Run; message: string; offerNew: boolean }) {
-    const [chosen, setChosen] = useState<number[]>([])
     return (
         <div className='flex flex-col' style={{ gap: 14, maxWidth: 760 }} data-slot='workbench-start'>
             <p className='text-[14px]'>{C.start.none}</p>
@@ -680,39 +679,6 @@ function Start({ state, run, message, offerNew }: { state: WorkbenchState; run: 
                         </Btn>
                     ))}
                 </section>
-            ) : null}
-            {state.adoption ? (
-                <section
-                    aria-label='v1 API Client profile'
-                    className='flex flex-col rounded-[12px] border text-[13px]'
-                    style={{
-                        gap: 8,
-                        padding: 16,
-                        borderColor: 'var(--v2-rule)',
-                        background: 'var(--v2-paper)',
-                    }}
-                    data-slot='workbench-adoption'
-                >
-                    <h2 className='text-[15px] font-semibold'>{C.start.adoption}</h2>
-                    <p style={soft}>{C.start.adoptionLead}</p>
-                    {state.adoption.length === 0 ? <p>{C.start.adoptionNone}</p> : null}
-                    {state.adoption.map((c) => (
-                        <label key={c.index} className='flex items-center' style={{ gap: 8 }}>
-                            <input type='checkbox' checked={chosen.includes(c.index)} onChange={(e) => setChosen((x) => (e.target.checked ? [...x, c.index] : x.filter((i) => i !== c.index)))} />
-                            {`${c.name} (${c.folder}) · ${c.environments.length} private environments${c.skipped ? ` · ${c.skipped} left out` : ''}`}
-                        </label>
-                    ))}
-                    <div className='flex flex-wrap' style={{ gap: 8 }}>
-                        <Btn tier='primary' disabled={chosen.length === 0} onClick={() => void run({ kind: 'adopt', selected: chosen })}>
-                            {C.start.importSelected}
-                        </Btn>
-                        <Btn onClick={() => void run({ kind: 'dismissAdoption' })}>{C.start.startEmpty}</Btn>
-                    </div>
-                </section>
-            ) : !state.adoptionSettled ? (
-                <Btn tier='tertiary' className='self-start' onClick={() => void run({ kind: 'readAdoption' })}>
-                    {C.start.readAdoption}
-                </Btn>
             ) : null}
         </div>
     )

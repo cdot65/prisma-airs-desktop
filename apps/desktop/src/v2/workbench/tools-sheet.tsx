@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CollectionView, GitView, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
-import { type WorkbenchCall, resultText } from '../../features/workbench/workbench-call'
+import { type WorkbenchCall, resultText } from '../../modules/workbench/workbench-call'
 import { Btn, Field } from '../controls'
 import { Modal } from '../modal'
 import { API_COPY as C } from './copy'

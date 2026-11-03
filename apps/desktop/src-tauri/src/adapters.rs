@@ -2,7 +2,7 @@
 //! Keychain credential store and the native profile-import sheet.
 //!
 //! The data root is the OS application-data directory for this build's
-//! bundle identifier (`io.cdot.prisma-airs-desktop.v2`, or `.fixture` in the
+//! bundle identifier (`io.cdot.airs-desktop`, or `.fixture` in the
 //! fixture build), never a v1 directory. Fixture builds keep credentials in a
 //! dedicated test keychain inside that root under the fixture namespace, with
 //! OS prompts disabled so failures are deterministic; production uses the
@@ -13,8 +13,10 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use desktop_core::ImportError;
 use desktop_core::avatar::MAX_SOURCE_BYTES;
-use desktop_core::import::{ImportError, MAX_IMPORT_BYTES};
+/// A bounded generic file read; current collection formats are unchanged.
+const MAX_PICKED_FILE_BYTES: usize = 1024 * 1024;
 use desktop_core::store::{AppStore, FileStore, UnavailableStore};
 use desktop_core::vault::UnavailableVault;
 use desktop_core::{
@@ -32,26 +34,23 @@ pub const FIXTURE_KEYCHAIN: &str = "fixture-credentials.keychain-db";
 /// The fixture test keychain's password. It protects only synthetic fixture
 /// credentials in a keychain that exists solely for acceptance runs.
 pub const FIXTURE_KEYCHAIN_PASSWORD: &str = "prisma-airs-desktop-v2-fixture-keychain";
-/// The staged fixture v1 keychain (C23) and its password: synthetic v1
-/// items only, created by the acceptance driver.
-#[cfg(feature = "test-fixtures")]
-pub const FIXTURE_V1_KEYCHAIN: &str = "fixture-v1.keychain-db";
-#[cfg(feature = "test-fixtures")]
-pub const FIXTURE_V1_KEYCHAIN_PASSWORD: &str = "prisma-airs-desktop-v2-fixture-v1-keychain";
-
 /// Builds the production adapters for the app's data root.
 pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
-    let root = app.path().app_data_dir().ok();
-    let store: Arc<dyn AppStore> = root
+    let candidate_root = app.path().app_data_dir().ok();
+    // An unavailable, symlinked or already leased root authorizes no other
+    // file adapter. In particular it must not open a fixture keychain or
+    // private subdirectory through a rejected root.
+    let opened = candidate_root
         .as_deref()
-        .and_then(|dir| FileStore::open(dir).ok())
+        .and_then(|dir| FileStore::open(dir).ok());
+    let root = opened.as_ref().and(candidate_root);
+    let store: Arc<dyn AppStore> = opened
         .map(|s| Arc::new(s) as Arc<dyn AppStore>)
         .unwrap_or_else(|| Arc::new(UnavailableStore));
     Adapters {
         keychain: credential_store(root.as_deref()),
         learner_keychain: learner_store(root.as_deref()),
         store,
-        picker: Arc::new(NativePicker { app: app.clone() }),
         opener: opener(root.as_deref()),
         printer: printer(app, root.as_deref()),
         images: images(app, root.as_deref()),
@@ -88,8 +87,6 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
             Arc::new(NativeUploadPicker { app: app.clone() }),
         ),
         harness: harness(app, root.as_deref()),
-        v1_source: v1_source(app),
-        import_root: root.as_ref().map(|r| r.join("imports")),
         logs_root: logs_root(app, root.as_deref()),
     }
 }
@@ -98,44 +95,14 @@ pub fn production<R: Runtime>(app: &AppHandle<R>) -> Adapters {
 /// data folder. Fixture builds keep it under their data root, which the
 /// acceptance drivers remove after each run.
 #[cfg(not(feature = "test-fixtures"))]
-fn logs_root<R: Runtime>(app: &AppHandle<R>, _: Option<&Path>) -> Option<PathBuf> {
+fn logs_root<R: Runtime>(app: &AppHandle<R>, root: Option<&Path>) -> Option<PathBuf> {
+    root?;
     app.path().app_log_dir().ok()
 }
 
 #[cfg(feature = "test-fixtures")]
 fn logs_root<R: Runtime>(_: &AppHandle<R>, root: Option<&Path>) -> Option<PathBuf> {
     root.map(|r| r.join("fixture-logs"))
-}
-
-/// v1's folder and Keychain service, read only (C23). Fixture builds read a
-/// staged copy under their data root and a staged file keychain, never a
-/// real v1 or the login Keychain.
-#[cfg(not(feature = "test-fixtures"))]
-fn v1_source<R: Runtime>(app: &AppHandle<R>) -> Option<desktop_core::import_v1::V1Source> {
-    let root = app.path().data_dir().ok()?.join("Prisma AIRS Desktop");
-    let keychain = crate::keychain::V1KeychainSource::login().ok()?;
-    Some(desktop_core::import_v1::V1Source {
-        root,
-        keychain: Arc::new(keychain),
-    })
-}
-
-#[cfg(feature = "test-fixtures")]
-fn v1_source<R: Runtime>(app: &AppHandle<R>) -> Option<desktop_core::import_v1::V1Source> {
-    let data = app.path().app_data_dir().ok()?;
-    let keychain: Arc<dyn desktop_core::import_v1::V1Keychain> =
-        match crate::keychain::V1KeychainSource::file(
-            &data.join(FIXTURE_V1_KEYCHAIN),
-            FIXTURE_V1_KEYCHAIN_PASSWORD,
-            &data.join("fixture-v1-reads.log"),
-        ) {
-            Ok(k) => Arc::new(k),
-            Err(_) => Arc::new(desktop_core::import_v1::source::UnavailableKeychain),
-        };
-    Some(desktop_core::import_v1::V1Source {
-        root: data.join("fixture-v1"),
-        keychain,
-    })
 }
 
 /// The bundled Harness engine (`Contents/Resources/harness/airs-harness`),
@@ -173,24 +140,6 @@ fn harness<R: Runtime>(
         #[cfg(feature = "test-fixtures")]
         save_gate: None,
     }
-}
-
-/// The v1 API Client profile offered for adoption (read only). Fixture
-/// builds use a staged copy under their data root, never a real profile.
-#[cfg(not(feature = "test-fixtures"))]
-pub fn adoption_source<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
-    app.path()
-        .data_dir()
-        .ok()
-        .map(|d| d.join("Prisma AIRS Desktop").join("api-client"))
-}
-
-#[cfg(feature = "test-fixtures")]
-pub fn adoption_source<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
-    app.path()
-        .app_data_dir()
-        .ok()
-        .map(|d| d.join("fixture-v1-api-client"))
 }
 
 /// A separate native sheet for the close guard (its own registry, so its
@@ -1119,9 +1068,9 @@ pub fn fixture_transport<R: Runtime>(
     })
 }
 
-/// Reads at most [`MAX_IMPORT_BYTES`] from a regular file.
+/// Reads at most [`MAX_PICKED_FILE_BYTES`] from a regular file.
 pub fn read_bounded(path: &Path) -> Result<Zeroizing<Vec<u8>>, ImportError> {
-    read_limited(path, MAX_IMPORT_BYTES)
+    read_limited(path, MAX_PICKED_FILE_BYTES)
 }
 
 /// Reads a regular file of at most `limit` bytes.
@@ -1178,39 +1127,6 @@ impl<R: Runtime> ImagePicker for NativeImagePicker<R> {
     }
 }
 
-/// The native open sheet attached to the main window.
-pub struct NativePicker<R: Runtime> {
-    app: AppHandle<R>,
-}
-
-impl<R: Runtime> ImportPicker for NativePicker<R> {
-    fn choose(&self) -> BoxFuture<'static, Option<Result<ImportFile, ImportError>>> {
-        let app = self.app.clone();
-        Box::pin(async move {
-            let (tx, rx) = tokio::sync::oneshot::channel::<Option<PathBuf>>();
-            let window = app.get_webview_window(MAIN_WINDOW)?;
-            app.run_on_main_thread(move || {
-                let chosen = rfd::FileDialog::new()
-                    .set_parent(&window)
-                    .set_title("Import tenant profiles")
-                    .add_filter("Tenant profiles", &["json"])
-                    .pick_file();
-                let _ = tx.send(chosen);
-            })
-            .ok()?;
-            let path = rx.await.ok()??;
-            let name = path
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-                .unwrap_or_default();
-            let read = tokio::task::spawn_blocking(move || read_bounded(&path))
-                .await
-                .ok()?;
-            Some(read.map(|bytes| ImportFile { name, bytes }))
-        })
-    }
-}
-
 /// The native file sheet for a dictionary's keyword file, attached to the
 /// main window; the file is only read, bounded to [`MAX_TEXT_FILE_BYTES`].
 #[cfg_attr(feature = "test-fixtures", allow(dead_code))]
@@ -1247,29 +1163,6 @@ impl<R: Runtime> ImportPicker for NativeTextPicker<R> {
     }
 }
 
-/// The commit point at which the next v1 import or rollback stops (C23),
-/// named in `fixture-import-crash` under the fixture data root.
-#[cfg(feature = "test-fixtures")]
-pub const FIXTURE_IMPORT_CRASH: &str = "fixture-import-crash";
-
-#[cfg(feature = "test-fixtures")]
-pub fn fixture_import_crash<R: Runtime>(
-    app: &AppHandle<R>,
-) -> Option<desktop_core::import_v1::CommitPoint> {
-    use desktop_core::import_v1::CommitPoint;
-    let named =
-        std::fs::read_to_string(app.path().app_data_dir().ok()?.join(FIXTURE_IMPORT_CRASH)).ok()?;
-    match named.trim() {
-        "created" => Some(CommitPoint::Created),
-        "writing" => Some(CommitPoint::Writing),
-        "written" => Some(CommitPoint::Written),
-        "applied" => Some(CommitPoint::Applied),
-        "reverting" => Some(CommitPoint::Reverting),
-        "reverted" => Some(CommitPoint::Reverted),
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1282,7 +1175,7 @@ mod tests {
         std::fs::write(&small, b"{}").expect("write");
         assert_eq!(read_bounded(&small).expect("read").as_slice(), b"{}");
         let big = dir.join("big.json");
-        std::fs::write(&big, vec![b' '; MAX_IMPORT_BYTES + 1]).expect("write");
+        std::fs::write(&big, vec![b' '; MAX_PICKED_FILE_BYTES + 1]).expect("write");
         assert_eq!(read_bounded(&big).err(), Some(ImportError::TooLarge));
         assert_eq!(read_bounded(&dir).err(), Some(ImportError::Unsupported));
         std::fs::remove_dir_all(&dir).expect("cleanup");

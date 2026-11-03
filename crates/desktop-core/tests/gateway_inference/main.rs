@@ -2178,12 +2178,9 @@ async fn gateway_files_are_read_uploaded_attached_and_deleted_once_with_the_work
             ))),
             "tooLarge",
         ),
+        (Some(Err(desktop_core::ImportError::TooLarge)), "tooLarge"),
         (
-            Some(Err(desktop_core::import::ImportError::TooLarge)),
-            "tooLarge",
-        ),
-        (
-            Some(Err(desktop_core::import::ImportError::Unsupported)),
+            Some(Err(desktop_core::ImportError::Unsupported)),
             "unreadable",
         ),
     ] {

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { AttackPage, Bar, ContextRef, ManagementFailure, ManagementRequest, ManagementResult, RedTeamObservation, ShellSnapshot, SupplyChainObservation } from '@prisma-airs/desktop-contracts'
-import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, readManagement } from '../../features/administration/management-read'
-import type { Dispatch } from '../../features/tenants/dispatch'
+import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, readManagement } from '../../modules/administration/management-read'
+import type { Dispatch } from '../../modules/tenants/dispatch'
 import { Btn } from '../controls'
 
 export const ATTACK_PAGES = 10

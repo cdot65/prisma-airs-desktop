@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Prisma AIRS Desktop v2",
-  "version": "2.0.0",
-  "identifier": "io.cdot.prisma-airs-desktop.v2",
+  "productName": "Prisma AIRS Desktop",
+  "version": "1.0.0",
+  "identifier": "io.cdot.airs-desktop",
   "build": {
     "frontendDist": "../dist",
     "beforeBuildCommand": ""
@@ -27,16 +27,27 @@
       },
       "dangerousDisableAssetCspModification": false,
       "freezePrototype": true,
-      "capabilities": ["main-window"]
+      "capabilities": [
+        "main-window"
+      ]
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "category": "DeveloperTool",
     "copyright": "Copyright 2026 cdot",
     "license": "Apache-2.0",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.png"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ],
     "macOS": {
       "minimumSystemVersion": "13.0",
       "hardenedRuntime": true

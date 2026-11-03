@@ -1,0 +1,119 @@
+[package]
+name = "desktop-host"
+version = "2.0.0"
+description = "Prisma AIRS Desktop v2 native host: window/origin admission and OS adapters"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+default-run = "prisma-airs-desktop-v2"
+
+[lib]
+name = "desktop_host"
+path = "src/lib.rs"
+
+[[bin]]
+name = "prisma-airs-desktop-v2"
+path = "src/main.rs"
+
+[features]
+default = []
+# Distinct fixture identity and the Tauri mock runtime for admission tests.
+# Never enabled by the shipping artifact build.
+test-fixtures = [
+    "desktop-core/test-fixtures",
+    "tauri/test",
+    "dep:objc2-web-kit",
+]
+
+[build-dependencies]
+tauri-build = { version = "=2.7.3", default-features = false, features = ["config-json"] }
+
+[dependencies]
+desktop-core = { path = "../../../crates/desktop-core" }
+url = "=2.5.8"
+tauri = { version = "=2.12.4", default-features = false, features = ["wry", "common-controls-v6", "compression"] }
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["sync", "macros", "rt", "time"] }
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+zeroize = { version = "=1.9.1", features = ["std"] }
+getrandom = "=0.4.3"
+
+# Classic login Keychain credential adapter (DESIGN "protected storage") and
+# the native file sheet for profile import.
+[target.'cfg(target_os = "macos")'.dependencies.security-framework]
+version = "=3.7.0"
+[target.'cfg(target_os = "macos")'.dependencies.security-framework-sys]
+version = "=2.17.0"
+[target.'cfg(target_os = "macos")'.dependencies.core-foundation]
+version = "=0.10.1"
+[target.'cfg(target_os = "macos")'.dependencies.rfd]
+version = "=0.17.2"
+default-features = false
+
+# AppKit: the native operator confirmation and one-time secret sheets and
+# the clipboard (C09, D035); fixture-only WebView self-capture (WebKit).
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "=0.6.5" }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSData", "NSDictionary", "NSError", "NSString", "NSGeometry", "NSNotification", "NSOperation", "block2"] }
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSAlert", "NSApplication", "NSButton", "NSControl", "NSResponder", "NSView", "NSWindow", "NSTextField", "NSPasteboard", "NSWorkspace", "block2"] }
+objc2-web-kit = { version = "=0.3.2", optional = true, default-features = false, features = ["std", "WKWebView", "WKSnapshotConfiguration", "block2", "objc2-app-kit"] }
+block2 = { version = "=0.6.2" }
+# The Harness sidecar's process group and exit observed without reaping
+# (C19; already locked through tokio and Tauri).
+libc = "=0.2.191"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time"] }
+getrandom = "=0.4.3"
+# The synthetic Academy endpoint for browser_callback (same pins as desktop-core).
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+time = "=0.3.55"
+# The synthetic OpenID provider for browser_callback (C20; same pins as
+# desktop-core).
+jsonwebtoken = { version = "=11.1.0", default-features = false, features = ["aws_lc_rs"] }
+base64 = "=0.22.1"
+sha2.workspace = true
+
+[lints]
+workspace = true
+
+# Host admission tests use Tauri's mock runtime, available only with fixtures.
+[[test]]
+name = "ipc_admission"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "permission_manifest"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "keychain_access"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "browser_callback"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "native_confirmation"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "clipboard_secret"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "sidecar_supervision"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "renderer_review_lifecycle"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "workbench_review_lifecycle"
+required-features = ["test-fixtures"]

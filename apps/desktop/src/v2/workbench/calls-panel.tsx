@@ -1,5 +1,5 @@
 import type { CallView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../../features/tenants/dispatch'
+import type { Dispatch } from '../../modules/tenants/dispatch'
 import { CALLS_COPY as C } from './copy'
 
 /** How long a call took, as the API Client's completion says it. */

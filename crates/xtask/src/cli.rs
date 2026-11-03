@@ -101,11 +101,11 @@ impl Args {
         match (self.value("--chunk"), self.value("--phase")) {
             (Some(c), None) => match Subject::parse(c)? {
                 s @ Subject::Chunk(_) => Ok(s),
-                _ => Err(invalid("--chunk expects C01-C44")),
+                _ => Err(invalid("--chunk expects C01-C45")),
             },
             (None, Some(p)) => match Subject::parse(p)? {
                 s @ Subject::Phase(_) => Ok(s),
-                _ => Err(invalid("--phase expects P01-P09")),
+                _ => Err(invalid("--phase expects P01-P10")),
             },
             _ => Err(invalid(format!(
                 "exactly one of --chunk or --phase is required\n{USAGE}"
@@ -488,7 +488,7 @@ pub fn main(raw: Vec<String>) -> Result<()> {
                 executable: native::plist_value(&app, "CFBundleExecutable")?,
                 app,
                 dmg: PathBuf::from(args.require("--dmg")?),
-                volume: "Prisma AIRS Desktop v2".to_owned(),
+                volume: "Prisma AIRS Desktop".to_owned(),
                 identity: args.require("--identity")?.to_owned(),
                 profile: args
                     .value("--profile")

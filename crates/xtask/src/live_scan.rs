@@ -14,7 +14,7 @@ use crate::{Result, invalid, now_utc};
 
 /// A synthetic, benign prompt: no customer or operator content is scanned.
 const DEFAULT_PROMPT: &str =
-    "Prisma AIRS Desktop v2 controlled live check: a synthetic benign prompt.";
+    "Prisma AIRS Desktop controlled live check: a synthetic benign prompt.";
 
 const L01_SCAN: Spec = Spec {
     id: "L01-scan",

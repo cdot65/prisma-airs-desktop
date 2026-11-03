@@ -12,9 +12,9 @@ mod support;
 
 use std::sync::{Arc, Mutex};
 
+use desktop_core::ImportError;
 use desktop_core::changes::ChangeProblem;
 use desktop_core::fixtures::{self, Handles};
-use desktop_core::import::ImportError;
 use desktop_core::management::{ManagementEndpoints, ManagementFailure};
 use desktop_core::runtime::Outcome;
 use desktop_core::transport::{ProxyMode, TransportPolicy};

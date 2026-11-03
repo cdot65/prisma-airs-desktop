@@ -107,7 +107,7 @@ and current names/version are consistent. Fixture tests seed old alpha/v2 canari
 in synthetic roots and prove that fresh v1 setup neither imports nor purges them.
 They never inspect real old credentials to prove this.
 
-Then rebuild the renamed fixture and run the **full C44 cumulative set**:
+After focused preflight and cross-consumer review settle, rebuild the renamed fixture and run ONE justified broad identity/isolation/cleanup baseline: the **full current cumulative set**, including restored C32 and new C45 assertions:
 legacy C03, C04, C05, C06, C07, C10, C11, C24, C31 through the adapter and C35–C43,
 plus the whole-app C44 checks and new C45 identity/fresh-setup checks. Bind every
 required assertion to the exact executable. The assertion-level map remains the
@@ -123,8 +123,7 @@ obtain the fresh read-only Codex review. Record the same-model-family limitation
 and actual implementer/orchestrator. Verify hashes, run logs and native bindings
 again after the verdict. Report every score immediately and retain every failure.
 
-Raise C45 to 9, integrate its tree while preserving owner work, rerun integrated
-checks and obtain the P10 phase review at 9. The signed C26 build then qualifies
+Raise C45 to 9, integrate its tree while preserving owner work, execute checks affected by actual merge changes and obtain the P10 phase review at9. Under [the owner verification policy](verification-policy.md), unchanged qualified artifacts/helper closures retain their evidence; P10 consumes the same qualified candidate when valid. Remediation, a new review or a merge alone never repeats the full baseline or Rust suite. The signed C26 build then qualifies
 that integrated tree under the owner's live/signing scope.
 
 ## Outside this chunk
@@ -133,3 +132,13 @@ C29's L19 designation and live row, P09's phase pass, C25 Academy live approvals
 C26 signing/notarization/install decisions, and publishing. They retain their
 existing owner gates. The installed alpha's app-name collision is resolved in
 the C26 installation plan. No push without the owner's word.
+
+## Current activation and verification policy — 2026-11-02
+
+Actual P09attempt02 passed9/9/9/9/9 and its audit; activation proof is retained in
+evidence/C45/activation-20261102-g11/p09-proof.json. Earlier pending-stage wording
+above records the original approved brief. The owner's risk-based policy in
+verification-policy.md governs current C45/P10 scheduling: one broad baseline,
+then causal/affected checks and strict explicit evidence reuse/carry. All required
+coverage is accounted, original raw bindings stay immutable, and actual C45/P10
+independent all9 reviews remain required. No release/live authority is added.

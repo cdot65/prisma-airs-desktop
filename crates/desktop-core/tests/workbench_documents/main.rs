@@ -5,7 +5,7 @@
 //! drafts/tabs/private environments, environments and workbench secrets in
 //! a masked preview, cURL and Insomnia imports that leave sources alone,
 //! the built-in Strata Cloud Manager collection, the read-only Git view,
-//! profile adoption, reset, the close guard and no network use (T23).
+//! reset, the close guard and no network use (T23).
 
 use std::path::{Path, PathBuf};
 
@@ -693,59 +693,6 @@ async fn the_built_in_collection_is_private_generic_and_keeps_edits() {
     );
     let reopened = desk.request(&relative).await;
     assert_eq!(reopened["fields"]["body"], "{\"edited\": true}");
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn adoption_previews_v1s_profile_and_never_changes_it() {
-    let root = collection();
-    let source = temp("v1-profile");
-    std::fs::write(
-        source.join("recent-collections.json"),
-        serde_json::to_vec(std::slice::from_ref(&root)).expect("fixture"),
-    )
-    .expect("fixture");
-    use sha2::Digest;
-    let scope = hex::encode(sha2::Sha256::digest(
-        format!("{}\0c14", root.display()).as_bytes(),
-    ));
-    std::fs::create_dir_all(source.join("environments").join(&scope)).expect("fixture");
-    std::fs::write(
-        source
-            .join("environments")
-            .join(&scope)
-            .join("staging.toml"),
-        "format_version = 1\n\n[variables]\nhost = \"staging.example\"\n",
-    )
-    .expect("fixture");
-    let before = std::fs::read(source.join("recent-collections.json")).expect("fixture");
-    let config = CoreConfig {
-        adoption_source: Some(source.clone()),
-        ..CoreConfig::default()
-    };
-    let mut desk = start(None, config).await;
-    let read = desk.wb(json!({"kind": "readAdoption"})).await;
-    assert_eq!(read["candidates"][0]["name"], "Items API");
-    assert_eq!(read["candidates"][0]["environments"], json!(["staging"]));
-    let adopted = desk.wb(json!({"kind": "adopt", "selected": [0]})).await;
-    assert_eq!(
-        adopted,
-        json!({"kind": "adopted", "collections": 1, "environments": 1})
-    );
-    assert_eq!(
-        std::fs::read(source.join("recent-collections.json")).expect("fixture"),
-        before
-    );
-    let wb = desk.workbench();
-    assert_eq!(wb["recent"][0]["name"], "Items API");
-    assert_eq!(wb["adoptionSettled"], true);
-    assert_eq!(
-        desk.wb(json!({"kind": "openRecent", "index": 0})).await["kind"],
-        "opened"
-    );
-    assert_eq!(
-        desk.workbench()["collection"]["environments"],
-        json!([{"name": "staging", "origin": "local"}])
-    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

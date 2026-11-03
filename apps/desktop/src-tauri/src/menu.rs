@@ -1,18 +1,18 @@
 //! Native macOS menus. Selections become typed [`MenuCommand`]s delivered on
 //! the shell observation channel; menus never carry authority themselves.
 
-use desktop_core::features::{self, FeatureId, UiVariant};
+use desktop_core::features::{self, FeatureId};
 use desktop_core::wire::{MenuCommand, Theme};
 use tauri::menu::{Menu, MenuBuilder, MenuEvent, MenuItemBuilder, SubmenuBuilder};
 use tauri::{AppHandle, Manager, Runtime};
 
 use crate::Host;
 
-/// The Go menu is the presentation's catalogue (`features::catalogue_for`):
+/// The Go menu is the presentation's catalogue (`features::catalogue`):
 /// one Rust inventory feeds the menu, the sidebar and the palette, so the
 /// shortcuts the sidebar shows are the accelerators the menu defines (C28).
-fn go_items(variant: UiVariant) -> Vec<(String, FeatureId, String, Option<String>)> {
-    features::catalogue_for(variant)
+fn go_items() -> Vec<(String, FeatureId, String, Option<String>)> {
+    features::catalogue()
         .into_iter()
         .map(|entry| {
             (
@@ -76,23 +76,9 @@ pub fn command_for(id: &str) -> Option<MenuCommand> {
         .map(|(_, theme, _)| MenuCommand::SetAppearance { theme: *theme })
 }
 
-/// The menu for the legacy presentation: what the app starts with before the
-/// core has loaded the stored preference (`rebuild` follows immediately).
+/// The single Home-first native menu, installed at startup.
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-    build_for(app, UiVariant::Legacy)
-}
-
-/// Replaces the native menu with the one for `variant`: called once the core
-/// is up with the stored preference, and again whenever the shell snapshot
-/// reports a changed `ui_variant`, so ⌘1–⌘9 always match the shell shown.
-pub fn rebuild<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Result<()> {
-    let menu = build_for(app, variant)?;
-    app.set_menu(menu)?;
-    Ok(())
-}
-
-fn build_for<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Result<Menu<R>> {
-    let app_menu = SubmenuBuilder::new(app, "Prisma AIRS Desktop v2")
+    let app_menu = SubmenuBuilder::new(app, "Prisma AIRS Desktop")
         .about(None)
         .separator()
         .item(
@@ -110,7 +96,7 @@ fn build_for<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Resul
         // Not the predefined item: AppKit's terminate: would end the app
         // without the API Client close guard.
         .item(
-            &MenuItemBuilder::with_id("quit", "Quit Prisma AIRS Desktop v2")
+            &MenuItemBuilder::with_id("quit", "Quit Prisma AIRS Desktop")
                 .accelerator("CmdOrCtrl+Q")
                 .build(app)?,
         )
@@ -168,7 +154,7 @@ fn build_for<R: Runtime>(app: &AppHandle<R>, variant: UiVariant) -> tauri::Resul
             .build(app)?,
     );
     go = go.separator();
-    for (id, _, label, accelerator) in go_items(variant) {
+    for (id, _, label, accelerator) in go_items() {
         let mut item = MenuItemBuilder::with_id(id, menu_title(&label));
         if let Some(accelerator) = accelerator {
             item = item.accelerator(accelerator);
@@ -260,9 +246,8 @@ mod tests {
     #[test]
     fn an_ampersand_in_a_catalogue_label_stays_visible_in_the_menu_title() {
         assert_eq!(menu_title("Sessions & Reports"), "Sessions && Reports");
-        assert_eq!(menu_title("Import from v1"), "Import from v1");
         assert!(
-            go_items(UiVariant::V2)
+            go_items()
                 .iter()
                 .any(|(_, _, label, _)| label == "Sessions & Reports"),
             "the catalogue label itself is untouched"
@@ -271,11 +256,7 @@ mod tests {
 
     #[test]
     fn go_items_follow_the_presentation_catalogue() {
-        let legacy = go_items(UiVariant::Legacy);
-        assert_eq!(legacy[0].0, "go:runtime");
-        assert_eq!(legacy[0].3.as_deref(), Some("CmdOrCtrl+1"));
-        assert_eq!(legacy.len(), 11);
-        let v2 = go_items(UiVariant::V2);
+        let v2 = go_items();
         assert_eq!(
             v2[0],
             (

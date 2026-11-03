@@ -10,7 +10,7 @@
 //! from the core's word.
 
 use desktop_core::admin_inventory::{AdminAvailability, AdminProductId};
-use desktop_core::features::{Availability, FeatureId, UiVariant};
+use desktop_core::features::{Availability, FeatureId};
 use desktop_core::fixtures::{self, Handles, ScriptedStore};
 use desktop_core::store::PersistedState;
 use desktop_core::wire::Theme;
@@ -46,11 +46,7 @@ impl Desk {
 
     /// A desk already on the v2 shell.
     async fn v2() -> Self {
-        let mut desk = Self::from_state(PersistedState::default());
-        desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-            .await
-            .expect("v2");
-        desk
+        Self::from_state(PersistedState::default())
     }
 
     fn restart(self) -> Self {
@@ -94,9 +90,9 @@ const NAV: [(FeatureId, &str, u8); 7] = [
 
 #[tokio::test]
 async fn the_sidebar_is_the_prototypes_nav_and_settings_is_reached_off_it() {
-    let desk = Desk::v2().await;
+    let mut desk = Desk::v2().await;
     let snap = desk.snap();
-    assert_eq!(snap.ui_variant, UiVariant::V2);
+
     let sidebar: Vec<(FeatureId, &str, Option<u8>)> = snap
         .features
         .iter()
@@ -134,7 +130,6 @@ async fn the_sidebar_is_the_prototypes_nav_and_settings_is_reached_off_it() {
         .expect("settings catalogued");
     assert!(!settings.sidebar);
     assert_eq!(settings.shortcut, None);
-    let mut desk = desk;
     desk.send(json!({"kind": "navigate", "feature": "settings"}))
         .await
         .expect("settings");
@@ -186,10 +181,7 @@ async fn the_rails_product_children_are_the_inventory_with_the_gated_two_named()
     }
     // C44: there is one presentation; a variant intent is accepted and changes nothing, so the
     // inventory stays published (the legacy shell, which kept its own fixed matrix, is gone).
-    let mut desk = desk;
-    desk.send(json!({"kind": "setUiVariant", "variant": "legacy"}))
-        .await
-        .expect("accepted, no-op");
+
     assert!(desk.snap().administration.is_some());
 }
 

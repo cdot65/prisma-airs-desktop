@@ -1,4 +1,4 @@
-//! Build-time controller for Prisma AIRS Desktop v2.
+//! Build-time controller for Prisma AIRS Desktop.
 //!
 //! The controller runs only the argv arrays in the approved command manifest
 //! (`docs/architecture/checks.json`) under an explicit environment contract,

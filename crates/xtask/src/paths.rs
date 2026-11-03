@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::Subject;
 
-/// Root of a Prisma AIRS Desktop v2 checkout.
+/// Root of a Prisma AIRS Desktop checkout.
 #[derive(Clone, Debug)]
 pub struct Repo {
     root: PathBuf,

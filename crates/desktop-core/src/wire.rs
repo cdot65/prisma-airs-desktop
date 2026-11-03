@@ -242,7 +242,6 @@ pub fn export_typescript(dir: &Path) -> Result<(), ts_rs::ExportError> {
     MenuCommand::export_all(&config)?;
     FeatureEntry::export_all(&config)?;
     FeatureId::export_all(&config)?;
-    crate::features::UiVariant::export_all(&config)?;
     crate::features::ProductId::export_all(&config)?;
     crate::authority::SwitchBlocked::export_all(&config)?;
     crate::authority::PendingDecisionRef::export_all(&config)?;

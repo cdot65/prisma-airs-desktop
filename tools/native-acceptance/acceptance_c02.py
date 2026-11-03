@@ -5,7 +5,7 @@ Accessibility and evaluate the C02 inventory (docs/architecture/native-checks.js
 Run from the repository root after `xtask native --chunk C02` prepared the
 fixture bundle. Requires the macOS Accessibility grant for the invoking
 terminal. The fixture build keeps its data in its own Application Support
-directory (bundle identifier io.cdot.prisma-airs-desktop.v2.fixture) and its
+directory (bundle identifier io.cdot.airs-desktop.fixture) and its
 credentials in a dedicated fixture test keychain there; this script starts
 from an empty fixture root and removes it at the end. It uses only synthetic
 keys, never reads a stored secret back (Keychain items are inspected by
@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import fixture_app as fx
 
 ROOT = os.getcwd()
 # A phase review runs every member chunk's checks into the phase's own
@@ -41,15 +42,14 @@ EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C02" else "native-C02")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C02" else "native-acceptance-C02.json")
 TOOLS = os.path.join(ROOT, "tools/native-acceptance")
-PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop-v2"
+PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop"
 HOME = os.path.expanduser("~")
-DATA = os.path.join(HOME, "Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture")
+DATA = os.path.join(HOME, "Library/Application Support/io.cdot.airs-desktop.fixture")
 KEYCHAIN = os.path.join(DATA, "fixture-credentials.keychain-db")
 KEYCHAIN_PASSWORD = "prisma-airs-desktop-v2-fixture-keychain"
-SERVICE = "io.cdot.prisma-airs-desktop.v2.fixture.scan"
-V1_DATA = os.path.join(HOME, "Library/Application Support/Prisma AIRS Desktop")
+SERVICE = "io.cdot.airs-desktop.fixture.scan"
 CAPTURES = os.path.join(subprocess.run(["getconf", "DARWIN_USER_TEMP_DIR"], capture_output=True, text=True).stdout.strip(),
-                        "prisma-airs-v2-fixture-captures")
+                        "prisma-airs-desktop-fixture-captures")
 KEY_A = "synthetic-c02-native-key-alpha"
 KEY_B = "synthetic-c02-native-key-bravo"
 KEY_C = "synthetic-c02-native-key-charlie"
@@ -79,8 +79,7 @@ def note(what, **data):
 # ---------- app control ----------
 
 def app_pid():
-    out = sh(["pgrep", "-f", PROCESS]).stdout.split()
-    return int(out[0]) if out else None
+    return fx.App.running_pid()
 
 
 def quit_app():
@@ -94,14 +93,15 @@ def quit_app():
             time.sleep(0.25)
             if not app_pid():
                 break
-    sh(["pkill", "-f", PROCESS])
+    fx.stop_app()
     time.sleep(0.5)
 
 
 def launch(bundle, sample_network=False):
+    fx.bind_candidate(bundle)
     quit_app()
     before = webkit_pids()
-    sh(["open", "-n", bundle])
+    fx.launch_candidate(bundle)
     lines, sockets = [], 0
     for i in range(30 if sample_network else 12):
         pid = app_pid()
@@ -243,16 +243,7 @@ def keychain_items():
 
 
 def v1_metadata():
-    entries = []
-    for base, _, files in os.walk(V1_DATA):
-        for name in files:
-            path = os.path.join(base, name)
-            try:
-                st = os.lstat(path)
-            except OSError:
-                continue
-            entries.append([os.path.relpath(path, V1_DATA), st.st_size, int(st.st_mtime)])
-    return sorted(entries)
+    return fx.v1_metadata()
 
 
 def clean_fixture_root():
@@ -329,7 +320,7 @@ def main():
         return run()
     finally:
         # Never leave the fixture app running or its fixture data behind.
-        sh(["pkill", "-f", PROCESS])
+        fx.stop_app()
         if os.path.exists(KEYCHAIN):
             sh(["security", "delete-keychain", KEYCHAIN])
         if os.path.isdir(DATA):
@@ -340,7 +331,7 @@ def run():
     global AX
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c02-acceptance-")

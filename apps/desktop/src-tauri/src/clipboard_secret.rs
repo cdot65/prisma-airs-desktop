@@ -16,7 +16,10 @@ use std::time::Duration;
 /// How long a copied secret may stay on the clipboard (v1: 60 s).
 pub const CLEAR_AFTER: Duration = Duration::from_secs(60);
 /// The private pasteboard type carrying this desktop's owner marker.
-pub const OWNER_TYPE: &str = "io.cdot.prisma-airs-desktop.v2.secret-owner";
+#[cfg(not(feature = "test-fixtures"))]
+pub const OWNER_TYPE: &str = "io.cdot.airs-desktop.secret-owner";
+#[cfg(feature = "test-fixtures")]
+pub const OWNER_TYPE: &str = "io.cdot.airs-desktop.fixture.secret-owner";
 /// Clipboard-manager hints (nspasteboard.org).
 pub const CONCEALED_TYPE: &str = "org.nspasteboard.ConcealedType";
 pub const TRANSIENT_TYPE: &str = "org.nspasteboard.TransientType";

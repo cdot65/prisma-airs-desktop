@@ -12,8 +12,8 @@ pub enum Subject {
 
 impl Subject {
     /// The last registered chunk and phase (checks.json must define exactly these).
-    pub const LAST_CHUNK: u8 = 44;
-    pub const LAST_PHASE: u8 = 9;
+    pub const LAST_CHUNK: u8 = 45;
+    pub const LAST_PHASE: u8 = 10;
     /// D058: the documentation-only chunks. Fixed in code so the policy (no
     /// native gate, no owner acceptance below 9/10) cannot be switched on for
     /// an application chunk or off for the specification from a manifest.
@@ -44,7 +44,7 @@ impl Subject {
             return Ok(Self::Phase(n));
         }
         Err(invalid(format!(
-            "not a valid chunk (C01-C44) or phase (P01-P09): {text:?}"
+            "not a valid chunk (C01-C45) or phase (P01-P10): {text:?}"
         )))
     }
 
@@ -73,9 +73,11 @@ mod tests {
         assert_eq!(Subject::parse("C27").expect("C27"), Subject::Chunk(27));
         assert_eq!(Subject::parse("C34").expect("C34"), Subject::Chunk(34));
         assert_eq!(Subject::parse("C44").expect("C44"), Subject::Chunk(44));
+        assert_eq!(Subject::parse("C45").expect("C45"), Subject::Chunk(45));
+        assert_eq!(Subject::parse("P10").expect("P10"), Subject::Phase(10));
         assert_eq!(Subject::parse("P08").expect("P08"), Subject::Phase(8));
         assert_eq!(Subject::parse("P09").expect("P09"), Subject::Phase(9));
-        for bad in ["C00", "C45", "P00", "P10", "C7", "C027", "c27", "X01"] {
+        for bad in ["C00", "C46", "P00", "P11", "C7", "C027", "c27", "X01"] {
             assert!(Subject::parse(bad).is_err(), "{bad} must be refused");
         }
         assert_eq!(Subject::Chunk(34).to_string(), "C34");

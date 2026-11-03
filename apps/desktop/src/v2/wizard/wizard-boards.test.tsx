@@ -7,7 +7,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Wizard } from './wizard'
-import type { Dispatch } from '../../features/tenants/dispatch'
+import type { Dispatch } from '../../modules/tenants/dispatch'
 import { DRAFT_CONTEXT, fxAddTenant, fxAddTenantDrafted, fxOn, type WizardBoard } from './fixtures'
 
 function mount(board: WizardBoard) {

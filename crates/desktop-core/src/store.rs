@@ -22,7 +22,7 @@ use crate::vault::RecordId;
 use crate::wire::Theme;
 
 /// Schema of the persisted state document.
-pub const STATE_SCHEMA: &str = "prisma-airs-desktop-v2/state/1";
+pub const STATE_SCHEMA: &str = "prisma-airs-desktop/state/1";
 /// Ceiling for the persisted document.
 pub const MAX_STATE_BYTES: u64 = 4 * 1024 * 1024;
 const STATE_FILE: &str = "state.json";
@@ -190,15 +190,6 @@ pub struct PersistedState {
     /// Workspace MCP servers and their sign-ins (C22; absent before).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub harness_mcp: Vec<StoredMcpServer>,
-    /// v1 import receipts that have not settled (C23, D050): the import's
-    /// commit binding beside its receipt files, so what it names stays
-    /// hidden and is rolled back even when both files are lost. Present only
-    /// while an import or its rollback is unsettled.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub open_imports: Vec<crate::import_v1::receipt::Receipt>,
-    /// Which shell the desktop renders (C28, D058; absent before = legacy).
-    #[serde(default)]
-    pub ui_variant: crate::features::UiVariant,
     /// First-run wizard state (C28/C29; absent before = needed).
     #[serde(default)]
     pub onboarding: crate::features::OnboardingState,
@@ -276,8 +267,6 @@ impl Default for PersistedState {
             harness_history: Vec::new(),
             harness_projects: Vec::new(),
             harness_mcp: Vec::new(),
-            open_imports: Vec::new(),
-            ui_variant: crate::features::UiVariant::Legacy,
             onboarding: crate::features::OnboardingState::Needed,
             show_calls: true,
             show_calls_chosen: false,
@@ -447,16 +436,7 @@ impl PersistedState {
                 .values()
                 .all(|&n| n <= crate::harness::mcp::MAX_SERVERS)
         };
-        // Each open import's copy (D050) is a current receipt, named once by
-        // a valid ID, and unsettled: anything else stands for no import.
-        let mut open = BTreeSet::new();
-        let imports_ok = self.open_imports.len() <= crate::import_v1::receipt::MAX_RECEIPTS
-            && self
-                .open_imports
-                .iter()
-                .all(|r| crate::import_v1::receipt::binding_ok(r) && open.insert(r.id.clone()));
         self.schema == STATE_SCHEMA
-            && imports_ok
             && mcp_ok
             && projects_ok
             && sign_ins_ok
@@ -834,7 +814,7 @@ mod tests {
                 ..sample()
             })
             .expect("json"),
-            br#"{"schema":"prisma-airs-desktop-v2/state/1","appearance":"dark","tenants":[],"activeTenant":null,"credentials":[],"pendingCleanup":[],"secret":"x"}"#.to_vec(),
+            br#"{"schema":"prisma-airs-desktop/state/1","appearance":"dark","tenants":[],"activeTenant":null,"credentials":[],"pendingCleanup":[],"secret":"x"}"#.to_vec(),
         ] {
             fs::write(dir.join(STATE_FILE), &bytes).expect("write");
             assert_eq!(store.load(), Err(StoreError::Corrupt));

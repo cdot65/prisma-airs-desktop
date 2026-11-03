@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
-use desktop_core::import::ImportError;
+use desktop_core::ImportError;
 use desktop_core::store::MemoryStore;
 use desktop_core::vault::{RecordId, SessionVault, Vault, VaultError};
 use desktop_core::{
@@ -244,7 +244,6 @@ pub fn adapters(host: &Host) -> Adapters {
         keychain: Arc::new(RunVault::default()),
         learner_keychain: Arc::new(RunVault::default()),
         store: Arc::new(MemoryStore::new()),
-        picker: sheets.clone(),
         opener: sheets.clone(),
         printer: sheets.clone(),
         images: sheets.clone(),
@@ -261,8 +260,6 @@ pub fn adapters(host: &Host) -> Adapters {
         gateway_files: sheets,
         workbench_root: host.workbench_root.clone(),
         harness: desktop_core::harness::sidecar::HarnessAdapters::unavailable(),
-        v1_source: None,
-        import_root: None,
         logs_root: None,
     }
 }

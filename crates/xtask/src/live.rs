@@ -23,7 +23,7 @@ pub const REPORT_SCHEMA: &str = "airs-v2/live-scope/1";
 pub const REPORT: &str = "docs/planning/evidence/C25/live-scope.json";
 const LEDGER: &str = "docs/architecture/workflow-ledger.json";
 /// Keychain services a manifest may name: v2 test items only.
-pub const V2_SERVICE_PREFIX: &str = "io.cdot.prisma-airs-desktop.v2.";
+pub const V2_SERVICE_PREFIX: &str = "io.cdot.airs-desktop.";
 /// v1's own Keychain service, which C25 never touches.
 pub const V1_SERVICE: &str = "io.cdot.prisma-airs-desktop";
 pub const NO_MANIFEST: &str = "no owner-approved live manifest";

@@ -10,24 +10,54 @@ never touched.
 """
 
 import json
+import hashlib
+import stat
 import os
 import shutil
 import signal
 import socket
 import subprocess
 import time
+import tempfile
+import candidate_process as candidate
 
 HOME = os.path.expanduser("~")
-DATA = os.path.join(HOME, "Library/Application Support/io.cdot.prisma-airs-desktop.v2.fixture")
+DATA = os.path.join(HOME, "Library/Application Support/io.cdot.airs-desktop.fixture")
 KEYCHAIN = os.path.join(DATA, "fixture-credentials.keychain-db")
 ROOTS = os.path.join(DATA, "fixture-transport-roots.pem")
-V1_DATA = os.path.join(HOME, "Library/Application Support/Prisma AIRS Desktop")
-PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop-v2"
+# Controlled prior-installation canaries only: never inspect real alpha/v2 roots.
+_PRIOR_SANDBOX = tempfile.TemporaryDirectory(prefix="airs-desktop-prior-canaries-")
+V1_DATA = os.path.join(_PRIOR_SANDBOX.name, "prior-installations")
+for _namespace in ("alpha", "v2"):
+    _directory = os.path.join(V1_DATA, _namespace)
+    os.makedirs(_directory)
+    for _name in ("state.json", "sessions.canary", "approvals.canary", "credentials.canary"):
+        with open(os.path.join(_directory, _name), "wb") as _file:
+            _file.write(("SYNTHETIC-PRIOR-" + _namespace + ":" + _name).encode())
+PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop"
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 
 
 def sh(argv, **kw):
+    if os.path.basename(str(argv[0])) in ("pkill", "killall"):
+        raise RuntimeError("process-name signaling is forbidden; use candidate-owned PID controls")
     return subprocess.run(argv, capture_output=True, text=True, **kw)
+
+def bind_candidate(bundle):
+    return candidate.bind(bundle)
+
+def launch_candidate(bundle):
+    return candidate.bind(bundle).launch()
+
+def stop_app():
+    return candidate.stop_app()
+
+def stop_engines():
+    return candidate.stop_engines()
+
+def signal_engine(pid, sig=signal.SIGKILL):
+    return candidate.signal_engine(pid,sig)
+
 
 
 class App:
@@ -35,6 +65,7 @@ class App:
 
     def __init__(self, bundle, work, log):
         self.bundle = bundle
+        self.candidate = candidate.bind(bundle)
         self.log = log
         self.ax_bin = os.path.join(work, "ax")
         built = sh(["swiftc", "-O", os.path.join(TOOLS, "ax.swift"), "-o", self.ax_bin])
@@ -48,8 +79,7 @@ class App:
     # ---- process ----
     @staticmethod
     def running_pid():
-        out = sh(["pgrep", "-f", PROCESS]).stdout.split()
-        return int(out[0]) if out else None
+        return candidate.app_pid()
 
     def quit(self):
         pid = self.running_pid()
@@ -62,7 +92,7 @@ class App:
                 time.sleep(0.25)
                 if not self.running_pid():
                     break
-        sh(["pkill", "-f", PROCESS])
+        candidate.stop_app()
         time.sleep(0.5)
         self.pid = None
 
@@ -70,7 +100,7 @@ class App:
         """Ends the process without a graceful quit (an abrupt close)."""
         pid = self.running_pid()
         if pid:
-            os.kill(pid, signal.SIGKILL)
+            candidate.stop_app(signal.SIGKILL)
             for _ in range(20):
                 time.sleep(0.25)
                 if not self.running_pid():
@@ -79,7 +109,7 @@ class App:
 
     def launch(self, settle=6):
         self.quit()
-        sh(["open", "-n", self.bundle])
+        self.candidate.launch()
         for _ in range(settle * 2):
             time.sleep(0.5)
             if self.running_pid():
@@ -106,6 +136,8 @@ class App:
             return f"(tree unavailable: {e})"
 
     def ax(self, command, *args):
+        if self.pid != self.running_pid():
+            raise RuntimeError("fixture process identity changed before Accessibility access")
         out = sh([self.ax_bin, command, str(self.pid), *[str(a) for a in args]])
         if command == "tree":
             return json.loads(out.stdout or "[]")
@@ -145,6 +177,8 @@ class App:
 
     # ---- keyboard (frontmost-guarded) ----
     def front(self):
+        if self.pid != self.running_pid():
+            raise RuntimeError("fixture process identity changed before focus/input")
         script = (f'tell application "System Events"\nset p to first application process whose unix id is {self.pid}\n'
                   'set frontmost of p to true\ndelay 0.2\nreturn frontmost of p\nend tell')
         for _ in range(5):
@@ -282,6 +316,11 @@ class App:
 
 
 def clean_fixture_root():
+    expected = os.path.join(os.path.expanduser("~"), "Library/Application Support/io.cdot.airs-desktop.fixture")
+    if DATA != expected or os.path.realpath(DATA) != expected or os.path.dirname(KEYCHAIN) != DATA:
+        raise RuntimeError("refusing cleanup outside the exact new fixture root")
+    if os.path.lexists(KEYCHAIN) and (os.path.islink(KEYCHAIN) or not stat.S_ISREG(os.lstat(KEYCHAIN).st_mode)):
+        raise RuntimeError("refusing cleanup of a symlinked or non-regular fixture keychain")
     if os.path.exists(KEYCHAIN):
         sh(["security", "delete-keychain", KEYCHAIN])
     if os.path.isdir(DATA):
@@ -297,7 +336,11 @@ def v1_metadata():
                 st = os.lstat(path)
             except OSError:
                 continue
-            entries.append([os.path.relpath(path, V1_DATA), st.st_size, int(st.st_mtime)])
+            if not stat.S_ISREG(st.st_mode) or not os.path.realpath(path).startswith(os.path.realpath(V1_DATA) + os.sep):
+                raise RuntimeError("synthetic prior canary escaped its controlled root")
+            with open(path, "rb") as source:
+                digest = hashlib.sha256(source.read()).hexdigest()
+            entries.append([os.path.relpath(path, V1_DATA), st.st_size, st.st_mtime_ns, digest])
     return sorted(entries)
 
 

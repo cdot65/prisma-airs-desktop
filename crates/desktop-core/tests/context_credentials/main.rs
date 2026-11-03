@@ -21,7 +21,7 @@ use desktop_core::tenants::{Destination, Region, TenantId, TenantProfile};
 use desktop_core::transport::TransportPolicy;
 use desktop_core::vault::{RecordId, VaultError};
 use desktop_core::{
-    AuthorityHandle, Core, CoreConfig, Delivery, ImportView, Intent, Observation, Receipt, Refusal,
+    AuthorityHandle, Core, CoreConfig, Delivery, Intent, Observation, Receipt, Refusal,
     ResetFailure, ResetStage, ScanState, ShellSnapshot, StorageHealth, Theme, ViewScope,
 };
 use serde_json::json;
@@ -633,95 +633,6 @@ async fn a_context_change_discards_a_pending_endpoint_review() {
         .send(json!({"kind": "confirmEndpointChange", "context": desk.context(), "review": id}))
         .await;
     assert_eq!(confirm, Err(Refusal::ReviewInvalid));
-}
-
-#[tokio::test]
-async fn profile_import_previews_whitelisted_metadata_and_creates_keyless_tenants() {
-    let mut desk = Desk::new();
-    desk.create("lab").await;
-    let source = json!({
-        "version": 1,
-        "tenants": [
-            {"name": "prod", "configPath": "/Users/someone/.config/airs/prod.json", "tsgId": "1111111111"},
-            {"name": "lab", "configPath": "/tmp/lab.json", "tsgId": "2222", "airsApiKey": "synthetic-embedded-secret"},
-            {"name": "", "configPath": "/tmp/x.json"}
-        ]
-    });
-    desk.adapters.picker.reply(Some(Ok((
-        "/Users/someone/tenants.json".into(),
-        serde_json::to_vec(&source).expect("json"),
-    ))));
-    desk.send(json!({"kind": "chooseProfileImport"}))
-        .await
-        .expect("sheet");
-    assert!(eventually(|| matches!(desk.snap().import, ImportView::Review { .. })).await);
-    let ImportView::Review {
-        review,
-        file_name,
-        candidates,
-        discarded,
-        ..
-    } = desk.snap().import
-    else {
-        unreachable!()
-    };
-    assert_eq!(file_name, "tenants.json", "no directory path");
-    assert_eq!(candidates.len(), 3);
-    assert!(candidates[1].existing_label);
-    assert!(candidates[2].problem.is_some());
-    assert_eq!((discarded.secret_fields, discarded.file_references), (1, 3));
-    let shown = redacted(&desk.snap());
-    assert!(!shown.contains("synthetic-embedded-secret") && !shown.contains("/tmp/lab.json"));
-    assert_eq!(
-        desk.send(json!({"kind": "confirmProfileImport", "review": review, "selected": [2]}))
-            .await,
-        Err(Refusal::InvalidInput),
-        "an invalid entry cannot be imported"
-    );
-    desk.send(json!({"kind": "confirmProfileImport", "review": review, "selected": [0, 1]}))
-        .await
-        .expect("imported");
-    let snap = desk.snap();
-    let labels: Vec<_> = snap.tenants.iter().map(|t| t.label.as_str()).collect();
-    assert_eq!(
-        labels,
-        vec!["lab", "prod", "lab"],
-        "the existing tenant is unchanged"
-    );
-    assert!(
-        snap.tenants
-            .iter()
-            .all(|t| t.scan.state == ScanState::Missing),
-        "no credential imported"
-    );
-    assert!(matches!(snap.import, ImportView::Idle));
-    assert_eq!(
-        desk.send(json!({"kind": "confirmProfileImport", "review": review, "selected": [0]}))
-            .await,
-        Err(Refusal::ReviewConsumed)
-    );
-    assert!(desk.adapters.vault.calls().is_empty());
-}
-
-#[tokio::test]
-async fn cancelled_or_unsupported_import_leaves_tenants_unchanged() {
-    let mut desk = Desk::new();
-    desk.create("Tenant A").await;
-    let before = desk.snap().tenants;
-    desk.adapters.picker.reply(None);
-    desk.send(json!({"kind": "chooseProfileImport"}))
-        .await
-        .expect("sheet");
-    assert!(eventually(|| matches!(desk.snap().import, ImportView::Idle)).await);
-    desk.adapters
-        .picker
-        .reply(Some(Ok(("notes.txt".into(), b"just text".to_vec()))));
-    desk.send(json!({"kind": "chooseProfileImport"}))
-        .await
-        .expect("sheet");
-    assert!(eventually(|| matches!(desk.snap().import, ImportView::Failed { .. })).await);
-    assert_eq!(desk.snap().tenants, before);
-    assert_eq!(desk.adapters.picker.opened(), 2);
 }
 
 #[tokio::test]

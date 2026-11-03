@@ -632,6 +632,7 @@ pub fn release_build(
     manifest: &crate::manifest::Manifest,
     env: &crate::env::Environment,
 ) -> Result<BuildRecord> {
+    crate::package::gate(repo, crate::package::Kind::ReleaseCandidate)?;
     let built = crate::budgets::build_production(repo, env, manifest.target.as_str())?;
     let pin = desktop_core::harness::engine::pin();
     let engine = built

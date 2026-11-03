@@ -1,19 +1,19 @@
 [package]
 name = "desktop-host"
-version = "2.0.0"
-description = "Prisma AIRS Desktop v2 native host: window/origin admission and OS adapters"
+version = "1.0.0"
+description = "Prisma AIRS Desktop native host: window/origin admission and OS adapters"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
-default-run = "prisma-airs-desktop-v2"
+default-run = "prisma-airs-desktop"
 
 [lib]
 name = "desktop_host"
 path = "src/lib.rs"
 
 [[bin]]
-name = "prisma-airs-desktop-v2"
+name = "prisma-airs-desktop"
 path = "src/main.rs"
 
 [features]
@@ -116,4 +116,8 @@ required-features = ["test-fixtures"]
 
 [[test]]
 name = "workbench_review_lifecycle"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "c45_namespace_isolation"
 required-features = ["test-fixtures"]

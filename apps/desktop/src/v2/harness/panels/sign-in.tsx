@@ -1,6 +1,6 @@
 import { type FormEvent, useId, useState } from 'react'
 import type { ContextRef, CredentialSource, HarnessSignInView, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
-import type { Dispatch, DispatchOutcome } from '../../../features/tenants/dispatch'
+import type { Dispatch, DispatchOutcome } from '../../../modules/tenants/dispatch'
 import { SIGN_IN_FAILURE_TEXT, SIGN_IN_NEEDS, SIGN_IN_STEP_TEXT, actionOutcomeText, notConfirmedText, saveFailureText } from '../text'
 import { Btn, Field } from './controls'
 

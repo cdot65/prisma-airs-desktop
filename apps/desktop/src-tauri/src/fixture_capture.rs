@@ -19,7 +19,7 @@ use tauri::{Runtime, WebviewWindow};
 
 /// Directory receiving fixture captures.
 pub fn capture_dir() -> PathBuf {
-    std::env::temp_dir().join("prisma-airs-v2-fixture-captures")
+    std::env::temp_dir().join("prisma-airs-desktop-fixture-captures")
 }
 
 /// Snapshots the window's WebView to `<capture_dir>/capture-<millis>.png`.

@@ -24,7 +24,6 @@ use crate::context::{ContextRef, EnteredSecret, ReviewId};
 use crate::runtime::OperationId;
 use crate::vault::VaultError;
 use crate::workbench::admission::{Network, SendRefusal};
-use crate::workbench::adoption::{self, AdoptionProblem, CandidateView};
 use crate::workbench::curl::{self, CurlProblem, ImportNote};
 use crate::workbench::document::{self, Document, Fields, SaveRefusal};
 use crate::workbench::environments::{self, Origin, Preview};
@@ -219,12 +218,6 @@ pub enum WorkbenchRequest {
     },
     DismissImport,
     ReadGit,
-    /// Read the v1 API Client profile for adoption (read-only).
-    ReadAdoption,
-    Adopt {
-        selected: Vec<u32>,
-    },
-    DismissAdoption,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -266,7 +259,6 @@ pub enum WorkbenchProblem {
     Schema(SchemaProblem),
     Curl(CurlProblem),
     Export(ExportProblem),
-    Adoption(AdoptionProblem),
     /// The Keychain refused the secret.
     Keychain,
     /// Closing would drop edits not yet protected on this Mac.
@@ -348,13 +340,6 @@ pub enum WorkbenchResult {
     },
     Git {
         git: GitView,
-    },
-    Adoption {
-        candidates: Vec<CandidateView>,
-    },
-    Adopted {
-        collections: u32,
-        environments: u32,
     },
     /// A run that ended (or one shown from history).
     Ran {
@@ -463,8 +448,6 @@ pub struct WorkbenchView {
     pub collection: Option<CollectionView>,
     /// A previewed Insomnia export.
     pub import: Option<Vec<ResourceView>>,
-    pub adoption: Option<Vec<CandidateView>>,
-    pub adoption_settled: bool,
     pub git: Option<GitView>,
     /// A request is running on the lane.
     pub busy: bool,
@@ -542,7 +525,6 @@ pub(super) struct Workbench {
     /// editor reported for each.
     editing: BTreeMap<String, u32>,
     import: Option<insomnia::Export>,
-    adoption: Option<Vec<adoption::Candidate>>,
     git: Option<GitView>,
     /// Fixture builds: fail a Save after this many file writes.
     pub(super) interrupt: Option<Interrupt>,
@@ -557,7 +539,6 @@ impl Workbench {
         self.open = None;
         self.editing.clear();
         self.import = None;
-        self.adoption = None;
         self.git = None;
         self.sending.clear();
     }
@@ -801,7 +782,6 @@ impl State {
                     p.recent
                         .iter()
                         .enumerate()
-                        .filter(|(_, r)| !self.v1_hides_recent(&r.root))
                         .map(|(i, r)| RecentView {
                             index: u32::try_from(i).unwrap_or(u32::MAX),
                             name: r.name.clone(),
@@ -812,11 +792,6 @@ impl State {
                 .unwrap_or_default(),
             collection,
             import: w.import.as_ref().map(insomnia::Export::view),
-            adoption: w
-                .adoption
-                .as_ref()
-                .map(|c| c.iter().enumerate().map(|(i, c)| c.view(i)).collect()),
-            adoption_settled: w.profile.as_ref().is_some_and(|p| p.adoption_settled),
             git: w.git.clone(),
             busy: w.calls.iter().any(|c| !c.settled && !c.later),
             unprotected: self.workbench_unprotected(),
@@ -1190,41 +1165,6 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
                 state.workbench.git = Some(view.clone());
             }
             WorkbenchResult::Git { git: view }
-        }
-        WorkbenchRequest::ReadAdoption => {
-            let Some(source) = lock(inner).ok().and_then(|s| s.adoption_source.clone()) else {
-                return refused(WorkbenchProblem::Adoption(AdoptionProblem::Missing));
-            };
-            match blocking(Err(AdoptionProblem::Unreadable), move || {
-                adoption::read(&source)
-            })
-            .await
-            {
-                Ok(candidates) => {
-                    let views = candidates
-                        .iter()
-                        .enumerate()
-                        .map(|(i, c)| c.view(i))
-                        .collect();
-                    if let Ok(mut state) = lock(inner) {
-                        state.workbench.adoption = Some(candidates);
-                    }
-                    WorkbenchResult::Adoption { candidates: views }
-                }
-                Err(p) => refused(WorkbenchProblem::Adoption(p)),
-            }
-        }
-        WorkbenchRequest::Adopt { selected } => adopt(inner, &root, profile, selected).await,
-        WorkbenchRequest::DismissAdoption => {
-            let mut next = profile;
-            next.adoption_settled = true;
-            if let Ok(mut state) = lock(inner) {
-                state.workbench.adoption = None;
-            }
-            match store_profile(inner, &root, next).await {
-                Ok(()) => WorkbenchResult::Done,
-                Err(f) => refused(WorkbenchProblem::Private(f)),
-            }
         }
     }
 }
@@ -2470,7 +2410,7 @@ async fn choose_insomnia(inner: &Arc<Inner>) -> WorkbenchResult {
     };
     let file = match chosen {
         Ok(file) => file,
-        Err(crate::import::ImportError::TooLarge) => {
+        Err(crate::ImportError::TooLarge) => {
             return refused(WorkbenchProblem::Export(ExportProblem::TooLarge));
         }
         Err(_) => return refused(WorkbenchProblem::Export(ExportProblem::Unreadable)),
@@ -2569,166 +2509,4 @@ async fn create_imported(
         environments: environments_made,
         skipped,
     }
-}
-
-async fn adopt(
-    inner: &Arc<Inner>,
-    root: &std::path::Path,
-    profile: Profile,
-    selected: Vec<u32>,
-) -> WorkbenchResult {
-    let Some(candidates) = lock(inner).ok().and_then(|s| s.workbench.adoption.clone()) else {
-        return refused(WorkbenchProblem::Invalid);
-    };
-    let chosen: Vec<adoption::Candidate> = candidates
-        .into_iter()
-        .enumerate()
-        .filter(|(i, _)| selected.contains(&u32::try_from(*i).unwrap_or(u32::MAX)))
-        .map(|(_, c)| c)
-        .collect();
-    let mut next = profile;
-    let mut environments_made = 0u32;
-    let open_scope = lock(inner)
-        .ok()
-        .and_then(|s| s.workbench.open.as_ref().map(|o| o.scope.clone()));
-    for candidate in &chosen {
-        if !next.recent.iter().any(|r| r.root == candidate.root)
-            && next.recent.len() < profile::RECENT
-        {
-            next.recent.push(Recent {
-                root: candidate.root.clone(),
-                id: candidate.id.clone(),
-                name: candidate.name.clone(),
-            });
-        }
-        let scope = profile::scope(&candidate.root, &candidate.id);
-        if open_scope.as_deref() == Some(scope.as_str()) {
-            let added = with_open(inner, |o| {
-                let mut added = 0;
-                for (name, text) in &candidate.environments {
-                    if !o.data.private.contains_key(name)
-                        && o.data.private.len() < environments::MAX_PRIVATE
-                    {
-                        o.data.private.insert(name.clone(), text.clone());
-                        added += 1;
-                    }
-                }
-                Ok(added)
-            })
-            .unwrap_or(0);
-            if persist(inner, root).await.is_err() {
-                return refused(WorkbenchProblem::Private(PrivateFailure::Unavailable));
-            }
-            environments_made += added;
-            continue;
-        }
-        let keychain = Arc::clone(&inner.adapters.keychain);
-        let private = root.to_path_buf();
-        let envs = candidate.environments.clone();
-        let added = blocking(Err(PrivateFailure::Unavailable), move || {
-            let mut data = profile::load_scope(&private, keychain.as_ref(), &scope)?;
-            let mut added = 0u32;
-            for (name, text) in envs {
-                if !data.private.contains_key(&name)
-                    && data.private.len() < environments::MAX_PRIVATE
-                {
-                    data.private.insert(name, text);
-                    added += 1;
-                }
-            }
-            if added > 0 {
-                profile::store_scope(&private, keychain.as_ref(), &scope, &data)?;
-            }
-            Ok(added)
-        })
-        .await;
-        match added {
-            Ok(n) => environments_made += n,
-            Err(f) => return refused(WorkbenchProblem::Private(f)),
-        }
-    }
-    next.adoption_settled = true;
-    if let Ok(mut state) = lock(inner) {
-        state.workbench.adoption = None;
-    }
-    match store_profile(inner, root, next).await {
-        Ok(()) => WorkbenchResult::Adopted {
-            collections: u32::try_from(chosen.len()).unwrap_or(u32::MAX),
-            environments: environments_made,
-        },
-        Err(f) => refused(WorkbenchProblem::Private(f)),
-    }
-}
-
-// ------------------------------------------------- v1 import (C23, D050)
-
-/// The API Client's recent collection roots, on its lane (the profile is
-/// read if it was not yet).
-pub(super) async fn v1_recent_roots(inner: &Arc<Inner>) -> Option<Vec<std::path::PathBuf>> {
-    let (lane, root) = lock(inner)
-        .ok()
-        .and_then(|s| Some((Arc::clone(&s.workbench.lane), s.workbench_root.clone()?)))?;
-    let _turn = lane.lock().await;
-    let profile = ensure_profile(inner, &root).await.ok()?;
-    Some(profile.recent.iter().map(|r| r.root.clone()).collect())
-}
-
-/// Adds v1 collections to the recent list as Adopt from v1 does (C14),
-/// on the API Client's lane. `note` is told what is about to be added, on
-/// the lane, before the profile is written: when it refuses (`Err(Some)`),
-/// nothing is. `Err(None)`: the profile could not be read or written.
-/// Private environments are adopted through the API Client itself.
-pub(super) async fn add_v1_recents<E>(
-    inner: &Arc<Inner>,
-    candidates: Vec<adoption::Candidate>,
-    note: impl FnOnce(&[(std::path::PathBuf, String)]) -> Result<(), E>,
-) -> Result<Vec<(std::path::PathBuf, String)>, Option<E>> {
-    let (lane, root) = lock(inner)
-        .ok()
-        .and_then(|s| Some((Arc::clone(&s.workbench.lane), s.workbench_root.clone()?)))
-        .ok_or(None)?;
-    let _turn = lane.lock().await;
-    let mut next = ensure_profile(inner, &root).await.map_err(|_| None)?;
-    let mut added = Vec::new();
-    for c in candidates {
-        if next.recent.iter().any(|r| r.root == c.root) || next.recent.len() >= profile::RECENT {
-            continue;
-        }
-        added.push((c.root.clone(), c.id.clone()));
-        next.recent.push(Recent {
-            root: c.root,
-            id: c.id,
-            name: c.name,
-        });
-    }
-    if !added.is_empty() {
-        note(&added).map_err(Some)?;
-        store_profile(inner, &root, next).await.map_err(|_| None)?;
-    }
-    Ok(added)
-}
-
-/// Removes an imported collection from the recent list while it is still
-/// listed under the same identity (C23 rollback).
-pub(super) async fn remove_v1_recent(
-    inner: &Arc<Inner>,
-    collection: &std::path::Path,
-    id: &str,
-) -> Result<bool, PrivateFailure> {
-    let (lane, root) = lock(inner)
-        .ok()
-        .and_then(|s| Some((Arc::clone(&s.workbench.lane), s.workbench_root.clone()?)))
-        .ok_or(PrivateFailure::Unavailable)?;
-    let _turn = lane.lock().await;
-    let mut next = ensure_profile(inner, &root)
-        .await
-        .map_err(|_| PrivateFailure::Unavailable)?;
-    let before = next.recent.len();
-    next.recent
-        .retain(|r| !(r.root == collection && r.id == id));
-    if next.recent.len() == before {
-        return Ok(false);
-    }
-    store_profile(inner, &root, next).await?;
-    Ok(true)
 }

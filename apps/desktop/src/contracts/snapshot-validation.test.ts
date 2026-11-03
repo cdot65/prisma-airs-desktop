@@ -76,31 +76,6 @@ const offline = (overrides: Record<string, unknown>) => ({
 })
 const withScan = (overrides: Record<string, unknown>) => ({ ...valid, scans: [{ ...scan, ...overrides }] })
 
-function review(overrides: Record<string, unknown>) {
-    return {
-        ...valid,
-        import: {
-            state: 'review',
-            review: 'rv-0011223344556677',
-            format: 'airsCliRegistry',
-            fileName: 'tenants.json',
-            candidates: [
-                {
-                    index: 0,
-                    label: 'A',
-                    tsgId: null,
-                    destination: { kind: 'region', region: 'europe' },
-                    defaultDestination: false,
-                    problem: null,
-                    existingLabel: false,
-                },
-            ],
-            discarded: { secretFields: 0, fileReferences: 0, otherFields: 0 },
-            ...overrides,
-        },
-    }
-}
-
 const changeReview = {
     review: 'rv-0011223344556677',
     kind: 'topics',
@@ -153,7 +128,6 @@ describe('shell snapshot validation', () => {
             })
         ).toBeTruthy()
         expect(parseShellSnapshot(valid)).toEqual(valid)
-        expect(parseShellSnapshot(review({}))).toBeTruthy()
         expect(parseShellSnapshot(withScan({}))).toBeTruthy()
         expect(parseShellSnapshot(withScan({ progress: 'running', outcome: null, result: null }))).toBeTruthy()
         expect(
@@ -175,9 +149,6 @@ describe('shell snapshot validation', () => {
     })
 
     it.each([
-        ['discarded counts missing', review({ discarded: {} })],
-        ['negative discarded count', review({ discarded: { secretFields: -1, fileReferences: 0, otherFields: 0 } })],
-        ['fractional candidate index', review({ candidates: [{ ...review({}).import.candidates[0], index: 0.5 }] })],
         ['reset failure as a bare reason', { ...valid, resetFailure: 'locked' }],
         ['unknown reset stage', { ...valid, resetFailure: { stage: 'everything', reason: 'locked' } }],
         ['durability flag missing', { ...valid, durabilityUnconfirmed: undefined }],
@@ -1080,78 +1051,6 @@ describe('API Client validation', () => {
             expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, running: [run, run, run, run, run] }))).toThrow(ContractViolation)
             expect(() => parseShellSnapshot(snapshot({ ...baseSnapshot.workbench, network: 'anywhere' }))).toThrow(ContractViolation)
         })
-    })
-})
-
-describe('reviewed v1 import (C23)', () => {
-    const plan = {
-        review: 'rv-0123456789abcdef',
-        items: [
-            {
-                index: 0,
-                category: 'cases',
-                label: 'Prod',
-                target: 'Ours',
-                status: { kind: 'ready' },
-                counts: { new: 1, present: 0, conflict: 1, skipped: 0 },
-                partial: null,
-            },
-            {
-                index: 1,
-                category: 'conversations',
-                label: 'Prod',
-                target: null,
-                status: { kind: 'blocked', problem: 'keychainLocked' },
-                counts: { new: 0, present: 0, conflict: 0, skipped: 0 },
-                partial: null,
-            },
-        ],
-    }
-    const receipt = {
-        id: 'imp-0123456789abcdef',
-        created: 1_790_000_000,
-        state: 'applying',
-        interrupted: true,
-        items: [{ category: 'cases', label: 'Prod', state: 'writing', written: 2, kept: 0 }],
-        canResume: true,
-        canRollBack: true,
-    }
-    const view = {
-        ...baseSnapshot.v1Import,
-        source: 'ready',
-        tenants: [{ index: 0, label: 'Prod', tsgId: '1234567890', sessionOnly: false, matches: ['tn-0123456789abcdef'] }],
-        categories: [{ category: 'cases', found: null, problem: null }],
-        notMapped: ['navigation'],
-        plan,
-        receipts: [receipt],
-    }
-    const snapshot = (v: unknown) => ({ ...valid, v1Import: v })
-
-    it('accepts what Rust issues', () => {
-        expect(parseShellSnapshot(snapshot(baseSnapshot.v1Import))).toBeTruthy()
-        expect(parseShellSnapshot(snapshot(view))).toBeTruthy()
-        expect(parseShellSnapshot(snapshot({ ...view, plan: null, activity: 'rollingBack', problem: 'sourceChanged' }))).toBeTruthy()
-    })
-
-    it('rejects categories, statuses, receipts and bounds Rust never issues', () => {
-        const item = plan.items[0]
-        for (const broken of [
-            { ...valid, v1Import: undefined },
-            snapshot({ ...view, source: 'somewhere' }),
-            snapshot({ ...view, categories: [{ category: 'passwords', found: 1, problem: null }] }),
-            snapshot({ ...view, problem: 'gatewaySaid: boom' }),
-            snapshot({ ...view, activity: 'syncing' }),
-            snapshot({ ...view, tenants: [{ ...view.tenants[0], matches: ['tenant-1'] }] }),
-            snapshot({ ...view, plan: { ...plan, review: 'review-1' } }),
-            snapshot({ ...view, plan: { ...plan, items: [{ ...item, status: { kind: 'blocked' } }] } }),
-            snapshot({ ...view, plan: { ...plan, items: [{ ...item, status: { kind: 'ready', problem: 'missing' } }] } }),
-            snapshot({ ...view, plan: { ...plan, items: [{ ...item, counts: { new: -1, present: 0, conflict: 0, skipped: 0 } }] } }),
-            snapshot({ ...view, receipts: [{ ...receipt, id: 'imp-1' }] }),
-            snapshot({ ...view, receipts: [{ ...receipt, state: 'paused' }] }),
-            snapshot({ ...view, receipts: Array.from({ length: 9 }, () => receipt) }),
-        ]) {
-            expect(() => parseShellSnapshot(broken)).toThrow(ContractViolation)
-        }
     })
 })
 

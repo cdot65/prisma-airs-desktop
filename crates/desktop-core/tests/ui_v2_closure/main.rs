@@ -1,12 +1,11 @@
 //! C44: one presentation. Through the production authority interface: the
 //! snapshot always says the v2 presentation with the v2 catalogue, whatever
-//! an older store persisted; `SetUiVariant` (sent by older presentations
 //! and drivers) is accepted and changes nothing; navigation resolves against
 //! the v2 catalogue only, so every destination the legacy shell reached is
 //! still a destination here (the product entries open Administration's
 //! products in the shell); a fresh store starts in the first-run wizard.
 
-use desktop_core::features::{FeatureId, OnboardingState, UiVariant};
+use desktop_core::features::{FeatureId, OnboardingState};
 use desktop_core::fixtures::{self, ScriptedStore};
 use desktop_core::store::PersistedState;
 use desktop_core::{
@@ -64,15 +63,14 @@ fn v2_ids(snap: &ShellSnapshot) -> Vec<FeatureId> {
 }
 
 #[tokio::test]
-async fn an_older_store_that_persisted_the_legacy_presentation_still_gets_v2() {
+async fn the_only_catalogue_starts_at_home_without_a_presentation_selector() {
     let state = PersistedState {
-        ui_variant: UiVariant::Legacy,
         onboarding: OnboardingState::Done,
         ..Default::default()
     };
-    let mut desk = Desk::from_state(state);
+    let desk = Desk::from_state(state);
     let snap = desk.snap();
-    assert_eq!(snap.ui_variant, UiVariant::V2);
+
     assert_eq!(
         v2_ids(&snap)[..7],
         [
@@ -86,11 +84,9 @@ async fn an_older_store_that_persisted_the_legacy_presentation_still_gets_v2() {
         ]
     );
     // The switch intent is accepted and changes nothing.
-    desk.send(json!({"kind": "setUiVariant", "variant": "legacy"}))
-        .await
-        .expect("accepted");
+
     let after = desk.snap();
-    assert_eq!(after.ui_variant, UiVariant::V2);
+
     assert_eq!(v2_ids(&after), v2_ids(&snap));
 }
 
@@ -130,7 +126,7 @@ async fn every_destination_the_legacy_shell_reached_is_a_v2_destination() {
 async fn a_fresh_store_starts_in_the_first_run_wizard_of_the_only_presentation() {
     let desk = Desk::from_state(PersistedState::default());
     let snap = desk.snap();
-    assert_eq!(snap.ui_variant, UiVariant::V2);
+
     assert_eq!(snap.onboarding, OnboardingState::Needed);
     assert!(snap.tenants.is_empty());
 }

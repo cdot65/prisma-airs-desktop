@@ -534,9 +534,7 @@ async fn every_scope_is_per_tenant_across_a_switch() {
         .expect("snoozed in A");
     assert_eq!(desk.snap().inbox.items.len(), 2);
     // B: nothing of A's shows; B starts pending and empty, on its Home.
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     desk.send(json!({"kind": "navigate", "feature": "inbox"}))
         .await
         .expect("inbox");

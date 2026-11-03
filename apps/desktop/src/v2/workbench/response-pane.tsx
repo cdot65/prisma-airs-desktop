@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { RunRecord, RunView, RunningView, SendReviewView } from '@prisma-airs/desktop-contracts'
-import { type WorkbenchCall, resultText, runFailureText, runSummary, sizeText } from '../../features/workbench/workbench-call'
+import { type WorkbenchCall, resultText, runFailureText, runSummary, sizeText } from '../../modules/workbench/workbench-call'
 import { clockOf } from '../copy'
 import { Btn } from '../controls'
 import { Glyph } from '../icons'

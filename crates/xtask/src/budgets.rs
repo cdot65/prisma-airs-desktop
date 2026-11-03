@@ -19,7 +19,7 @@ use crate::native::{Prepared, bundle_path, plist_value};
 use crate::{Repo, Result, Subject, invalid, io_err, now_utc, read_json, sha256_hex, write_json};
 
 pub const BUDGETS: &str = "docs/architecture/budgets.json";
-const PRODUCT: &str = "Prisma AIRS Desktop v2";
+const PRODUCT: &str = "Prisma AIRS Desktop";
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Budgets {

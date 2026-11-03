@@ -124,9 +124,7 @@ impl Desk {
 #[tokio::test]
 async fn a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify() {
     let mut desk = Desk::new();
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     let context = desk.begin("firstRun", "Northwind Health").await;
     let snap = desk.snap();
     assert!(snap.tenants.is_empty(), "the draft is not listed");
@@ -287,9 +285,7 @@ async fn changing_inputs_makes_results_stale_and_products_needing_a_client_warn(
 #[tokio::test]
 async fn completion_commits_the_draft_once_with_products_warnings_and_onboarding() {
     let mut desk = Desk::new();
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     desk.send(json!({"kind": "setOnboarding", "state": "inProgress"}))
         .await
         .expect("in progress");
@@ -524,9 +520,7 @@ async fn a_desktop_with_a_tenant_is_never_sent_through_the_wizard() {
         OnboardingState::Needed,
         "the stored state is untouched"
     );
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     assert_eq!(desk.snap().onboarding, OnboardingState::Done);
 }
 
@@ -566,9 +560,7 @@ async fn a_draft_id_is_never_selectable_or_deletable_as_a_tenant() {
 async fn a_tenant_created_outside_the_wizard_ends_a_first_run_draft_and_the_shell_takes_over() {
     // The v1 import during first run commits tenants through the same path.
     let mut desk = Desk::new();
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     desk.send(json!({"kind": "setOnboarding", "state": "inProgress"}))
         .await
         .expect("in progress");

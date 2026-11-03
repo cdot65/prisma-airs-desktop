@@ -1,7 +1,7 @@
 import { forwardRef, useCallback } from 'react'
 import type { DesktopClient, FeatureEntry, FeatureId, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
-import { SessionsView } from '../features/sessions/sessions-view'
-import type { Dispatch } from '../features/tenants/dispatch'
+import { SessionsView } from '../modules/sessions/sessions-view'
+import type { Dispatch } from '../modules/tenants/dispatch'
 import { SettingsView, UnavailableView } from './feature-view'
 
 export interface FeatureBodyProps {

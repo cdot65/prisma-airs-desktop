@@ -1,4 +1,4 @@
-//! Prisma AIRS Desktop v2 application core.
+//! Prisma AIRS Desktop application core.
 //!
 //! The core owns native authority: callers hold a principal-bound
 //! [`AuthorityHandle`] whose only operations are [`AuthorityHandle::dispatch`]
@@ -24,8 +24,8 @@ pub mod gateway_inference;
 pub mod gateway_local;
 pub mod gateway_observe;
 pub mod harness;
-pub mod import;
-pub mod import_v1;
+pub mod picker;
+pub use picker::ImportError;
 pub mod learner;
 pub mod library;
 pub mod management;
@@ -53,9 +53,9 @@ pub use authority::{
     AuthorityHandle, CatalogSource, ChangeFailure, ChangeResultView, ChangeReviewState,
     ChangeReviewView, ChangesView, ConfirmationRequest, Core, CoreConfig, CredentialStore,
     DownloadStatus, DownloadView, EndpointReviewView, ExportKind, ExportState, ExportView,
-    FileSaver, GatewayView, HeldItem, HoldKind, ImagePicker, ImportFile, ImportPicker, ImportView,
-    InboxEntry, InboxKind, InboxTarget, InboxView, Intent, InvestigationView, LibraryNotice,
-    LibraryState, LibraryView, LocalDraftView, MAX_TENANTS, Observation, OfflineState, OfflineView,
+    FileSaver, GatewayView, HeldItem, HoldKind, ImagePicker, ImportFile, ImportPicker, InboxEntry,
+    InboxKind, InboxTarget, InboxView, Intent, InvestigationView, LibraryNotice, LibraryState,
+    LibraryView, LocalDraftView, MAX_TENANTS, Observation, OfflineState, OfflineView,
     OperatorConfirmation, OverviewView, PagePrinter, Principal, ProductRead, ProductReadState,
     ReadState, ReadStatus, Readback, Receipt, Refusal, ReportTarget, ReportUndoView, ReportsState,
     ReportsView, ResetFailure, ResetStage, RotationStage, RotationView, ScanProgress,

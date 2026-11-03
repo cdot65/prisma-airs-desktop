@@ -165,7 +165,6 @@ describe('v2 shell', () => {
         expect(native.dispatched.at(-1)).toEqual({ kind: 'setShowCalls', on: false })
         // C44: there is one presentation. A snapshot still saying `legacy` (an older core) renders the v2 shell.
         expect(screen.queryByRole('button', { name: 'Return to the classic interface' })).toBeNull()
-        await native.push({ ...native.current, uiVariant: 'legacy' })
         expect(screen.queryByRole('navigation', { name: 'Features' })).toBeNull()
         expect(screen.getByRole('navigation', { name: 'Destinations' })).toBeInTheDocument()
     })

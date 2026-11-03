@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ContextRef, HarnessHistoryView, HistoryFormat, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../../../features/tenants/dispatch'
+import type { Dispatch } from '../../../modules/tenants/dispatch'
 import { HISTORY_FAILURE_TEXT, HISTORY_FORMATS, NOT_CONTINUABLE_TEXT, actionOutcomeText, savedAt } from '../text'
 import { Btn } from './controls'
 

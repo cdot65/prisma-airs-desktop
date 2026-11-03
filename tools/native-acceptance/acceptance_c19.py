@@ -54,8 +54,7 @@ def save_tree(name, tree):
 
 def engines():
     """The bundled engine's processes (the engine and its own supervisor)."""
-    out = fx.sh(["pgrep", "-f", ENGINE]).stdout.split()
-    return [int(p) for p in out]
+    return fx.candidate.engine_pids()
 
 
 def leader():
@@ -146,15 +145,15 @@ def main():
     try:
         return run()
     finally:
-        fx.sh(["pkill", "-f", fx.PROCESS])
-        fx.sh(["pkill", "-9", "-f", ENGINE])
+        fx.stop_app()
+        fx.stop_engines()
         fx.clean_fixture_root()
 
 
 def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if c8.sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c19-acceptance-")
@@ -163,7 +162,7 @@ def run():
     os.makedirs(NATIVE)
     app = fx.App(bundle, work, LOG)
     app.quit()
-    fx.sh(["pkill", "-9", "-f", ENGINE])
+    fx.stop_engines()
     fx.clean_fixture_root()
     v1_before = fx.v1_metadata()
     endpoint = fx.ScanEndpoint(os.path.join(work, "endpoint"), c8.SCAN_KEY)
@@ -309,7 +308,7 @@ def run():
     tree, _ = start(app)
     victim = leader()
     if victim:
-        os.kill(victim, signal.SIGKILL)
+        fx.signal_engine(victim, signal.SIGKILL)
     tree, crashed = c8.text(app, "The engine stopped unexpectedly.", 10)
     crash_gone = wait(lambda: engines() == [], 10)
     wait(lambda: homes() == [], 5)

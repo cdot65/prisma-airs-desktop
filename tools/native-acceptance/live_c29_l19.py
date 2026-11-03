@@ -25,9 +25,9 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fixture_app as fx
 
-IDENTITY = 'io.cdot.prisma-airs-desktop.v2.l19qual'
-SERVICE = 'io.cdot.prisma-airs-desktop.v2.scan'
-LIVE_REF = ('io.cdot.prisma-airs-desktop.v2.live', 'mgmt-vulture-client-secret')
+IDENTITY = 'io.cdot.airs-desktop.l19qual'
+SERVICE = 'io.cdot.airs-desktop.scan'
+LIVE_REF = ('io.cdot.airs-desktop.live', 'mgmt-vulture-client-secret')
 OPERATION = 'one management credential verification through the first-run wizard (C29): one latest security-profile probe with limit=1; discard profile contents; no other inventory browsing or writes'
 ROOT = Path.cwd().resolve()
 DATA = Path.home() / 'Library/Application Support' / IDENTITY
@@ -173,7 +173,7 @@ def main():
         expected, relative = line.split(None, 1)
         assert sha(ROOT / relative.lstrip(' *')) == expected, 'qualification source changed after build'
     bundle = Path(build['bundle'])
-    EXE = bundle / 'Contents/MacOS/prisma-airs-desktop-v2'
+    EXE = bundle / 'Contents/MacOS/prisma-airs-desktop'
     assert sha(EXE) == build['executable_sha256']
     actual_id = fx.sh(['plutil', '-extract', 'CFBundleIdentifier', 'raw', '-o', '-', str(bundle / 'Contents/Info.plist')]).stdout.strip()
     assert actual_id == IDENTITY

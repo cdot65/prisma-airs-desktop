@@ -3,7 +3,7 @@
 
 fn main() {
     if let Err(error) = desktop_host::run(tauri::generate_context!()) {
-        eprintln!("Prisma AIRS Desktop v2 failed to start: {error}");
+        eprintln!("Prisma AIRS Desktop failed to start: {error}");
         std::process::exit(1);
     }
 }

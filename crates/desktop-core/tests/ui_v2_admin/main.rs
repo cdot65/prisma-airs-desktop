@@ -297,9 +297,7 @@ impl Desk {
 async fn the_inventory_lists_the_products_and_runtime_tabs_the_board_draws() {
     let mut desk = desk(vec![0, 1]).await;
     // The inventory is the v2 shell's (the legacy shell carries none).
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     let snap = desk.read().await;
     let inventory = snap.administration.expect("inventory");
     let ids: Vec<String> = inventory

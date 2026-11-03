@@ -15,3 +15,9 @@ __pycache__/
 # Parity raw captures are derivable from the composites (tools/parity)
 docs/planning/evidence/*/parity/app/
 docs/planning/evidence/*/parity/proto/
+
+# Build/input roots may be isolated-worktree symlinks; consumed bytes are
+# separately inventoried, never committed as machine-specific path aliases.
+/target
+/.inputs
+/.tools

@@ -1,7 +1,7 @@
 [package]
 name = "desktop-core"
-version = "2.0.0"
-description = "Prisma AIRS Desktop v2 application core: native authority, context and outcomes"
+version = "1.0.0"
+description = "Prisma AIRS Desktop application core: native authority, context and outcomes"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -251,11 +251,6 @@ path = "tests/native_quality/main.rs"
 required-features = ["test-fixtures"]
 
 [[test]]
-name = "imports_rollback"
-path = "tests/imports_rollback/main.rs"
-required-features = ["test-fixtures"]
-
-[[test]]
 name = "harness_process"
 path = "tests/harness_process/main.rs"
 required-features = ["test-fixtures"]
@@ -269,3 +264,7 @@ required-features = ["test-fixtures"]
 
 [lints]
 workspace = true
+
+[[test]]
+name = "c45_fresh_setup"
+required-features = ["test-fixtures"]

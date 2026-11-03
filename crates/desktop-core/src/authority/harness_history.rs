@@ -277,12 +277,6 @@ impl State {
         }
         let lease = self.lease();
         let h = self.history_for(context, reference)?;
-        let (tenant, workspace) = (h.tenant.clone(), h.workspace.clone());
-        // A conversation an unsettled import saved is not there yet (D050).
-        if self.v1_hides_conversation(&tenant, &workspace, id) {
-            return Err(Refusal::InvalidInput);
-        }
-        let h = self.history_for(context, reference)?;
         if h.busy {
             return Err(Refusal::Busy);
         }
@@ -368,15 +362,11 @@ impl State {
         id: &str,
     ) -> Result<Resume, Refusal> {
         let h = self.history_for(context, reference)?;
-        let (tenant, workspace) = (h.tenant.clone(), h.workspace.clone());
         let record = h
             .opened
             .clone()
             .filter(|r| r.id == id)
             .ok_or(Refusal::InvalidInput)?;
-        if self.v1_hides_conversation(&tenant, &workspace, id) {
-            return Err(Refusal::InvalidInput);
-        }
         if self.not_continuable(&record).is_some() {
             return Err(Refusal::StaleContext);
         }
@@ -731,12 +721,6 @@ impl State {
         let conversations = listed
             .iter()
             .filter_map(|l| match l {
-                // An import's conversations show once it commits (D050).
-                Listed::Saved { id, .. }
-                    if self.v1_hides_conversation(&h.tenant, &h.workspace, id) =>
-                {
-                    None
-                }
                 Listed::Saved {
                     id,
                     title,
@@ -768,19 +752,15 @@ impl State {
             unreadable,
             failure,
             // Nor is one opened while an import that saved it is unsettled.
-            opened: h
-                .opened
-                .as_ref()
-                .filter(|r| !self.v1_hides_conversation(&h.tenant, &h.workspace, &r.id))
-                .map(|r| OpenedConversationView {
-                    id: r.id.clone(),
-                    title: r.title.clone(),
-                    updated: r.updated,
-                    entries: r.entries.clone(),
-                    source: r.binding.source,
-                    not_continuable: self.not_continuable(r),
-                    opening: r.opening(),
-                }),
+            opened: h.opened.as_ref().map(|r| OpenedConversationView {
+                id: r.id.clone(),
+                title: r.title.clone(),
+                updated: r.updated,
+                entries: r.entries.clone(),
+                source: r.binding.source,
+                not_continuable: self.not_continuable(r),
+                opening: r.opening(),
+            }),
             busy: h.busy,
             problem: h.problem,
             last_open: h.last_open.clone(),

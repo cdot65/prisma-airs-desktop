@@ -199,3 +199,7 @@ The active implementation task may deliver reviewed Git commits to the exact
 owner-specified remote using normal pushes. Application release publication,
 hosting changes, and promotion over v1 must remain within the owner's explicit
 release instruction; preparing a signed package does not by itself publish it.
+
+## P10 — C45: one presentation and fresh identity (D061/D062)
+
+After actual P09all9/audit, C45 implements C45-draft.md and chunks/C45.md. P10=[C45] must pass an actual cumulative independentall9 review before the signed C26/P08release. C26 itself is not required before its own release build; genuine P09/P10 proofs and existing C01–C25 prerequisites guard that production boundary. The approved manual review fallback remains explicit while C26/P08 is open; no controller receipts are fabricated. Verification follows verification-policy.md: one justified C45 baseline, affected followups and reuse for P10 when valid.

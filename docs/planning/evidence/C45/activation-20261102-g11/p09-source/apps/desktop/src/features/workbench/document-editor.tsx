@@ -1,0 +1,572 @@
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { Button, Callout, Input, cn } from '@ai-security-academy/presentation'
+import { AlertTriangle, History, Save, Send } from 'lucide-react'
+import type { DocumentView, Fields, Preview, RunView, RunningView, SendReviewView } from '@prisma-airs/desktop-contracts'
+import { useV2Layout } from '../../shell/presentation'
+import { ReviewPanel, RunPanel, Running } from './request-send'
+import { type WorkbenchCall, fieldText, resultText, saveRefusalText } from './workbench-call'
+
+/** File > Save (Cmd+S) arrives from the native menu as this window event. */
+export const SAVE_DOCUMENT_EVENT = 'airs-save-document'
+
+/** How long typing pauses before the snapshot is protected on this Mac. */
+export const PROTECT_DELAY_MS = 400
+export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']
+const BODY_KINDS = ['text', 'json', 'form', 'multipart', 'file']
+
+export const TEXTAREA = cn(
+    'rounded-academy-md bg-academy-bg-inset border-academy-rule focus-visible:border-academy-accent-ring w-full border px-3.5 py-2.5',
+    'text-academy-ink min-h-24 resize-y font-mono text-[13px] leading-snug'
+)
+export const SELECT = 'border-academy-rule rounded-academy-sm bg-academy-bg-inset min-h-11 border px-2'
+
+const same = (a: Fields, b: Fields) =>
+    a.method === b.method &&
+    a.url === b.url &&
+    a.headers === b.headers &&
+    a.query === b.query &&
+    a.body === b.body &&
+    a.bodyKind === b.bodyKind &&
+    a.settings === b.settings
+
+export const requestName = (relative: string) => relative.split('/').pop()?.replace(/\.request\.toml$/, '') ?? relative
+
+/**
+ * What the completion status region announces after Send (C33, known gap 5):
+ * "<request> · <code> · <duration>". The response body is outside it.
+ */
+export function completionText(record: { relative: string; status: number | null; elapsedMs: number }): string {
+    const code = record.status !== null ? String(record.status) : 'no response'
+    const ms = record.elapsedMs
+    const duration = ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`
+    return `${requestName(record.relative)} · ${code} · ${duration}`
+}
+
+interface Props {
+    initial: DocumentView
+    call: WorkbenchCall
+    schemas: string[]
+    /** The document was closed by a choice made here. */
+    onClosed: (id: string) => void
+    /** Hands the workbench this document's close handle. */
+    register?: (handle: EditorHandle) => void
+    /** The active tenant context (Rust decides whether a request needs it). */
+    context?: string | null
+    /** This document's requests in flight. */
+    running?: RunningView[]
+    /** A tenant-credential change from this document awaiting review. */
+    review?: SendReviewView | null
+}
+
+export interface EditorHandle {
+    /**
+     * Protects any edit not yet acknowledged; resolves whether everything
+     * typed is now kept on this Mac. Closing a tab or the collection waits
+     * for it.
+     */
+    flush: () => Promise<boolean>
+    /** The operator chose to close without the latest edits. */
+    abandon: () => void
+}
+
+/**
+ * One request document. The editor text lives here (React owns immediate
+ * input); Rust owns the baseline and revision. Save captures the fields the
+ * editor holds at that moment, not a debounced copy; typing pauses protect
+ * the snapshot on this Mac; a reply never overwrites newer typing.
+ */
+export function DocumentEditor({ initial, call, schemas, onClosed, register, context = null, running = [], review = null }: Props) {
+    const v2 = useV2Layout()
+    const ids = useId()
+    const [doc, setDoc] = useState(initial)
+    const [fields, setFields] = useState(initial.fields)
+    const fieldsRef = useRef(initial.fields)
+    const revisionRef = useRef(initial.revision)
+    const idRef = useRef(initial.id)
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+    // Edit generations: every edit takes the next; Rust clears its
+    // unprotected mark only for a snapshot covering its newest reported one.
+    const editGen = useRef(0)
+    const markedGen = useRef(0)
+    const sentGen = useRef(0)
+    const ackGen = useRef(0)
+    const [status, setStatus] = useState('')
+    const [saving, setSaving] = useState(false)
+    const [preview, setPreview] = useState<Preview | null>(null)
+    const [run, setRun] = useState<RunView | null>(null)
+    const [sending, setSending] = useState(false)
+    const [conflict, setConflict] = useState<'changed' | 'deleted' | 'interrupted' | null>(
+        initial.interrupted ? 'interrupted' : initial.conflict
+    )
+
+    const adopt = useCallback((next: DocumentView, editor: Fields | null) => {
+        setDoc(next)
+        revisionRef.current = next.revision
+        setConflict(next.interrupted ? 'interrupted' : next.conflict)
+        if (editor !== null) {
+            fieldsRef.current = editor
+            setFields(editor)
+        }
+    }, [])
+
+    const protect = useCallback((): Promise<boolean> => {
+        timer.current = null
+        const edit = editGen.current
+        sentGen.current = Math.max(sentGen.current, edit)
+        return call({ kind: 'protect', id: idRef.current, revision: revisionRef.current, fields: fieldsRef.current, edit }).then((r) => {
+            if (r.kind === 'protected') {
+                ackGen.current = Math.max(ackGen.current, edit)
+                return true
+            }
+            setStatus(resultText(r) ?? '')
+            return false
+        })
+    }, [call])
+
+    // Protects whatever is not yet acknowledged (a pending pause, or a
+    // protection that failed); resolves whether all typing is kept.
+    const flush = useCallback((): Promise<boolean> => {
+        const waiting = timer.current !== null
+        if (timer.current !== null) clearTimeout(timer.current)
+        if (waiting || editGen.current > ackGen.current) return protect()
+        return Promise.resolve(true)
+    }, [protect])
+
+    const abandon = useCallback(() => {
+        if (timer.current !== null) clearTimeout(timer.current)
+        timer.current = null
+        ackGen.current = editGen.current
+    }, [])
+
+    const registerRef = useRef(register)
+    registerRef.current = register
+    useEffect(() => {
+        registerRef.current?.({ flush, abandon })
+        // Leaving the document (another tab, another destination) protects
+        // what was typed since the last pause; a later close waits for it.
+        return () => {
+            const left = flush()
+            registerRef.current?.({ flush: () => left, abandon: () => {} })
+        }
+    }, [flush, abandon])
+
+    const edit = (patch: Partial<Fields>) => {
+        const next = { ...fieldsRef.current, ...patch }
+        fieldsRef.current = next
+        setFields(next)
+        const generation = ++editGen.current
+        // Re-armed whenever a submitted snapshot may have cleared the mark.
+        if (markedGen.current <= sentGen.current) {
+            markedGen.current = generation
+            void call({ kind: 'editing', id: idRef.current, edit: generation })
+        }
+        if (timer.current !== null) clearTimeout(timer.current)
+        timer.current = setTimeout(() => void protect(), PROTECT_DELAY_MS)
+    }
+
+    const reload = async () => {
+        const r = await call({ kind: 'openRequest', relative: doc.relative })
+        if (r.kind === 'document') adopt(r.document, r.document.fields)
+    }
+
+    const save = async () => {
+        // The fields the editor holds now, whatever is still debouncing.
+        const snapshot = fieldsRef.current
+        const edit = editGen.current
+        if (timer.current !== null) {
+            clearTimeout(timer.current)
+            timer.current = null
+        }
+        sentGen.current = Math.max(sentGen.current, edit)
+        setSaving(true)
+        setStatus('Saving…')
+        const r = await call({ kind: 'save', id: idRef.current, revision: revisionRef.current, fields: snapshot, edit })
+        setSaving(false)
+        if (r.kind === 'saved' || r.kind === 'unchanged') {
+            ackGen.current = Math.max(ackGen.current, edit)
+            adopt(r.document, null)
+            if (fieldsRef.current !== snapshot) {
+                // Typed while saving: the newer text stays and is protected
+                // against the new revision.
+                setStatus('Saved. Edits made while saving are kept unsaved.')
+                void protect()
+            } else {
+                setStatus(r.kind === 'saved' ? 'Saved' : 'No changes to save')
+            }
+            return
+        }
+        if (r.kind === 'saveRefused') {
+            if (r.refusal.kind === 'conflict') setConflict('changed')
+            if (r.refusal.kind === 'interrupted' || r.refusal.kind === 'io') setConflict('interrupted')
+            setStatus(saveRefusalText(r.refusal))
+            return
+        }
+        if (r.kind === 'refused' && r.problem.kind === 'stale') await reload()
+        setStatus(resultText(r) ?? '')
+    }
+
+    const resolve = async (choice: 'useDisk' | 'keepMine') => {
+        const r = await call({ kind: 'resolve', id: idRef.current, revision: revisionRef.current, fields: fieldsRef.current, choice })
+        if (r.kind === 'closed') return onClosed(r.id)
+        if (r.kind === 'document') {
+            adopt(r.document, choice === 'useDisk' ? r.document.fields : null)
+            setStatus(choice === 'useDisk' ? 'Using the files on disk. Your version was kept privately.' : 'Your edits now apply to the files on disk. Save to write them.')
+            return
+        }
+        setStatus(resultText(r) ?? '')
+    }
+
+    const discard = async () => {
+        const r = await call({ kind: 'discardDraft', id: idRef.current })
+        if (r.kind === 'closed') return onClosed(r.id)
+        if (r.kind === 'document') {
+            ackGen.current = editGen.current
+            adopt(r.document, r.document.fields)
+            setStatus('Draft discarded')
+            return
+        }
+        setStatus(resultText(r) ?? '')
+    }
+
+    const associate = async (schema: string) => {
+        const r = await call({
+            kind: 'associateSchema',
+            id: idRef.current,
+            revision: revisionRef.current,
+            fields: fieldsRef.current,
+            schema: schema === '' ? null : schema,
+        })
+        if (r.kind === 'document') adopt(r.document, null)
+        else setStatus(resultText(r) ?? '')
+    }
+
+    // Send: the fields the editor holds now (never a debounced or saved
+    // copy); Rust renders, admits and sends them.
+    const sendNow = async (reviewId: string | null) => {
+        const snapshot = fieldsRef.current
+        setSending(true)
+        setRun(null)
+        setStatus(reviewId ? 'Waiting for your confirmation…' : 'Sending…')
+        const r = await call(
+            reviewId
+                ? { kind: 'apply', review: reviewId, id: idRef.current, revision: revisionRef.current, fields: snapshot, context }
+                : { kind: 'send', id: idRef.current, revision: revisionRef.current, fields: snapshot, context }
+        )
+        setSending(false)
+        if (r.kind === 'ran') {
+            setRun(r.run)
+            setStatus(completionText(r.run.record))
+            return
+        }
+        if (r.kind === 'reviewRequired') {
+            setStatus('This change to the tenant needs your review below.')
+            return
+        }
+        if (r.kind === 'refused' && r.problem.kind === 'stale') await reload()
+        setStatus(resultText(r) ?? '')
+    }
+
+    const showPreview = async () => {
+        const r = await call({ kind: 'preview', id: idRef.current, fields: fieldsRef.current })
+        if (r.kind === 'preview') setPreview(r.preview)
+        else setStatus(resultText(r) ?? '')
+    }
+
+    // File > Save (Cmd+S) from the native menu saves this document.
+    const saveRef = useRef(save)
+    saveRef.current = save
+    useEffect(() => {
+        const onSave = () => void saveRef.current()
+        window.addEventListener(SAVE_DOCUMENT_EVENT, onSave)
+        return () => window.removeEventListener(SAVE_DOCUMENT_EVENT, onSave)
+    }, [])
+
+    const dirty = doc.new || doc.metadataDirty || !same(fields, doc.saved)
+    const name = requestName(doc.relative)
+    const titleRow = (
+        <div className='flex flex-wrap items-baseline gap-2'>
+            <h2 className='text-[17px] font-semibold'>{name}</h2>
+            <span className='text-academy-ink-faint text-[12px]'>{doc.relative}</span>
+            <span className='text-academy-ink-soft text-[12px]' data-slot='workbench-dirty'>
+                {doc.new ? 'New · not saved yet' : dirty ? 'Unsaved changes' : 'Saved'}
+            </span>
+        </div>
+    )
+    const callouts = (
+        <>
+            {conflict ? (
+                <Callout tone='warning' icon={AlertTriangle} role='alert' data-slot='workbench-conflict'>
+                    <p className='text-academy-ink font-semibold'>
+                        {conflict === 'deleted' ? 'Deleted on disk' : conflict === 'interrupted' ? 'Interrupted save' : 'Changed on disk'}
+                    </p>
+                    <p>
+                        {conflict === 'interrupted'
+                            ? 'An earlier save of this request did not finish. Choose which version to continue from; both are kept privately first.'
+                            : 'The files changed since this request was opened. Choose which version to continue from; both are kept privately first.'}
+                    </p>
+                    <div className='mt-3 flex flex-wrap gap-2'>
+                        <Button type='button' tier='secondary' onClick={() => void resolve('useDisk')}>
+                            Use disk
+                        </Button>
+                        <Button type='button' tier='secondary' onClick={() => void resolve('keepMine')}>
+                            Keep mine
+                        </Button>
+                    </div>
+                </Callout>
+            ) : null}
+            {doc.recovered && !conflict ? (
+                <Callout tone='info' icon={History} data-slot='workbench-recovered'>
+                    <p className='text-academy-ink font-semibold'>Recovered draft</p>
+                    <p>Unsaved changes from an earlier session were restored. Save to keep them in the collection.</p>
+                    <Button type='button' tier='secondary' className='mt-3' onClick={() => void discard()}>
+                        Discard draft
+                    </Button>
+                </Callout>
+            ) : null}
+        </>
+    )
+    const methodField = (
+        <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-method`}>
+            Method
+            <Input
+                id={`${ids}-method`}
+                list={`${ids}-methods`}
+                value={fields.method}
+                autoComplete='off'
+                spellCheck={false}
+                onChange={(e) => edit({ method: e.target.value })}
+            />
+            <datalist id={`${ids}-methods`}>
+                {METHODS.map((m) => (
+                    <option key={m} value={m} />
+                ))}
+            </datalist>
+        </label>
+    )
+    const urlField = (
+        <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-url`}>
+            URL
+            <Input id={`${ids}-url`} value={fields.url} autoComplete='off' spellCheck={false} onChange={(e) => edit({ url: e.target.value })} />
+        </label>
+    )
+    const details = (
+        <>
+            <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-query`}>
+                Params
+                <textarea
+                    id={`${ids}-query`}
+                    className={TEXTAREA}
+                    value={fields.query}
+                    spellCheck={false}
+                    aria-describedby={`${ids}-rows`}
+                    onChange={(e) => edit({ query: e.target.value })}
+                />
+            </label>
+            <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-headers`}>
+                Headers
+                <textarea
+                    id={`${ids}-headers`}
+                    className={TEXTAREA}
+                    value={fields.headers}
+                    spellCheck={false}
+                    aria-describedby={`${ids}-rows`}
+                    onChange={(e) => edit({ headers: e.target.value })}
+                />
+            </label>
+            <p id={`${ids}-rows`} className='text-academy-ink-faint -mt-2 text-[12px]'>
+                One row per line: name=value for params, Name: value for headers. Start a row with "# " to disable it.
+            </p>
+            <div className='flex flex-col gap-1'>
+                <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-kind`}>
+                    Body kind
+                    <select id={`${ids}-kind`} className={SELECT} value={fields.bodyKind} onChange={(e) => edit({ bodyKind: e.target.value })}>
+                        {BODY_KINDS.map((k) => (
+                            <option key={k} value={k}>
+                                {k}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-body`}>
+                    Body
+                    <textarea
+                        id={`${ids}-body`}
+                        className={TEXTAREA}
+                        value={fields.body}
+                        spellCheck={false}
+                        readOnly={!doc.bodyEditable}
+                        onChange={(e) => edit({ body: e.target.value })}
+                    />
+                </label>
+                {!doc.bodyEditable ? (
+                    <p className='text-academy-ink-faint text-[12px]'>This body is not text or is larger than 4 MiB; it is kept exactly as it is.</p>
+                ) : null}
+            </div>
+            <label className='flex flex-col gap-1 text-[13px] font-medium' htmlFor={`${ids}-settings`}>
+                Auth and variables (TOML)
+                <textarea
+                    id={`${ids}-settings`}
+                    className={TEXTAREA}
+                    value={fields.settings}
+                    spellCheck={false}
+                    aria-describedby={`${ids}-settings-hint`}
+                    onChange={(e) => edit({ settings: e.target.value })}
+                />
+            </label>
+            <p id={`${ids}-settings-hint`} className='text-academy-ink-faint -mt-2 text-[12px]'>
+                [auth] names secret references (kind none, basic, bearer, api-key or oauth2); [variables] holds strings or {'{ secret = "reference" }'}. Values are entered in Secrets, never here.
+            </p>
+            <label className='flex flex-col gap-1 text-[13px] font-medium'>
+                Schema
+                <select className={SELECT} value={doc.schema ?? ''} onChange={(e) => void associate(e.target.value)}>
+                    <option value=''>No schema</option>
+                    {schemas.map((s) => (
+                        <option key={s} value={s}>
+                            {s}
+                        </option>
+                    ))}
+                </select>
+            </label>
+        </>
+    )
+    const saveButton = (
+        <Button type='submit' tier='primary' disabled={saving}>
+            <Save aria-hidden className='size-4' />
+            Save
+        </Button>
+    )
+    const sendButton = (
+        <Button type='button' tier='primary' disabled={sending} onClick={() => void sendNow(null)}>
+            <Send aria-hidden className='size-4' />
+            Send
+        </Button>
+    )
+    const otherButtons = (
+        <>
+            <Button type='button' tier='secondary' onClick={() => void showPreview()}>
+                Preview
+            </Button>
+            {dirty && !doc.new && !doc.recovered ? (
+                <Button type='button' tier='secondary' onClick={() => void discard()}>
+                    Discard changes
+                </Button>
+            ) : null}
+        </>
+    )
+    const statusRegion = (
+        <p role='status' aria-live='polite' className='text-academy-ink-soft text-[13px]' data-slot='workbench-save-status'>
+            {status}
+        </p>
+    )
+    const responseBits = (
+        <>
+            {running.map((r) => (
+                <Running key={r.run} running={r} call={call} />
+            ))}
+            {review ? (
+                <ReviewPanel
+                    review={review}
+                    onApply={() => void sendNow(review.review)}
+                    onDismiss={() => void call({ kind: 'dismissReview' }).then(() => setStatus(''))}
+                />
+            ) : null}
+            {run ? <RunPanel run={run} call={call} /> : null}
+            {preview ? <PreviewPanel preview={preview} /> : null}
+        </>
+    )
+    return (
+        <form
+            aria-label={`Request ${name}`}
+            data-slot='workbench-document'
+            className='flex flex-col gap-4'
+            data-layout={v2 ? 'v2' : undefined}
+            onSubmit={(e) => {
+                e.preventDefault()
+                void save()
+            }}
+            onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault()
+                    void save()
+                }
+            }}
+        >
+            {v2 ? (
+                // The v2 shell's API Client (C33): the method, URL and Send on
+                // one compact line; the request details beside a response pane;
+                // Send's completion in the status region, the body outside it.
+                <>
+                    {titleRow}
+                    {callouts}
+                    <div className='flex flex-wrap items-end gap-2' data-slot='workbench-request-line'>
+                        <div className='w-28 shrink-0'>{methodField}</div>
+                        <div className='min-w-0' style={{ flex: '1 1 260px' }}>
+                            {urlField}
+                        </div>
+                        {sendButton}
+                        {saveButton}
+                    </div>
+                    {statusRegion}
+                    <div className='flex flex-wrap items-start gap-4'>
+                        <div className='flex min-w-0 flex-col gap-4' style={{ flex: '999 1 360px', minWidth: 'min(100%, 360px)' }}>
+                            {details}
+                            <div className='flex flex-wrap items-center gap-2'>{otherButtons}</div>
+                        </div>
+                        <section
+                            aria-label='Response pane'
+                            data-slot='workbench-response-pane'
+                            className='flex min-w-0 flex-col gap-3'
+                            style={{ flex: '1 1 340px', minWidth: 'min(100%, 340px)' }}
+                        >
+                            {run || running.length > 0 || review ? null : (
+                                <p className='text-academy-ink-soft text-[13px]' data-slot='workbench-no-response'>
+                                    Send to see the response here.
+                                </p>
+                            )}
+                            {responseBits}
+                        </section>
+                    </div>
+                </>
+            ) : (
+                <>
+                    {titleRow}
+                    {callouts}
+                    <div className='grid gap-3 sm:grid-cols-[10rem_1fr]'>
+                        {methodField}
+                        {urlField}
+                    </div>
+                    {details}
+                    <div className='flex flex-wrap items-center gap-2'>
+                        {saveButton}
+                        {sendButton}
+                        {otherButtons}
+                        {statusRegion}
+                    </div>
+                    {responseBits}
+                </>
+            )}
+        </form>
+    )
+}
+
+function PreviewPanel({ preview }: { preview: Preview }) {
+    return (
+        <section aria-label='Request preview' data-slot='workbench-preview' className='border-academy-rule rounded-academy-md flex flex-col gap-2 border p-4 text-[13px]'>
+            <h3 className='text-[14px] font-semibold'>Preview (nothing is sent)</h3>
+            <p className='font-mono break-all'>{`${preview.method} ${preview.url}`}</p>
+            {preview.query.length ? <p className='font-mono break-all'>Params: {preview.query.map(([n, v]) => `${n}=${v}`).join('&')}</p> : null}
+            {preview.headers.map(([n, v], i) => (
+                <p key={i} className='font-mono break-all'>
+                    {`${n}: ${v}`}
+                </p>
+            ))}
+            {preview.body ? <pre className='bg-academy-bg-inset overflow-auto p-2 font-mono text-[12px] whitespace-pre-wrap'>{preview.body}</pre> : null}
+            {preview.auth && preview.auth !== 'none' ? <p>{`Authentication: ${preview.auth}`}</p> : null}
+            {preview.unresolved.length ? <p role='alert'>{`Unresolved variables: ${preview.unresolved.join(', ')}`}</p> : null}
+            {preview.missingSecrets.length ? <p role='alert'>{`Secrets without a value on this Mac: ${preview.missingSecrets.join(', ')}`}</p> : null}
+            {preview.problem ? <p role='alert'>{fieldText(preview.problem)}</p> : null}
+            {preview.jsonWarning ? <p>The JSON body does not parse; it is kept exactly as typed.</p> : null}
+            <p className='text-academy-ink-faint text-[12px]'>Secret values are masked. Send prepares the request again from what you have typed.</p>
+        </section>
+    )
+}

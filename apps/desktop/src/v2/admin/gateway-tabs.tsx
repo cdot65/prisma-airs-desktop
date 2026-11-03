@@ -21,9 +21,9 @@ import type {
     ShellSnapshot,
     WorkspaceRef,
 } from '@prisma-airs/desktop-contracts'
-import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, fieldText, readManagement } from '../../features/administration/management-read'
-import { CHANGE_NOUN, type ChangeTarget, ProvisioningSteps, isGatewayKind, pretty, verbOf } from '../../features/administration/runtime-changes'
-import { type Dispatch, outcomeMessage, type DispatchOutcome } from '../../features/tenants/dispatch'
+import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, fieldText, readManagement } from '../../modules/administration/management-read'
+import { CHANGE_NOUN, type ChangeTarget, ProvisioningSteps, isGatewayKind, pretty, verbOf } from '../../modules/administration/runtime-changes'
+import { type Dispatch, outcomeMessage, type DispatchOutcome } from '../../modules/tenants/dispatch'
 import { clockOf } from '../copy'
 import { Btn, Field } from '../controls'
 import { Glyph } from '../icons'

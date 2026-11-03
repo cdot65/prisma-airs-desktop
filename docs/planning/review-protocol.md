@@ -136,3 +136,7 @@ from a successful CLI exit code or queue acknowledgement alone. It also rejects
 a verdict whose request ID or echoed fingerprints differ from the packet, a
 verdict for an expired attempt, and a phase completion lacking a passing phase
 review.
+
+## C45/P10 verification scheduling (owner decision, 2026-11-02)
+
+Use verification-policy.md and the candidate's small change-impact/verification-plan record. Current source is reviewed independently; a new score/attempt/source fingerprint alone does not schedule a full native or Rust rerun. One justified C45 identity/isolation/cleanup baseline can serve both chunk and P10 reviews. Follow-up fixes execute causal/affected checks. Required coverage is partitioned into current execution, exact proof reuse, honest unaffected carry, justified not-applicable or an actual explicit owner decision; missing/edited/failed proof is rejected. Original run/verdict/artifact bindings are immutable. Historical P09 and prior gate semantics stay unchanged. C26/P08 remains open with the approved fresh read-only review fallback; no controller completion is fabricated.

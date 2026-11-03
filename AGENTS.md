@@ -2,14 +2,24 @@
 
 ## Current stage
 
-P01–P07 completed. The owner-authorized P09 integration proceeds under D058/D059
-while P08/C26 remains open. C44 attempt-05 passed at 9 in all dimensions and is
-merged; actual L19 wizard verification passed. C29 attempt-07 was accepted at 8,
-and its restored native coverage must run in the Worf VM before the C29–C32 and
-P09 re-reviews. Read [WORF-START-HERE](docs/planning/WORF-START-HERE.md),
-[status](docs/planning/status.md) and the exact retained verdicts for current state.
-The approved [C45/P10 brief](docs/planning/C45-draft.md) starts after P09 passes at
-9. Do not re-ask its settled naming, fresh-setup or sequencing decisions.
+P09 attempt-02 passed actual independent9/9/9/9/9 and its audit on2026-11-02.
+C31attempt07 andC32attempt23 passed normally at all9; C30/C41 retain explicit owner
+standing with raw historical scores unchanged. C45/P10 is the approved current
+implementation: one presentation, Prisma AIRS Desktop1.0.0, new io.cdot.airs-desktop
+identities and fresh setup without alpha/v2 data or credential reads/migration.
+C26/P08 remains open; no signing/publication/installation is authorized here.
+
+## Verification policy for C45/P10 and future work
+
+Use [verification-policy.md](docs/planning/verification-policy.md). Plan checks
+from changed behavior/dependencies/boundary risk. C45 warrants ONE broad current
+identity/isolation/cleanup baseline after focused preflight/cross-consumer review.
+Follow-up fixes/merges and P10 use affected checks and explicit exact-artifact or
+unchanged-impact evidence carry; a commit, worktree, review, score or source hash
+alone never triggers another full native/Rust suite. Original raw results and
+artifact bindings remain unchanged. Every required assertion/check is accounted.
+Historical P09 verifiers/results remain untouched. Actual independent chunk/phase
+review and release requirements remain in force; this policy grants no live calls.
 
 Product endpoints are called only within explicit controlled live scope. L19’s
 original two plus separately approved third reads are all charged; no additional

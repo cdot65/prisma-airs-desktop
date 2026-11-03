@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { AdminProductId, SwitchResolution, DesktopClient, FeatureId, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../features/tenants/dispatch'
+import type { Dispatch } from '../modules/tenants/dispatch'
 import { FeatureBody } from '../shell/feature-body'
 import { type Act, Inbox } from './inbox/inbox'
 import { Administration } from './admin/administration'

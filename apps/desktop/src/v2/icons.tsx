@@ -54,7 +54,6 @@ export const FEATURE_GLYPHS: Partial<Record<FeatureId, GlyphName>> = {
     gateway: 'route',
     redTeam: 'cross',
     sessions: 'clock',
-    import: 'folder',
     settings: 'sliders',
 }
 

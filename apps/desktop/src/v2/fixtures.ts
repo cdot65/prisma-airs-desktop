@@ -25,7 +25,7 @@ export const V2_FEATURES: FeatureEntry[] = [
 
 /** fx.home: the v2 shell on Home with no tenant yet. */
 export function fxHome(): ShellSnapshot {
-    return { ...baseSnapshot, uiVariant: 'v2', onboarding: 'done', activeFeature: 'home', showCalls: true, features: V2_FEATURES, administration: inventory as ShellSnapshot['administration'] }
+    return { ...baseSnapshot, onboarding: 'done', activeFeature: 'home', showCalls: true, features: V2_FEATURES, administration: inventory as ShellSnapshot['administration'] }
 }
 
 /** fx.home.dark */

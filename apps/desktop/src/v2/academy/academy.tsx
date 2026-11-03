@@ -28,8 +28,8 @@ import {
     WeeklyBoardPage,
 } from '@ai-security-academy/learner'
 import type { DesktopClient, FeatureId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import { LearnerProvider, useLearnerTrpc } from '../../features/academy/learner-provider'
-import { DownloadsPage, OfflineNotice, OfflineWorkProvider } from '../../features/academy/offline-work'
+import { LearnerProvider, useLearnerTrpc } from '../../modules/academy/learner-provider'
+import { DownloadsPage, OfflineNotice, OfflineWorkProvider } from '../../modules/academy/offline-work'
 import { Btn } from '../controls'
 import { Glyph, type GlyphName } from '../icons'
 import { ACADEMY_COPY as C } from './copy'
@@ -43,7 +43,7 @@ export interface AcademyProps {
 }
 
 // Fixture builds only; never loaded otherwise.
-const LearnerCallProbe = lazy(() => import('../../features/academy/learner-call-probe'))
+const LearnerCallProbe = lazy(() => import('../../modules/academy/learner-call-probe'))
 
 const faint = { color: 'var(--v2-faint)' }
 const soft = { color: 'var(--v2-soft)' }

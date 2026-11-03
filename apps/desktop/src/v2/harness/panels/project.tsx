@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import type { ContextRef, HarnessProjectView } from '@prisma-airs/desktop-contracts'
-import type { Dispatch } from '../../../features/tenants/dispatch'
+import type { Dispatch } from '../../../modules/tenants/dispatch'
 import { actionOutcomeText } from '../text'
 import { Btn } from './controls'
 

@@ -1,0 +1,124 @@
+{
+  "future_verification_policy": {
+    "path": "/Users/admin/.agent-workflows/airs/2026-11-01-worf-start/future-verification-policy-20261102.md",
+    "sha256": "73a50dae7cd4b206d6943d2c727cd79d1627906537d765083a7166238aaed286",
+    "global_guidance": "/Users/admin/.codex/AGENTS.md",
+    "applies_to": "C45/P10 and future work only; active P09 unchanged",
+    "required_action": "Read policy at C45 activation; copy into isolated C45 docs/planning/verification-policy.md; update future brief/gates/test-catalogue/review-protocol explicitly",
+    "baseline_rule": "One justified C45 identity/isolation/cleanup baseline after focused preflight; affected verification for fixes/merge; reuse qualified artifact for chunk and P10 when valid"
+  },
+  "schema": "airs-v2/c45-activation-proof/3-p09-workbench-transition",
+  "recorded_utc": "2026-11-02T22:46:05.228186+00:00",
+  "source_checkout": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current",
+  "head": "e13df23e84a9433446425d5f435c28a0fe3aad4d",
+  "p09_reviewed_source_commit": "eff509742ca23206aa351a768871eb5f6a16768c",
+  "phase": {
+    "subject": "P09",
+    "attempt": "attempt-02",
+    "verdict": "docs/planning/reviews/P09/attempt-02/verdict-returned.json",
+    "verdict_sha256": "6a0677e997c3112fdaf04e8eda3c4d7619719aa457590fa797bac9bd340fd0e2",
+    "request_sha256": "866c77d4bd484cf9878cfc9ccd89d808153e6c3bb9738f14ca572eeff0960ec9",
+    "audit_sha256": "e9ca3aa0fdc996e9b9a2961ba50cc2a53bb15e593cd403d8559b13d28c39c400",
+    "scores": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 9,
+      "overall": 9
+    },
+    "receipt": "docs/planning/reviews/P09/attempt-02/receipt.json",
+    "receipt_sha256": "16cf4e88f0e0975f06ccdccfd2d0af369760aca650398a08143461425cccf10d"
+  },
+  "members": [
+    {
+      "subject": "C31",
+      "attempt": "attempt-07",
+      "verdict": "docs/planning/reviews/C31/attempt-07/verdict-returned.json",
+      "verdict_sha256": "ea222ec46d504a4fac8505aa03cf8b1338ec59c0341d714eb6044a4ad937e1dd",
+      "request_sha256": "d5f1f4d5ce79609e6d3e44deccf6e69a37aa6bc2a575185c0700625bcba2df0d",
+      "audit_sha256": "ca4bf6c8e5bab622e4d3f4544363def366093b7f1f5a6a684d384b3ef7d1138d",
+      "scores": {
+        "architecture": 9,
+        "behavior": 9,
+        "authority_security": 9,
+        "validation": 9,
+        "overall": 9
+      },
+      "receipt": "docs/planning/reviews/C31/attempt-07/receipt.json",
+      "receipt_sha256": "b4d12972fb107873891fe5e095f2f7fa9299298e810f2240826e2a699de05080"
+    },
+    {
+      "subject": "C32",
+      "attempt": "attempt-23",
+      "verdict": "docs/planning/reviews/C32/attempt-23/verdict-returned.json",
+      "verdict_sha256": "6b2783db9c4d14c421e49a73d5312134298934457587f5e0f7bf52b80279b0e3",
+      "request_sha256": "84502113618277eb49432cf3a5d11f4777fbf4896c21f5d66697a1cad25a0188",
+      "audit_sha256": "cf2dfa4c49a58a0633e345c816dbb2e566b88a31b3e9eb2eac7e6f58e79a4d8b",
+      "scores": {
+        "architecture": 9,
+        "behavior": 9,
+        "authority_security": 9,
+        "validation": 9,
+        "overall": 9
+      },
+      "receipt": "docs/planning/reviews/C32/attempt-23/receipt.json",
+      "receipt_sha256": "25a12c4cf355d7c560feee1ea751e38ab7080095bb86bea5ba74a373b5ff0f6b"
+    }
+  ],
+  "c30_owner_closure": {
+    "subject": "C30",
+    "owner_closed": true,
+    "scores": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 8,
+      "overall": 8
+    },
+    "recommendation": "fail",
+    "full_gate_pass": false,
+    "owner_scores": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 9,
+      "overall": 9
+    },
+    "owner_decision": "docs/planning/C30-owner-score-override-2026-11-02.md",
+    "owner_decision_sha256": "c150ebb6a35d8b1bdb6965a5780b96b88f393ed2994cdd3a11da2b4d20bd1a5e",
+    "transition": {
+      "record": "docs/planning/evidence/P09/remediation-attempt-01/transition.json",
+      "sha256": "9da790ac1b93762d73f864065fb424abf5af09ddff1f25d0f0ce8b38bcdb0a5e",
+      "current_source_digest": "d8671203522596d4460eafa9f622696494c471d469d1ab321177db6fb9f1e253",
+      "changed_paths": [
+        ".gitattributes",
+        "apps/desktop/src-tauri/Cargo.toml",
+        "apps/desktop/src-tauri/tests/workbench_review_lifecycle.rs",
+        "crates/desktop-core/src/authority.rs",
+        "crates/desktop-core/src/authority/workbench_domain.rs",
+        "crates/desktop-core/src/authority/workbench_domain/send.rs",
+        "crates/desktop-core/tests/workbench_execution/main.rs",
+        "tools/p09/audit-p09-checks-workbench.py",
+        "tools/p09/audit-phase-review-p09-workbench.py",
+        "tools/p09/make-phase-packet-p09-workbench.py",
+        "tools/p09/p09_workbench_policy.py",
+        "tools/p09/phase_inputs_p09_workbench.py",
+        "tools/p09/phase_packet_p09_workbench.py",
+        "tools/p09/test_p09_workbench_policy.py"
+      ],
+      "standing": "New P09 Workbench page-owned review production delta independently inspected by cumulative P09. Actual C31attempt07/C32attempt23 all9 remain historical on unchanged subjects, with exact original inputs archived; no scope-hash equivalence or score substitution. New G11 application requires actual current20 native/current18 checks."
+    },
+    "standing": "Owner all9 C30 standing continues across unrelated declared P09 Workbench delta; actual historical fail/auditfalse unchanged. C30 is closed and cannot lower P09; no current C30 qualification or independent score claimed.",
+    "record": "docs/planning/reviews/C30/attempt-12/verdict-returned.json",
+    "sha256": "f49d633701dcb7d606ca176f3edaeee8d435866e1ee0d142c540029c3035d2ec",
+    "request": "docs/planning/reviews/C30/attempt-12/request.json",
+    "request_sha256": "940ebc477172fab9d078c458cb88646cbf1ce62de0f82b1e83c0e9ab8e75326e",
+    "receipt": "docs/planning/reviews/C30/attempt-12/receipt.json",
+    "receipt_sha256": "5885351796da2cc7623510393573f4771077c4de24b0cb26336c2439fb106ee8",
+    "audit": "docs/planning/reviews/C30/attempt-12/post-review-audit.json",
+    "audit_sha256": "00f40540847cceb52ffad681d59b72aa0bf64cc51446ab540282ec28346ac97b"
+  },
+  "source_inventory_sha256": "ab0bed2452bdcd340c520deac20ba406e359ccc6903dc82c439caa0b27f623fb",
+  "evidence_inventory_sha256": "f24ce84048de1bc7c280c85f68619f9738d96cc696bdd73ece189783ca744277",
+  "meaning": "Actual independent P09/C32 full-9 audited; C31 actual full9 or strictly bound owner completion; source/evidence still frozen; C45 may start in a new isolated worktree. No controller/release completion inferred."
+}

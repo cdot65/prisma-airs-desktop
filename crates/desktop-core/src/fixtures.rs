@@ -7,8 +7,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use futures_util::future::BoxFuture;
 use zeroize::Zeroizing;
 
+use crate::ImportError;
 use crate::authority::{Adapters, CredentialStore, ImportFile, ImportPicker};
-use crate::import::ImportError;
 use crate::store::{AppStore, MemoryStore, PersistedState, StoreError};
 use crate::vault::{RecordId, Vault, VaultError};
 
@@ -709,66 +709,12 @@ impl crate::authority::FileSaver for ScriptedSaver {
     }
 }
 
-/// v1's Keychain service, scripted (C23): items planted by the test, reads
-/// recorded. It has no write method, like the real source.
-#[derive(Default)]
-pub struct ScriptedV1Keychain {
-    items: Mutex<HashMap<String, Zeroizing<Vec<u8>>>>,
-    failure: Mutex<Option<VaultError>>,
-    reads: Mutex<Vec<String>>,
-}
-
-impl ScriptedV1Keychain {
-    /// Plants an item as v1 would have stored it.
-    pub fn plant(&self, account: &str, bytes: &[u8]) {
-        if let Ok(mut items) = self.items.lock() {
-            items.insert(account.to_owned(), Zeroizing::new(bytes.to_vec()));
-        }
-    }
-
-    /// Every read fails with `failure` (locked, denied...) until cleared.
-    pub fn fail_with(&self, failure: Option<VaultError>) {
-        if let Ok(mut f) = self.failure.lock() {
-            *f = failure;
-        }
-    }
-
-    /// The accounts read, in order.
-    pub fn reads(&self) -> Vec<String> {
-        self.reads.lock().map(|r| r.clone()).unwrap_or_default()
-    }
-
-    /// The items as planted (to check nothing changed them).
-    pub fn snapshot(&self) -> Vec<(String, Vec<u8>)> {
-        let mut all: Vec<(String, Vec<u8>)> = self
-            .items
-            .lock()
-            .map(|i| i.iter().map(|(k, v)| (k.clone(), v.to_vec())).collect())
-            .unwrap_or_default();
-        all.sort();
-        all
-    }
-}
-
-impl crate::import_v1::V1Keychain for ScriptedV1Keychain {
-    fn read(&self, account: &str) -> Result<Option<Zeroizing<Vec<u8>>>, VaultError> {
-        if let Ok(mut reads) = self.reads.lock() {
-            reads.push(account.to_owned());
-        }
-        if let Some(f) = self.failure.lock().ok().and_then(|f| *f) {
-            return Err(f);
-        }
-        Ok(self.items.lock().ok().and_then(|i| i.get(account).cloned()))
-    }
-}
-
 /// Handles to the scripted adapters behind an [`Adapters`] value.
 pub struct Handles {
     pub vault: Arc<ScriptedVault>,
     /// The Academy learner namespace.
     pub learner_vault: Arc<ScriptedVault>,
     pub store: Arc<ScriptedStore>,
-    pub picker: Arc<ScriptedPicker>,
     pub opener: Arc<ScriptedOpener>,
     pub printer: Arc<ScriptedPrinter>,
     pub images: Arc<ScriptedImagePicker>,
@@ -789,10 +735,7 @@ pub struct Handles {
     /// This instance's private API Client folder.
     pub workbench_root: std::path::PathBuf,
     /// The v1 folder this instance imports from (absent until staged).
-    pub v1_root: std::path::PathBuf,
-    pub v1_keychain: Arc<ScriptedV1Keychain>,
     /// This instance's import receipts.
-    pub import_root: std::path::PathBuf,
     /// This instance's diagnostics folder.
     pub logs_root: std::path::PathBuf,
 }
@@ -807,7 +750,6 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         vault: Arc::new(ScriptedVault::default()),
         learner_vault: Arc::new(ScriptedVault::default()),
         store: Arc::new(store),
-        picker: Arc::new(ScriptedPicker::default()),
         opener: Arc::new(ScriptedOpener::default()),
         printer: Arc::new(ScriptedPrinter::default()),
         images: Arc::new(ScriptedImagePicker::default()),
@@ -823,9 +765,6 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
         workbench_files: Arc::new(ScriptedPicker::default()),
         gateway_files: Arc::new(ScriptedPicker::default()),
         workbench_root: fresh_offline_root().with_extension("workbench"),
-        v1_root: fresh_offline_root().with_extension("v1"),
-        v1_keychain: Arc::new(ScriptedV1Keychain::default()),
-        import_root: fresh_offline_root().with_extension("imports"),
         logs_root: fresh_offline_root().with_extension("logs"),
     };
     (
@@ -833,7 +772,6 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             keychain: handles.vault.clone(),
             learner_keychain: handles.learner_vault.clone(),
             store: handles.store.clone(),
-            picker: handles.picker.clone(),
             opener: handles.opener.clone(),
             printer: handles.printer.clone(),
             images: handles.images.clone(),
@@ -850,11 +788,6 @@ pub fn adapters_with(store: ScriptedStore) -> (Adapters, Handles) {
             gateway_files: handles.gateway_files.clone(),
             workbench_root: Some(handles.workbench_root.clone()),
             harness: crate::harness::sidecar::HarnessAdapters::unavailable(),
-            v1_source: Some(crate::import_v1::V1Source {
-                root: handles.v1_root.clone(),
-                keychain: handles.v1_keychain.clone(),
-            }),
-            import_root: Some(handles.import_root.clone()),
             logs_root: Some(handles.logs_root.clone()),
         },
         handles,

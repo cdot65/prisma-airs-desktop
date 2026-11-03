@@ -229,7 +229,7 @@ pub fn handshake(
         }),
     )?;
     let message = format!(
-        "Prisma AIRS Desktop v2 review-transport handshake. Request ID: {request_id}. This is a harmless routing check, not a review or implementation request. Do not change application files, run product endpoints or access credentials. Only write {} containing {{\"request_id\": \"{request_id}\", \"thread\": \"{thread}\", \"acknowledged\": true, \"reviewer\": \"codex\", \"written_utc\": <current UTC ISO time>}} atomically (temp file then rename) and reply with the same JSON.",
+        "Prisma AIRS Desktop review-transport handshake. Request ID: {request_id}. This is a harmless routing check, not a review or implementation request. Do not change application files, run product endpoints or access credentials. Only write {} containing {{\"request_id\": \"{request_id}\", \"thread\": \"{thread}\", \"acknowledged\": true, \"reviewer\": \"codex\", \"written_utc\": <current UTC ISO time>}} atomically (temp file then rename) and reply with the same JSON.",
         route.display()
     );
     queue(env, reviewer, cwd, &message)?;

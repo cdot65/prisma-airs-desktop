@@ -49,9 +49,9 @@ EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C01" else "native-C01")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C01" else "native-acceptance-C01.json")
 TOOLS = os.path.join(ROOT, "tools/native-acceptance")
-PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop-v2"
+PROCESS = "Fixture.app/Contents/MacOS/prisma-airs-desktop"
 CAPTURES = os.path.join(subprocess.run(["getconf", "DARWIN_USER_TEMP_DIR"], capture_output=True, text=True).stdout.strip(),
-                        "prisma-airs-v2-fixture-captures")
+                        "prisma-airs-desktop-fixture-captures")
 
 
 def sh(argv, **kw):
@@ -144,18 +144,18 @@ def ring_pixels(img, box, scale):
 # ---------- app control ----------
 
 def app_pid():
-    out = sh(["pgrep", "-f", PROCESS]).stdout.split()
-    return int(out[0]) if out else None
+    return fx.App.running_pid()
 
 
 def quit_app():
-    sh(["pkill", "-f", PROCESS])
+    fx.stop_app()
     time.sleep(1)
 
 
 def launch(bundle):
+    fx.bind_candidate(bundle)
     quit_app()
-    sh(["open", "-n", bundle])
+    fx.launch_candidate(bundle)
     for _ in range(40):
         time.sleep(0.25)
         if app_pid():
@@ -207,9 +207,10 @@ def reduce_motion():
 
 
 def startup_network(bundle):
+    fx.bind_candidate(bundle)
     quit_app()
     before = webkit_pids()
-    sh(["open", "-n", bundle])
+    fx.launch_candidate(bundle)
     lines, sockets = [], 0
     for i in range(30):
         pid = app_pid()
@@ -237,7 +238,7 @@ def evaluate_flows(run):
     results = {}
     launch_obs = step(run, "launch")["observation"]
     labels = [n["label"] or "" for n in step(run, "launch")["snapshot"]]
-    results["C01-N01"] = (launch_obs["title"] == "Prisma AIRS Desktop v2 (Fixture)" and "FIXTURE BUILD" in labels,
+    results["C01-N01"] = (launch_obs["title"] == "Prisma AIRS Desktop (Fixture)" and "FIXTURE BUILD" in labels,
                           f"window title {launch_obs['title']!r}; 'FIXTURE BUILD' shown in the rail: {'FIXTURE BUILD' in labels}")
     menus = {m["menu"]: {i["title"]: i["cmdChar"] for i in m["items"]} for m in run["menus"]}
     app_menu = next((v for k, v in menus.items() if k.startswith("Prisma AIRS")), {})
@@ -342,7 +343,7 @@ def main():
 def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     os.makedirs(NATIVE, exist_ok=True)

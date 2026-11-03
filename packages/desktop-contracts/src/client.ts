@@ -88,7 +88,6 @@ const FEATURE_IDS: readonly string[] = [
     'apiClient',
     'gateway',
     'harness',
-    'import',
     'settings',
 ]
 const THEMES: readonly string[] = ['system', 'light', 'dark']
@@ -97,16 +96,12 @@ const ENVIRONMENTS: readonly string[] = ['production', 'staging', 'other']
 const SETUP_MODES: readonly string[] = ['firstRun', 'add']
 const VERIFY_LINES: readonly string[] = ['scanKey', 'managementClient', 'gateway', 'redTeam', 'modelSkill', 'ais', 'aes']
 const VERIFY_STATES: readonly string[] = ['pending', 'pass', 'warning', 'fail', 'stored', 'skipped', 'unavailable']
-const UI_VARIANTS: readonly string[] = ['legacy', 'v2']
 const ONBOARDING_STATES: readonly string[] = ['needed', 'inProgress', 'done']
 const STORAGE: readonly string[] = ['ready', 'corrupt', 'unavailable', 'resetting']
 const SCAN_STATES: readonly string[] = ['missing', 'storing', 'ready', 'failed']
 const MODES: readonly string[] = ['keychain', 'session']
 const VAULT_ERRORS: readonly string[] = ['locked', 'denied', 'unavailable', 'notFound', 'corrupt']
 const REGIONS: readonly string[] = ['unitedStates', 'europe', 'india', 'singapore']
-const IMPORT_FORMATS: readonly string[] = ['profileDocument', 'airsCliRegistry']
-const IMPORT_ERRORS: readonly string[] = ['tooLarge', 'unsupported', 'empty']
-const CANDIDATE_PROBLEMS: readonly string[] = ['invalidLabel', 'invalidTsgId', 'invalidDestination']
 const TENANT_ID = /^tn-[0-9a-f]{16}$/
 const CONTEXT_REF = /^cx-[A-Za-z0-9-]{1,61}$/
 const REVIEW_ID = /^rv-[A-Za-z0-9-]{1,61}$/
@@ -393,42 +388,6 @@ function isSetupWarning(value: unknown): boolean {
         Number.isInteger(value.recordedSecs) &&
         value.recordedSecs >= 0
     )
-}
-
-function isImportView(value: unknown): boolean {
-    if (!isRecord(value)) return false
-    switch (value.state) {
-        case 'idle':
-        case 'choosing':
-            return true
-        case 'failed':
-            return oneOf(IMPORT_ERRORS, value.error)
-        case 'review':
-            return (
-                typeof value.review === 'string' &&
-                REVIEW_ID.test(value.review) &&
-                oneOf(IMPORT_FORMATS, value.format) &&
-                isString(value.fileName) &&
-                isRecord(value.discarded) &&
-                isCount(value.discarded.secretFields) &&
-                isCount(value.discarded.fileReferences) &&
-                isCount(value.discarded.otherFields) &&
-                Array.isArray(value.candidates) &&
-                value.candidates.every(
-                    (c) =>
-                        isRecord(c) &&
-                        isCount(c.index) &&
-                        isString(c.label) &&
-                        optional(isString, c.tsgId) &&
-                        optional(isDestination, c.destination) &&
-                        typeof c.defaultDestination === 'boolean' &&
-                        typeof c.existingLabel === 'boolean' &&
-                        optional((p) => oneOf(CANDIDATE_PROBLEMS, p), c.problem)
-                )
-            )
-        default:
-            return false
-    }
 }
 
 const isOperation = (value: unknown): boolean => typeof value === 'string' && OPERATION_ID.test(value)
@@ -1224,101 +1183,7 @@ function isHarnessEntry(value: unknown): boolean {
     )
 }
 
-const IMPORT_CATEGORIES: readonly string[] = [
-    'tenants',
-    'endpoints',
-    'settings',
-    'cases',
-    'reports',
-    'academyDrafts',
-    'apiClient',
-    'conversations',
-]
-const IMPORT_PROBLEMS: readonly string[] = [
-    'missing',
-    'sourceLocked',
-    'accessDenied',
-    'keychainLocked',
-    'corrupt',
-    'unsupportedVersion',
-    'tooLarge',
-    'pathRejected',
-    'sourceRetired',
-    'noStoredWork',
-    'accountMismatch',
-    'signInRequired',
-    'endpointNotMappable',
-    'noV2Equivalent',
-    'destinationFull',
-    'sourceChanged',
-    'noTarget',
-    'notRecorded',
-]
-const IMPORT_SOURCES: readonly string[] = ['notFound', 'locked', 'unavailable', 'ready']
-const IMPORT_ACTIVITIES: readonly string[] = ['inspecting', 'planning', 'importing', 'confirming', 'rollingBack']
-const RECEIPT_STATES: readonly string[] = ['applying', 'applied', 'rollingBack', 'rolledBack']
-const RECEIPT_ITEM_STATES: readonly string[] = [
-    'planned',
-    'writing',
-    'applied',
-    'failed',
-    'reverting',
-    'reverted',
-    'keptChanged',
-    'gone',
-]
-const RECEIPT_ID = /^imp-[0-9a-f]{16}$/
-/** Bounds of the import view (C23): v1 tenants, plan items and receipts. */
-const MAX_IMPORT_TENANTS = 64
-const MAX_IMPORT_ITEMS = 256
-const MAX_RECEIPTS = 8
-
 const isU32 = (v: unknown): boolean => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 0xffffffff
-
-function isItemStatus(value: unknown): boolean {
-    if (!isRecord(value)) return false
-    if (value.kind === 'blocked') return oneOf(IMPORT_PROBLEMS, value.problem) && Object.keys(value).length === 2
-    return oneOf(['ready', 'alreadyPresent', 'conflict'], value.kind) && Object.keys(value).length === 1
-}
-
-function isPlanItem(value: unknown): boolean {
-    return (
-        isRecord(value) &&
-        isU32(value.index) &&
-        oneOf(IMPORT_CATEGORIES, value.category) &&
-        bounded(1024)(value.label) &&
-        optional(bounded(1024), value.target) &&
-        isItemStatus(value.status) &&
-        isRecord(value.counts) &&
-        ['new', 'present', 'conflict', 'skipped'].every((k) => isU32((value.counts as Record<string, unknown>)[k])) &&
-        Object.keys(value.counts).length === 4 &&
-        optional((p) => oneOf(IMPORT_PROBLEMS, p), value.partial)
-    )
-}
-
-function isReceiptView(value: unknown): boolean {
-    return (
-        isRecord(value) &&
-        typeof value.id === 'string' &&
-        RECEIPT_ID.test(value.id) &&
-        isCount(value.created) &&
-        oneOf(RECEIPT_STATES, value.state) &&
-        typeof value.interrupted === 'boolean' &&
-        Array.isArray(value.items) &&
-        value.items.length <= MAX_IMPORT_ITEMS &&
-        value.items.every(
-            (i) =>
-                isRecord(i) &&
-                oneOf(IMPORT_CATEGORIES, i.category) &&
-                bounded(1024)(i.label) &&
-                oneOf(RECEIPT_ITEM_STATES, i.state) &&
-                isU32(i.written) &&
-                isU32(i.kept)
-        ) &&
-        typeof value.canResume === 'boolean' &&
-        typeof value.canRollBack === 'boolean'
-    )
-}
 
 /** Local redacted diagnostics (C24): a count, the retention, an export and a clearing. */
 function isDiagnosticsView(value: unknown): boolean {
@@ -1333,56 +1198,6 @@ function isDiagnosticsView(value: unknown): boolean {
     )
 }
 
-/** The reviewed v1 import (C23): what v1 has, the review and receipts. */
-function isV1ImportView(value: unknown): boolean {
-    return (
-        isRecord(value) &&
-        typeof value.available === 'boolean' &&
-        optional((v) => oneOf(IMPORT_SOURCES, v), value.source) &&
-        Array.isArray(value.tenants) &&
-        value.tenants.length <= MAX_IMPORT_TENANTS &&
-        value.tenants.every(
-            (t) =>
-                isRecord(t) &&
-                isU32(t.index) &&
-                bounded(1024)(t.label) &&
-                optional((v) => typeof v === 'string' && /^[0-9]{1,20}$/.test(v), t.tsgId) &&
-                typeof t.sessionOnly === 'boolean' &&
-                Array.isArray(t.matches) &&
-                t.matches.every((m) => typeof m === 'string' && TENANT_ID.test(m))
-        ) &&
-        Array.isArray(value.categories) &&
-        value.categories.every(
-            (c) =>
-                isRecord(c) &&
-                oneOf(IMPORT_CATEGORIES, c.category) &&
-                optional(isU32, c.found) &&
-                optional((p) => oneOf(IMPORT_PROBLEMS, p), c.problem)
-        ) &&
-        Array.isArray(value.notMapped) &&
-        value.notMapped.every(bounded(64)) &&
-        optional(
-            (p) =>
-                isRecord(p) &&
-                typeof p.review === 'string' &&
-                REVIEW_ID.test(p.review) &&
-                Array.isArray(p.items) &&
-                p.items.length <= MAX_IMPORT_ITEMS &&
-                p.items.every(isPlanItem),
-            value.plan
-        ) &&
-        optional((a) => oneOf(IMPORT_ACTIVITIES, a), value.activity) &&
-        Array.isArray(value.receipts) &&
-        value.receipts.length <= MAX_RECEIPTS &&
-        value.receipts.every(isReceiptView) &&
-        isStrings(value.damagedReceipts, (id) => typeof id === 'string' && RECEIPT_ID.test(id)) &&
-        (value.damagedReceipts as unknown[]).length <= MAX_RECEIPTS &&
-        typeof value.receiptsUnreadable === 'boolean' &&
-        optional((p) => oneOf(IMPORT_PROBLEMS, p), value.problem)
-    )
-}
-
-/** The native Harness (C19): the bundled engine and the bound conversation. */
 function isHarnessView(value: unknown): boolean {
     if (!isRecord(value) || !isRecord(value.engine)) return false
     const e = value.engine
@@ -2399,11 +2214,10 @@ const RESOURCE_PROBLEMS: readonly string[] = [
     'fields', 'pathParameters', 'settings', 'method', 'url', 'template', 'header', 'parameter', 'credential', 'body',
     'json', 'auth', 'authReview', 'authCombination', 'folder', 'path', 'environment',
 ]
-const ADOPTION_PROBLEMS: readonly string[] = ['missing', 'unreadable']
 const WORKBENCH_PROBLEMS: Readonly<Record<string, readonly string[] | null>> = {
     noCollection: null, missing: null, stale: null, unavailable: null, invalid: null, managed: null, limit: null, keychain: null, unprotected: null,
     project: PROJECT_PROBLEMS, private: PRIVATE_FAILURES, schema: SCHEMA_PROBLEMS, curl: CURL_PROBLEMS,
-    export: EXPORT_PROBLEMS, adoption: ADOPTION_PROBLEMS,
+    export: EXPORT_PROBLEMS,
 }
 /** A request document's identity (v1: letters, digits, `_` and `-`). */
 const DOCUMENT_ID = /^[A-Za-z0-9_-]{1,128}$/
@@ -2499,9 +2313,6 @@ const isResourceView = (r: unknown): boolean =>
     typeof r.environment === 'boolean' &&
     optional((p) => oneOf(RESOURCE_PROBLEMS, p), r.problem)
 
-const isCandidateView = (c: unknown): boolean =>
-    isRecord(c) && isCount(c.index) && isString(c.name) && isString(c.folder) && isStrings(c.environments) && isCount(c.skipped)
-
 function isGitView(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -2528,8 +2339,6 @@ function isWorkbenchView(value: unknown): boolean {
         value.recent.every((r) => isRecord(r) && isCount(r.index) && isString(r.name) && isString(r.folder)) &&
         optional(isCollectionView, value.collection) &&
         optional((i) => Array.isArray(i) && i.every(isResourceView), value.import) &&
-        optional((a) => Array.isArray(a) && a.every(isCandidateView), value.adoption) &&
-        typeof value.adoptionSettled === 'boolean' &&
         optional(isGitView, value.git) &&
         typeof value.busy === 'boolean' &&
         typeof value.unprotected === 'boolean' &&
@@ -2751,10 +2560,6 @@ export function parseWorkbenchResult(value: unknown): WorkbenchResult {
                     return isCount(value.requests) && isCount(value.environments) && isCount(value.skipped)
                 case 'git':
                     return isGitView(value.git)
-                case 'adoption':
-                    return Array.isArray(value.candidates) && value.candidates.every(isCandidateView)
-                case 'adopted':
-                    return isCount(value.collections) && isCount(value.environments)
                 case 'ran':
                     return isRunView(value.run)
                 case 'reviewRequired':
@@ -2870,7 +2675,6 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isRecord(value) ||
         !isDecimalU64(value.revision) ||
         !THEMES.includes(value.appearance as string) ||
-        !UI_VARIANTS.includes(value.uiVariant as string) ||
         !ONBOARDING_STATES.includes(value.onboarding as string) ||
         typeof value.activeFeature !== 'string' ||
         !FEATURE_IDS.includes(value.activeFeature) ||
@@ -2922,7 +2726,6 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
                 typeof r.removesScanCredential === 'boolean',
             value.endpointReview
         ) ||
-        !isImportView(value.import) ||
         !optional(
             (f) => isRecord(f) && oneOf(RESET_STAGES, f.stage) && oneOf(VAULT_ERRORS, f.reason),
             value.resetFailure
@@ -2946,7 +2749,6 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isWorkbenchView(value.workbench) ||
         !isGatewayView(value.gateway) ||
         !isHarnessView(value.harness) ||
-        !isV1ImportView(value.v1Import) ||
         !isDiagnosticsView(value.diagnostics) ||
         (value.academy as Record<string, unknown>).state !== 'signedIn' && (value.academyOffline as Record<string, unknown>).state !== 'signedOut'
     ) {

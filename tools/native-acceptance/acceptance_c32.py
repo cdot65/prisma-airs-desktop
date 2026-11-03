@@ -83,8 +83,8 @@ def main():
         return run()
     finally:
         sheets.disable()
-        fx.sh(["pkill", "-f", fx.PROCESS])
-        fx.sh(["pkill", "-9", "-f", c19.ENGINE])
+        fx.stop_app()
+        fx.stop_engines()
         fx.clean_fixture_root()
 
 
@@ -92,7 +92,7 @@ def run():
     global NATIVE
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if c8.sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c32-acceptance-")
@@ -114,7 +114,7 @@ def run():
     app = fx.App(bundle, work, LOG)
     c29._APP = app
     app.quit()
-    fx.sh(["pkill", "-9", "-f", c19.ENGINE])
+    fx.stop_engines()
     fx.clean_fixture_root()
     endpoint = fx.ScanEndpoint(os.path.join(work, "endpoint"), c8.SCAN_KEY)
     endpoint.install_roots()
@@ -378,7 +378,7 @@ def exercise(app, endpoint, mgmt, prepared, project, FINAL):
         time.sleep(1)
         rm["active"] = c28.reduce_motion()
         app.quit()
-        fx.sh(["pkill", "-9", "-f", c19.ENGINE])
+        fx.stop_engines()
         app.launch()
         c29._APP = app
         app.wait_for(lambda t: c29.nav(t, "Destinations") is not None, 15)

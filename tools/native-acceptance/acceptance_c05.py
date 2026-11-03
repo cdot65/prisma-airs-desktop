@@ -33,7 +33,7 @@ SUBJECT = os.environ.get("AIRS_NATIVE_SUBJECT", "C05")
 EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C05" else "native-C05")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C05" else "native-acceptance-C05.json")
-ACADEMY_SERVICE = "io.cdot.prisma-airs-desktop.v2.fixture.academy"
+ACADEMY_SERVICE = "io.cdot.airs-desktop.fixture.academy"
 CATALOG = "What will you take up next?"
 COURSE = "Runtime Security Foundations"
 LESSON = "Scanning at runtime: part 1"
@@ -127,14 +127,14 @@ def main():
     try:
         return run()
     finally:
-        fx.sh(["pkill", "-f", fx.PROCESS])
+        fx.stop_app()
         fx.clean_fixture_root()
 
 
 def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    if sha256(os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")) != prepared["executable_sha256"]:
+    if sha256(os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c05-acceptance-")
     if os.path.isdir(NATIVE):

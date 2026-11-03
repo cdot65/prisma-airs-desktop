@@ -2508,3 +2508,11 @@ Decided by the owner on 2026-10-31, in the owner's words: "i really really reall
 - Naming: this desktop becomes v1 and the previous one the alpha. The rename touches the application identity that lets the two coexist (bundle identifiers, data roots, Keychain namespaces, D001-era identities) and the whole document set; it is its own chunk after P09, not a find-and-replace.
 - The product name shown today stays "Prisma AIRS Desktop v2" until that chunk.
 
+
+## D061 — One presentation and fresh application identity (C45/P10)
+
+Owner-approved2026-11-01 brief, activated after actual P09attempt02 all9/audit on2026-11-02. Prisma AIRS Desktop1.0.0 uses io.cdot.airs-desktop and fixtureio.cdot.airs-desktop.fixture (Prisma AIRS Desktop Fixture). Port maintained helpers/tests, remove legacy/variant/alpha/profile-adoption readers/contracts and start fresh without reading, migrating or deleting alpha/v2 data/credentials. Ordinary selected collection formats remain. C45 followsD034 acceptance then actualall9; P10 requires actual independentall9. P10 closes before signedC26/P08release. No publication/signing/notarization/installation or additional live scope.
+
+## D062 — Risk-based future verification and explicit evidence reuse
+
+Owner2026-11-02 policy in verification-policy.md applies toC45/P10/future tasks, never retroactively to sealed P09. Select checks from behavior/dependencies/boundary risk. One broad C45 identity/isolation/cleanup baseline is justified after focused/cross-consumer preflight; later fixes/merges andP10 execute affected checks and retain valid original evidence with exact-artifact proof or an honest unaffected-impact rationale. Every assertion/check is accounted; raw outcomes/artifact bindings remain immutable. New commits/worktrees/scores/fingerprints alone do not trigger full native/Rust repetition. Actual independent reviews and separate live/release gates remain.

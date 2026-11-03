@@ -51,4 +51,4 @@ if __name__=='__main__':
     try: raise SystemExit(c32.run(exercise))
     finally:
         sheets.disable()
-        fx.sh(['pkill','-f',fx.PROCESS]);fx.sh(['pkill','-9','-f',c19.ENGINE]);fx.clean_fixture_root()
+        fx.stop_app();fx.stop_engines();fx.clean_fixture_root()

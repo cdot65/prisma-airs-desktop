@@ -66,7 +66,7 @@ def main():
     try:
         return run()
     finally:
-        fx.sh(["pkill", "-f", fx.PROCESS])
+        fx.stop_app()
         fx.clean_fixture_root()
 
 
@@ -108,7 +108,7 @@ def scan_enabled(tree):
 def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c03-acceptance-")
@@ -361,8 +361,8 @@ def reach_scan(app, zoom):
     return {"zoom": zoom, "window": {"pos": window["pos"], "size": window["size"]}, "found": found, "clear": ok}
 
 
-WEBKIT_DIRS = [os.path.join(fx.HOME, "Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture"),
-               os.path.join(fx.HOME, "Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture")]
+WEBKIT_DIRS = [os.path.join(fx.HOME, "Library/WebKit/io.cdot.airs-desktop.fixture"),
+               os.path.join(fx.HOME, "Library/Caches/io.cdot.airs-desktop.fixture")]
 
 
 def scan_data_root():

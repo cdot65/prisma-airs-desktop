@@ -1,6 +1,6 @@
 import { forwardRef, useEffect } from 'react'
 import type { FeatureId, InboxEntry, Intent, ProductId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import type { DispatchOutcome } from '../../features/tenants/dispatch'
+import type { DispatchOutcome } from '../../modules/tenants/dispatch'
 import { INBOX_COPY as C, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from '../copy'
 import { Glyph, type GlyphName } from '../icons'
 import { useShellStore } from '../store'

@@ -39,7 +39,7 @@ EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C28" else "native-C28")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C28" else "native-acceptance-C28.json")
 CAPTURES = os.path.join(subprocess.run(["getconf", "DARWIN_USER_TEMP_DIR"], capture_output=True, text=True).stdout.strip(),
-                        "prisma-airs-v2-fixture-captures")
+                        "prisma-airs-desktop-fixture-captures")
 RAIL_V2 = ["Home", "Inbox", "Harness", "Academy", "Test Cases", "API Client", "Administration"]
 LOG = []
 
@@ -172,7 +172,7 @@ def main():
     try:
         return run()
     finally:
-        fx.sh(["pkill", "-f", fx.PROCESS])
+        fx.stop_app()
         fx.clean_fixture_root()
 
 
@@ -180,7 +180,7 @@ def run():
     global NATIVE
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c28-acceptance-")

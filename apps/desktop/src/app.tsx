@@ -10,12 +10,12 @@ import {
     type Theme,
 } from '@prisma-airs/desktop-contracts'
 import { followAppearance } from './shell/appearance'
-import { type DispatchOutcome, outcomeMessage } from './features/tenants/dispatch'
+import { type DispatchOutcome, outcomeMessage } from './modules/tenants/dispatch'
 import { V2Shell } from './v2/v2-shell'
 import { Wizard } from './v2/wizard/wizard'
 import { deliveryContext, useShellStore } from './v2/store'
 import { SHELL_COPY } from './v2/copy'
-import { forgetAcademyPresentation } from './features/academy/presentation-storage'
+import { forgetAcademyPresentation } from './modules/academy/presentation-storage'
 import { SAVE_DOCUMENT_EVENT } from './v2/workbench/request-editor'
 
 export function App({ client }: { client: DesktopClient }) {

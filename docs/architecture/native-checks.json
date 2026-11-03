@@ -1,7 +1,7 @@
 {
   "schema": "airs-v2/native-checks/1",
   "description": "Versioned required native acceptance checks per chunk. xtask requires a native-acceptance record to report exactly this ID set, each with result pass, a nonempty observation and at least one evidence file listed in the review packet. Changing a list is a reviewed source change.",
-  "fixture_identifier": "io.cdot.prisma-airs-desktop.v2.fixture",
+  "fixture_identifier": "io.cdot.airs-desktop.fixture",
   "chunks": {
     "C01": [
       {
@@ -1379,6 +1379,20 @@
       {
         "id": "C44-N01",
         "check": "One presentation (P09 closure): the fixture app's first run is the wizard with no Features rail and no 'Use the new interface' switch anywhere; after the tenant is set up, every destination the catalogue lists is opened from the Go menu (Home, Inbox, Harness, Academy, Test Cases, API Client, Administration; Runtime Security, AI Gateway and Red Team & Models opening Administration on their product; Sessions & Reports and Settings framed by the v2 shell (Import from v1 removed, D060)) under the v2 Destinations rail, each captured in light and dark at 1440\u00d7900 as the whole-app screenshot set under evidence/C44/parity/app, with no plaintext secret and no learner chrome (outside Academy) in any destination's tree; \u23182 opens the Inbox and \u2318, Settings through the native menu; the built stylesheet carries the reduced-motion clamp; the bundle is Node-free and no Node, Bun or Deno process runs beside the app; after a quit and relaunch 15 s of startup open no internet socket from the app or its WebKit processes, Home shows with the tenant active and Administration reads with the kept client; every pre-P09 native assertion has its standing in evidence/C44/legacy-script-map.md (exercised by a named v2 check, self-run through legacy_v2 \u2014 C03, C04, C05, C06, C07, C10, C11, C24 \u2014 ported into this check, or retired with its reason) and the mapped drivers' records on this bundle bind the gate: an exercised, self-run or ported assertion without a passing target fails this check."
+      }
+    ],
+    "C45": [
+      {
+        "id": "C45-N01",
+        "check": "Prepared real fixture is Prisma AIRS Desktop Fixture1.0.0, identifierio.cdot.airs-desktop.fixture, binaryprisma-airs-desktop. Production config independently names Prisma AIRS Desktop1.0.0/io.cdot.airs-desktop. Native About/menu/title and Home-first catalogue agree; startup/settings/sessions focus and headings use the one presentation. Exact candidate process identity, executable and complete bundle are bound."
+      },
+      {
+        "id": "C45-N02",
+        "check": "Fresh synthetic setup starts with the wizard and no adopted tenants, credentials, sessions or approvals. Controlled prior alpha/v2 root/service canaries remain byte-identical across setup/relaunch/reset. Old real application roots, login Keychain and live endpoints are never inspected. Namespace isolation and non-adoption require passing production-interface FileStore/authority and disposable-file Keychain regressions, not only absence of UI."
+      },
+      {
+        "id": "C45-N03",
+        "check": "No alternate presentation selector or alpha/tenant-profile/API-profile-adoption surface or native intent remains. Ordinary current-format collection open/create/import/editor behavior is retained, along with active Settings/Sessions/Diagnostics/Academy behavior and C44 scope/commit-phase guards. Every current mapped legacy/modern target is accounted by the same candidate baseline or explicit valid coverage proof; no assertion disappears via omission."
       }
     ]
   }

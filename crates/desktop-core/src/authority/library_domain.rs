@@ -745,31 +745,6 @@ impl State {
         }
     }
 
-    /// The newest generation of a tenant's open library (C23).
-    pub(super) fn library_generation(&self, tenant: &TenantId) -> Option<u64> {
-        self.libraries
-            .iter()
-            .find(|l| &l.tenant == tenant && l.state == LibraryState::Ready)
-            .map(|l| l.generation)
-    }
-
-    /// A library that was loading (or failed) while an import wrote its
-    /// file reads again (C23); the lease of the new read.
-    pub(super) fn reread_library(&mut self, tenant: &TenantId) -> Option<u64> {
-        let stale = self.libraries.iter().any(|l| {
-            &l.tenant == tenant && matches!(l.state, LibraryState::Loading | LibraryState::Failed)
-        });
-        if !stale {
-            return None;
-        }
-        let lease = self.lease();
-        let library = self.libraries.iter_mut().find(|l| &l.tenant == tenant)?;
-        library.lease = lease;
-        library.state = LibraryState::Loading;
-        library.failure = None;
-        Some(lease)
-    }
-
     /// Drops a deleted tenant's library from memory.
     pub(super) fn forget_library(&mut self, tenant: &TenantId) {
         self.libraries.retain(|l| &l.tenant != tenant);
@@ -792,13 +767,7 @@ impl State {
                 state: l.state,
                 failure: l.failure,
                 // An import's cases show once it commits (D050).
-                cases: l
-                    .library
-                    .cases
-                    .iter()
-                    .filter(|c| !self.v1_hides_case(&l.tenant, &c.id))
-                    .map(CaseView::from)
-                    .collect(),
+                cases: l.library.cases.iter().map(CaseView::from).collect(),
                 problem: l.problem,
                 unsaved: l.unsaved,
                 notice: l.notice.clone(),

@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import type { ContextRef, HarnessMcpView, McpServerView, Refusal, SelectedWorkspace } from '@prisma-airs/desktop-contracts'
-import { MANAGEMENT_FAILURE_TEXT } from '../../../features/administration/management-read'
-import type { Dispatch } from '../../../features/tenants/dispatch'
+import { MANAGEMENT_FAILURE_TEXT } from '../../../modules/administration/management-read'
+import type { Dispatch } from '../../../modules/tenants/dispatch'
 import { MCP_MAX_ON, MCP_SIGN_IN_FAILURE_TEXT, MCP_STEP_TEXT, actionOutcomeText } from '../text'
 import { Btn } from './controls'
 

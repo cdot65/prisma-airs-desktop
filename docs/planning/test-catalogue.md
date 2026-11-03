@@ -25,8 +25,7 @@ separate evidence. Do not assert implementation-private structure for its own sa
   credentials are separate. Deny wrong-origin redirects or custom endpoint
   changes that would forward a credential without an explicitly reviewed new
   destination binding. Preserve legitimate operator-reviewed endpoint overrides
-  and explicitly selected nonsecret tenant-profile import; whitelist metadata,
-  discard embedded secrets and never follow credential-file references.
+  and ordinary user-selected current-format collection imports. Alpha/v2 tenant-profile readers and credential-file discovery are removed under D060/C45.
   No implicit environment/tenant file
   loading, upstream fallback, persistent renderer storage, or secret log fields.
 - **T06 Protected storage:** locked/denied/unavailable/corrupt store, interrupted
@@ -65,7 +64,7 @@ separate evidence. Do not assert implementation-private structure for its own sa
   consistent Home/Inbox source facts, and no false complete/zero/absent claims.
 - **T14 API Client documents:** edit/save/conflict while typing, invalid input,
   environment/secret separation, import/path traversal/size errors, multipart,
-  cookies/redirect auth, cancellation, history/download, Git/profile adoption,
+  cookies/redirect auth, cancellation, history/download, read-only Git,
   and recovery from interrupted writes. Arbitrary workbench targets cannot borrow
   privileged application credentials through renderer-supplied references.
 - **T15 Harness process:** actual native binary and bounded bootstrap/JSONL
@@ -85,10 +84,7 @@ separate evidence. Do not assert implementation-private structure for its own sa
 
 ## Import, quality, and artifacts
 
-- **T18 Import transaction:** dry-run selection, versions/source lock, account
-  match, protected source reads, malformed/oversized/traversal inputs, interruption
-  at each commit point, restart, duplicate import, destination conflict, rollback,
-  and source-byte preservation. No credentials/sessions/approvals transfer.
+- **T18 Fresh setup and ordinary file isolation (C45/D060):** bootstrap in the new application/data/credential identities without reading, adopting, replaying or purging alpha/v2 stores. Synthetic old-root/service canaries survive new setup, restart and reset; old stores/vaults receive no reads. Ordinary user-selected API collection/cURL/Insomnia/case files retain their formats, bounded parsing, traversal refusal, reviewed selection and source-byte preservation. The former alpha transaction, tenant-profile import and API profile adoption are intentionally retired; historical results remain unchanged.
 - **T19 Diagnostics privacy:** seeded canary secrets and customer content absent
   from logs/crash files/exports by default; explicit redacted export; correct
   retention/reset; no analytics/crash upload attempts; encrypted user history
@@ -141,3 +137,5 @@ Before review, challenge security-critical tests with a relevant deliberate
 behavior mutation or equivalent negative probe. Show that violating an invariant
 fails the test; do not create an exhaustive mutation framework or mirror every
 implementation detail. Run mutations only in isolated disposable copies.
+
+C45/P10 checks follow verification-policy.md: record affected behavior/dependencies, selected checks, retained original artifact bindings, uncertainty and the reason for any full baseline. One complete C45 identity/isolation/cleanup baseline is justified; follow-ups/merge/P10 reuse valid coverage with explicit proof or unchanged-impact rationale and execute affected targets. Every required assertion is accounted; no omission or score substitutes for evidence.

@@ -604,7 +604,7 @@ def validate(root, receipt_path, current=None):
             if prepared:
                 prep = json.loads(prepared)
                 bundle = prep["bundle"]
-                exe = load(root, os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2"))
+                exe = load(root, os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop"))
                 bundle_path = os.path.join(root, bundle)
                 if rec["app"]["bundle"] != bundle:
                     reasons.append("native record names another bundle")

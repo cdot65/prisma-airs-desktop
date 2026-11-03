@@ -5,7 +5,6 @@
 //! this module sends a request; execution and its admission arrive in C15.
 
 pub mod admission;
-pub mod adoption;
 pub mod cookies;
 pub mod curl;
 pub mod document;

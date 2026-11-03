@@ -39,7 +39,7 @@ EVIDENCE = os.path.join(ROOT, "docs/planning/evidence", SUBJECT)
 NATIVE = os.path.join(EVIDENCE, "native" if SUBJECT == "C22" else "native-C22")
 RECORD = os.path.join(EVIDENCE, "native-acceptance.json" if SUBJECT == "C22" else "native-acceptance-C22.json")
 INFERENCE_KEY = "SYNTHETIC-C22-HARNESS-KEY"
-SERVICE = "io.cdot.prisma-airs-desktop.v2.fixture.scan"
+SERVICE = "io.cdot.airs-desktop.fixture.scan"
 SERVER = "Tools tools"
 CANARY = "C20-CANARY heliotrope"
 RESULT = "C22-NATIVE-MCP-RESULT"
@@ -130,15 +130,15 @@ def main():
     try:
         return run()
     finally:
-        fx.sh(["pkill", "-f", fx.PROCESS])
-        fx.sh(["pkill", "-9", "-f", c19.ENGINE])
+        fx.stop_app()
+        fx.stop_engines()
         fx.clean_fixture_root()
 
 
 def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if c8.sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c22-acceptance-")
@@ -150,7 +150,7 @@ def run():
     os.makedirs(NATIVE)
     app = fx.App(bundle, work, LOG)
     app.quit()
-    fx.sh(["pkill", "-9", "-f", c19.ENGINE])
+    fx.stop_engines()
     fx.clean_fixture_root()
     v1_before = fx.v1_metadata()
     endpoint = fx.ScanEndpoint(os.path.join(work, "endpoint"), c8.SCAN_KEY)

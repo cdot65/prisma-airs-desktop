@@ -10,7 +10,6 @@ import type { FeatureEntry } from "./FeatureEntry";
 import type { FeatureId } from "./FeatureId";
 import type { GatewayView } from "./GatewayView";
 import type { HarnessView } from "./HarnessView";
-import type { ImportView } from "./ImportView";
 import type { InboxView } from "./InboxView";
 import type { LearnerRef } from "./LearnerRef";
 import type { LibraryView } from "./LibraryView";
@@ -26,8 +25,6 @@ import type { StorageHealth } from "./StorageHealth";
 import type { SwitchBlocked } from "./SwitchBlocked";
 import type { TenantView } from "./TenantView";
 import type { Theme } from "./Theme";
-import type { UiVariant } from "./UiVariant";
-import type { V1ImportView } from "./V1ImportView";
 import type { WorkbenchView } from "./WorkbenchView";
 
 /**
@@ -40,9 +37,6 @@ export type ShellSnapshot = {
 revision: string, appearance: Theme, 
 /**
  * Which shell renders (C28, D058); `features` is that shell's catalogue.
- */
-uiVariant: UiVariant, 
-/**
  * First-run wizard state (C28/C29).
  */
 onboarding: OnboardingState, 
@@ -72,7 +66,7 @@ setup: SetupView | null, features: Array<FeatureEntry>,
 /**
  * True only in the distinct test-fixtures identity.
  */
-fixtureBuild: boolean, storage: StorageHealth, tenants: Array<TenantView>, active: ActiveContext | null, endpointReview: EndpointReviewView | null, import: ImportView, 
+fixtureBuild: boolean, storage: StorageHealth, tenants: Array<TenantView>, active: ActiveContext | null, endpointReview: EndpointReviewView | null, 
 /**
  * The last reset stopped at this step. Scan keys were retired when it
  * started and must be entered again; other data stays until a reset
@@ -146,9 +140,6 @@ workbench: WorkbenchView,
 gateway: GatewayView, harness: HarnessView, 
 /**
  * Reviewed import of v1 work (C23).
- */
-v1Import: V1ImportView, 
-/**
  * Local redacted diagnostics (C24).
  */
 diagnostics: DiagnosticsView, };

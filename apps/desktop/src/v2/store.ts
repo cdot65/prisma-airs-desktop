@@ -48,7 +48,7 @@ export interface HarnessSent {
 export interface PlaygroundCase {
     tenant: string
     caseId: string
-    prefill: import('../features/library/library-view').CasePrefill
+    prefill: import('../modules/library/case-prefill').CasePrefill
 }
 
 /** A delivery the desktop did not confirm: kept until the operator retries or dismisses it (DESIGN-V2 §7). */

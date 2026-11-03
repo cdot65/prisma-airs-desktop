@@ -12,7 +12,7 @@ import type {
     SignInStep,
     TurnEnd,
 } from '@prisma-airs/desktop-contracts'
-import { type DispatchOutcome, outcomeMessage } from '../../features/tenants/dispatch'
+import { type DispatchOutcome, outcomeMessage } from '../../modules/tenants/dispatch'
 
 /**
  * The Harness's words, as the C19–C22 screens said them, kept here so the v2

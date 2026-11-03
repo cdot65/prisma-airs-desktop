@@ -27,7 +27,6 @@ mod harness_history;
 mod harness_identity;
 mod harness_mcp;
 mod harness_tools;
-mod import_v1_domain;
 mod inbox_domain;
 mod inference_domain;
 mod learner_domain;
@@ -72,11 +71,11 @@ use crate::academy::AcademyClient;
 use crate::context::{ContextRef, EnteredSecret, LearnerRef, ReviewId, WorkspaceRef};
 use crate::delivery::{Admit, Delivery, DeliverySession, Sessions};
 use crate::features::{self, FeatureEntry, FeatureId};
-use crate::import::{self, Discarded, ImportCandidate, ImportError, ImportFormat, ImportPreview};
 use crate::learner::{AcademyView, ProcedureKind};
 use crate::library::CaseDraft;
 use crate::management::{ManagementEndpoints, ManagementRequest};
 use crate::observe::{Subscribers, Subscription, Update};
+use crate::picker::ImportError;
 use crate::runtime::{
     self, OperationId, OperationLimits, OperationState, Operations, Outcome, StopReason,
 };
@@ -116,12 +115,6 @@ pub enum Intent {
     /// Set the desktop-wide appearance preference (not an Academy setting).
     SetAppearance {
         theme: Theme,
-    },
-    /// Choose the desktop presentation (C28, D058): the legacy shell or the
-    /// v2 shell. Persisted; navigation falls back to the new variant's first
-    /// sidebar destination.
-    SetUiVariant {
-        variant: features::UiVariant,
     },
     /// Make a destination the active one (C28). Refused unless the feature
     /// is in the current presentation's catalogue and available; the native
@@ -631,43 +624,8 @@ pub enum Intent {
     DiscardReview {
         review: ReviewId,
     },
-    /// Open the native file sheet to choose a profile file to preview.
-    ChooseProfileImport,
-    /// Create tenants from selected preview entries (no credentials).
-    ConfirmProfileImport {
-        review: ReviewId,
-        selected: Vec<u32>,
-    },
     /// Remove all v2 local data and v2 credentials.
     ResetLocalData,
-    /// Read v1's folder, without its Keychain, to show what could be
-    /// imported (C23).
-    InspectV1Import,
-    /// Read the selected categories of v1 (its protected items only for
-    /// selected categories and tenants) and review each item against v2.
-    PlanV1Import {
-        categories: Vec<crate::import_v1::Category>,
-        targets: Vec<import_v1_domain::TenantTarget>,
-    },
-    /// Import the chosen ready items of the reviewed plan.
-    ConfirmV1Import {
-        review: ReviewId,
-        items: Vec<u32>,
-    },
-    /// Finish an interrupted import (its source is read again).
-    ResumeV1Import {
-        receipt: String,
-    },
-    /// Remove what an import added and nobody changed since (asks first).
-    RollBackV1Import {
-        receipt: String,
-    },
-    /// Forget a settled import's receipt (it can no longer be rolled back).
-    ForgetV1ImportReceipt {
-        receipt: String,
-    },
-    /// Close the import review.
-    DismissV1Import,
     /// Save the redacted diagnostics through the native save sheet (C24).
     ExportDiagnostics,
     /// Remove the diagnostics kept on this Mac (C24).
@@ -792,7 +750,6 @@ macro_rules! intent_kinds {
 
 intent_kinds! {
     SetAppearance => "setAppearance",
-    SetUiVariant => "setUiVariant",
     Navigate => "navigate",
     SetOnboarding => "setOnboarding",
     SetShowCalls => "setShowCalls",
@@ -888,16 +845,7 @@ intent_kinds! {
     ReviewEndpointChange => "reviewEndpointChange",
     ConfirmEndpointChange => "confirmEndpointChange",
     DiscardReview => "discardReview",
-    ChooseProfileImport => "chooseProfileImport",
-    ConfirmProfileImport => "confirmProfileImport",
     ResetLocalData => "resetLocalData",
-    InspectV1Import => "inspectV1Import",
-    PlanV1Import => "planV1Import",
-    ConfirmV1Import => "confirmV1Import",
-    ResumeV1Import => "resumeV1Import",
-    RollBackV1Import => "rollBackV1Import",
-    ForgetV1ImportReceipt => "forgetV1ImportReceipt",
-    DismissV1Import => "dismissV1Import",
     Scan => "scan",
     CancelScan => "cancelScan",
     StartAcademySignIn => "startAcademySignIn",
@@ -1156,24 +1104,6 @@ pub struct EndpointReviewView {
     pub removes_scan_credential: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
-#[serde(tag = "state", rename_all = "camelCase")]
-pub enum ImportView {
-    Idle,
-    Choosing,
-    #[serde(rename_all = "camelCase")]
-    Review {
-        review: ReviewId,
-        format: ImportFormat,
-        file_name: String,
-        candidates: Vec<ImportCandidate>,
-        discarded: Discarded,
-    },
-    Failed {
-        error: ImportError,
-    },
-}
-
 /// Which step of a reset did not complete.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -1229,7 +1159,6 @@ pub struct ShellSnapshot {
     pub revision: String,
     pub appearance: Theme,
     /// Which shell renders (C28, D058); `features` is that shell's catalogue.
-    pub ui_variant: features::UiVariant,
     /// First-run wizard state (C28/C29).
     pub onboarding: features::OnboardingState,
     /// The active destination (C28): what `navigate` last set, else the
@@ -1254,7 +1183,6 @@ pub struct ShellSnapshot {
     pub tenants: Vec<TenantView>,
     pub active: Option<ActiveContext>,
     pub endpoint_review: Option<EndpointReviewView>,
-    pub import: ImportView,
     /// The last reset stopped at this step. Scan keys were retired when it
     /// started and must be entered again; other data stays until a reset
     /// completes.
@@ -1296,7 +1224,6 @@ pub struct ShellSnapshot {
     pub gateway: GatewayView,
     pub harness: harness_domain::HarnessView,
     /// Reviewed import of v1 work (C23).
-    pub v1_import: import_v1_domain::V1ImportView,
     /// Local redacted diagnostics (C24).
     pub diagnostics: diagnostics_domain::DiagnosticsView,
 }
@@ -1369,8 +1296,6 @@ pub struct CoreConfig {
     /// The Git program the API Client's read-only Git view runs (an
     /// absolute path; None: the view reports Git unavailable).
     pub git: Option<std::path::PathBuf>,
-    /// The v1 API Client profile offered for adoption (read only).
-    pub adoption_source: Option<std::path::PathBuf>,
     /// Where API Client requests may go (C15). Fails closed: production
     /// hosts set `Live`; fixture builds keep loopback only.
     pub workbench_network: crate::workbench::admission::Network,
@@ -1398,7 +1323,6 @@ impl Default for CoreConfig {
             case_catalog: url::Url::parse(crate::library::PUBLIC_CATALOG).expect("catalog URL"),
             deadline_tick: std::time::Duration::from_secs(15),
             git: crate::workbench::git::locate(),
-            adoption_source: None,
             workbench_network: crate::workbench::admission::Network::LoopbackOnly,
             workbench_api_origins: vec![SCM_API_ORIGIN.to_owned()],
         }
@@ -1433,7 +1357,7 @@ pub struct ImportFile {
     pub bytes: Zeroizing<Vec<u8>>,
 }
 
-/// The native file sheet for profile import (host adapter).
+/// A shared native file picker (avatars, dictionaries, cases and collections).
 pub trait ImportPicker: Send + Sync + 'static {
     /// `None` when the operator cancelled. Reads are bounded by the host.
     fn choose(
@@ -1546,7 +1470,6 @@ pub struct Adapters {
     /// learner); purged with the scan namespace on reset.
     pub learner_keychain: Arc<dyn CredentialStore>,
     pub store: Arc<dyn AppStore>,
-    pub picker: Arc<dyn ImportPicker>,
     pub opener: Arc<dyn UrlOpener>,
     pub printer: Arc<dyn PagePrinter>,
     pub images: Arc<dyn ImagePicker>,
@@ -1577,10 +1500,6 @@ pub struct Adapters {
     pub workbench_root: Option<std::path::PathBuf>,
     /// The native Harness engine, its launcher and runtime homes (C19).
     pub harness: crate::harness::sidecar::HarnessAdapters,
-    /// v1's folder and Keychain service, read only (C23; None: no import).
-    pub v1_source: Option<crate::import_v1::V1Source>,
-    /// Where import receipts are kept (C23).
-    pub import_root: Option<std::path::PathBuf>,
     /// Where local redacted diagnostics are kept (C24; None: not kept).
     pub logs_root: Option<std::path::PathBuf>,
 }
@@ -1683,8 +1602,6 @@ struct Data {
     learner_cleanup: Vec<RecordId>,
     /// Workspaces whose protected Harness history may exist (C20).
     harness_history: Vec<crate::store::GatewayPreference>,
-    /// Unsettled v1 import receipts, the commit binding (C23, D050).
-    open_imports: Vec<crate::import_v1::receipt::Receipt>,
 }
 
 struct EndpointReview {
@@ -1692,19 +1609,6 @@ struct EndpointReview {
     context: ContextRef,
     tenant: TenantId,
     to: Destination,
-}
-
-enum ImportState {
-    Idle,
-    Choosing {
-        lease: u64,
-    },
-    Review {
-        id: ReviewId,
-        file_name: String,
-        preview: ImportPreview,
-    },
-    Failed(ImportError),
 }
 
 struct State {
@@ -1721,7 +1625,6 @@ struct State {
     active_ref: Option<ContextRef>,
     endpoint_review: Option<EndpointReview>,
     consumed_reviews: Vec<ReviewId>,
-    import: ImportState,
     reset_failure: Option<ResetFailure>,
     durability_unconfirmed: bool,
     /// A rotation fact the service established (an issuance, a removal, a
@@ -1836,7 +1739,6 @@ struct State {
     workbench: workbench_domain::Workbench,
     workbench_root: Option<std::path::PathBuf>,
     git: Option<std::path::PathBuf>,
-    adoption_source: Option<std::path::PathBuf>,
     workbench_network: crate::workbench::admission::Network,
     workbench_api_origins: Vec<String>,
     /// The active context's Gateway workspaces and choice (C16).
@@ -1853,12 +1755,9 @@ struct State {
     harness_history: Option<harness_history::HistoryState>,
     harness_history_root: Option<std::path::PathBuf>,
     /// The reviewed v1 import (C23).
-    v1_import: import_v1_domain::V1Import,
     /// Local redacted diagnostics and their export (C24).
     diagnostics: diagnostics_domain::DiagnosticsState,
     diagnostics_log: Arc<crate::diagnostics::Diagnostics>,
-    v1_source: Option<crate::import_v1::V1Source>,
-    import_root: Option<std::path::PathBuf>,
     /// Tenants with a Harness history save under way (one entry each):
     /// removing a tenant waits for its saves before removing its folder,
     /// and reset waits for all of them (C20 review F4).
@@ -1884,14 +1783,6 @@ struct State {
 impl State {
     fn appearance(&self) -> Theme {
         self.data.appearance.unwrap_or(Theme::System)
-    }
-
-    /// C44: the v2 presentation is the only one. The persisted flag is read
-    /// no more (an older store's `legacy` is ignored) and `SetUiVariant` is
-    /// accepted without effect, so an older presentation or script that
-    /// still sends it is not refused.
-    fn ui_variant(&self) -> features::UiVariant {
-        features::UiVariant::V2
     }
 
     fn onboarding(&self) -> features::OnboardingState {
@@ -1923,17 +1814,15 @@ impl State {
     /// The active destination: the last admitted `navigate` while it stays
     /// in the current catalogue, else the presentation's first sidebar entry.
     fn active_feature(&self) -> FeatureId {
-        let variant = self.ui_variant();
         self.active_feature
-            .filter(|f| features::catalogue_for(variant).iter().any(|e| e.id == *f))
-            .unwrap_or_else(|| features::default_feature(variant))
+            .filter(|f| features::catalogue().iter().any(|e| e.id == *f))
+            .unwrap_or_else(features::default_feature)
     }
 
     fn snapshot(&self) -> ShellSnapshot {
         ShellSnapshot {
             revision: self.revision.to_string(),
-            appearance: self.shown_appearance(),
-            ui_variant: self.ui_variant(),
+            appearance: self.appearance(),
             onboarding: self.shown_onboarding(),
             active_feature: self.active_feature(),
             show_calls: self.show_calls(),
@@ -1945,24 +1834,16 @@ impl State {
                 .map(|t| self.calls.for_tenant(t.as_str())),
             switch_blocked: self.switch_blocked.clone(),
             setup: self.setup_view(),
-            features: features::catalogue_for(self.ui_variant()),
+            features: features::catalogue(),
             fixture_build: cfg!(feature = "test-fixtures"),
             storage: self.storage,
             // An import's tenants show once it commits (D050).
-            tenants: self
-                .data
-                .tenants
-                .iter()
-                .filter(|t| !self.v1_hides_tenant(&t.profile.id))
-                .map(tenant_view)
-                .collect(),
+            tenants: self.data.tenants.iter().map(tenant_view).collect(),
             active: match (&self.data.active, &self.active_ref) {
-                (Some(tenant), Some(context)) if !self.v1_hides_tenant(tenant) => {
-                    Some(ActiveContext {
-                        tenant: tenant.clone(),
-                        context: context.clone(),
-                    })
-                }
+                (Some(tenant), Some(context)) => Some(ActiveContext {
+                    tenant: tenant.clone(),
+                    context: context.clone(),
+                }),
                 _ => None,
             },
             endpoint_review: self.endpoint_review.as_ref().and_then(|r| {
@@ -1976,50 +1857,26 @@ impl State {
                     removes_scan_credential: tenant.scan != ScanCapability::Missing,
                 })
             }),
-            import: match &self.import {
-                ImportState::Idle => ImportView::Idle,
-                ImportState::Choosing { .. } => ImportView::Choosing,
-                ImportState::Review {
-                    id,
-                    file_name,
-                    preview,
-                } => ImportView::Review {
-                    review: id.clone(),
-                    format: preview.format,
-                    file_name: file_name.clone(),
-                    candidates: preview.candidates.clone(),
-                    discarded: preview.discarded,
-                },
-                ImportState::Failed(error) => ImportView::Failed { error: *error },
-            },
             reset_failure: self.reset_failure,
             durability_unconfirmed: self.durability_unconfirmed,
             scans: self.scan_views(),
             academy: self.academy_view(),
             learner: self.learner_ref.clone(),
             academy_origin: self.academy_origin.clone(),
-            academy_offline: self.offline.as_ref().map_or_else(
-                offline_domain::OfflineView::signed_out,
-                |o| {
-                    let mut view = o.view();
-                    // An import's drafts show once it commits (D050).
-                    view.local_drafts
-                        .retain(|d| !self.v1_hides_draft(&d.attempt_id));
-                    view
-                },
-            ),
+            academy_offline: self
+                .offline
+                .as_ref()
+                .map_or_else(offline_domain::OfflineView::signed_out, |o| o.view()),
             changes: self.changes_view(),
             sessions: self.sessions_view(),
             library: self.library_view(),
             overview: self.overview_view(),
-            administration: (self.ui_variant() == features::UiVariant::V2)
-                .then(crate::admin_inventory::inventory),
+            administration: Some(crate::admin_inventory::inventory()),
             rotations: self.rotations_view(),
             inbox: self.inbox_view(&self.overview_view()),
             workbench: self.workbench_view(),
             gateway: self.gateway_view(),
             harness: self.harness_view(self.harness_engine),
-            v1_import: self.v1_import_view(),
             diagnostics: self.diagnostics_view(
                 self.diagnostics_log.count(),
                 self.diagnostics_log.available(),
@@ -2082,7 +1939,6 @@ impl State {
                     rotations: t.rotations.clone(),
                 })
                 .collect(),
-            ui_variant: self.ui_variant(),
             onboarding: self.onboarding(),
             show_calls: self.show_calls(),
             show_calls_chosen: self.data.show_calls.is_some(),
@@ -2155,7 +2011,6 @@ impl State {
                 .filter_map(|t| t.harness_sign_in.clone())
                 .collect(),
             harness_history: self.data.harness_history.clone(),
-            open_imports: self.data.open_imports.clone(),
             harness_projects: self
                 .data
                 .tenants
@@ -2703,7 +2558,6 @@ enum Effect {
         lease: u64,
     },
     /// Reviewed v1 import work (C23).
-    V1Import(import_v1_domain::Job),
     Store {
         tenant: TenantId,
         class: CredentialClass,
@@ -2713,9 +2567,6 @@ enum Effect {
         key: EnteredSecret,
     },
     Cleanup,
-    ChooseImport {
-        lease: u64,
-    },
     Reset,
     Start(Vec<runtime::Start>),
     AcademySignIn {
@@ -2884,7 +2735,6 @@ impl Core {
             active_ref: None,
             endpoint_review: None,
             consumed_reviews: Vec::new(),
-            import: ImportState::Idle,
             reset_failure: None,
             durability_unconfirmed: false,
             rotation_unsaved: false,
@@ -2947,7 +2797,6 @@ impl Core {
             gateway: gateway_domain::GatewayState::default(),
             workbench_root: adapters.workbench_root.clone(),
             git: config.git.clone(),
-            adoption_source: config.adoption_source.clone(),
             workbench_network: config.workbench_network,
             workbench_api_origins: config.workbench_api_origins.clone(),
             harness: None,
@@ -2956,11 +2805,8 @@ impl Core {
             harness_grants: Vec::new(),
             harness_history: None,
             harness_history_root: adapters.harness.history_root.clone(),
-            v1_import: import_v1_domain::V1Import::default(),
             diagnostics: diagnostics_domain::DiagnosticsState::default(),
             diagnostics_log: Arc::clone(&diagnostics),
-            v1_source: adapters.v1_source.clone(),
-            import_root: adapters.import_root.clone(),
             history_writers: Vec::new(),
             history_hold: Arc::default(),
             settle_hold: Arc::default(),
@@ -2986,9 +2832,6 @@ impl Core {
         });
         if let Ok(state) = lock(&inner) {
             state.sweep_harness_history();
-        }
-        if let Ok(mut state) = lock(&inner) {
-            state.load_v1_receipts();
         }
         if let Ok(mut state) = lock(&inner) {
             // A saved learner resumes signed in; its session renews the
@@ -3028,22 +2871,6 @@ impl Core {
                 file: if ours { file } else { "external" }.to_owned(),
                 line: if ours { line } else { 0 },
             });
-    }
-
-    #[cfg(feature = "test-fixtures")]
-    /// Stops the next v1 import, resume or rollback at `point` as if the
-    /// app ended there: nothing after it is written (fixture builds only).
-    pub fn interrupt_v1_import(&self, point: crate::import_v1::CommitPoint) {
-        self.interrupt_v1_import_at(point, 0);
-    }
-
-    #[cfg(feature = "test-fixtures")]
-    /// As [`Core::interrupt_v1_import`], after `point` has passed `skip`
-    /// times (a later item's commit point).
-    pub fn interrupt_v1_import_at(&self, point: crate::import_v1::CommitPoint, skip: u32) {
-        if let Ok(mut state) = lock(&self.inner) {
-            state.v1_import.interrupt_at = Some((point, skip));
-        }
     }
 
     #[cfg(feature = "test-fixtures")]
@@ -3229,14 +3056,9 @@ impl Core {
     /// Resumes durable work after launch (pending Keychain cleanup). Call on
     /// the application runtime.
     pub fn start(&self) {
-        let (offline, recovery) = lock(&self.inner)
-            .ok()
-            .map(|mut s| (s.offline.clone(), s.take_v1_recovery()))
-            .unwrap_or_default();
+        let offline = lock(&self.inner).ok().and_then(|s| s.offline.clone());
         let mut effects = vec![Effect::Cleanup];
         effects.extend(offline.map(Effect::OpenOffline));
-        // An import the app ended during is rolled back first (D050).
-        effects.extend(recovery);
         run_effects(&self.inner, effects);
         // Deadlines pass without any event (a read going stale, a snooze
         // ending, sleep and wake): re-evaluate them and publish a change.
@@ -3459,7 +3281,6 @@ fn data_from(doc: PersistedState) -> Data {
         learner: doc.learner,
         learner_cleanup: doc.learner_cleanup,
         harness_history: doc.harness_history,
-        open_imports: doc.open_imports,
     }
 }
 
@@ -3520,21 +3341,13 @@ impl AuthorityHandle {
                 Admit::Duplicate(result) => return result,
                 Admit::Fresh => {
                     let mut effects = Vec::new();
-                    // What an import writes waits while it (or its
-                    // rollback) runs, until every receipt has settled, and
-                    // while a receipt cannot be read (D050).
-                    let result =
-                        if state.v1_import_holds() && import_v1_domain::waits_for_import(&intent) {
-                            Err(Refusal::Busy)
-                        } else {
-                            admit(
-                                &mut state,
-                                &self.inner.session,
-                                &self.inner.adapters,
-                                intent,
-                                &mut effects,
-                            )
-                        };
+                    let result = admit(
+                        &mut state,
+                        &self.inner.session,
+                        &self.inner.adapters,
+                        intent,
+                        &mut effects,
+                    );
                     if result.is_err() {
                         effects.clear();
                     }
@@ -3707,11 +3520,8 @@ fn admit(
                 state.changed();
             }
         }
-        Intent::SetUiVariant { variant: _ } => {
-            // C44: one presentation. Accepted and ignored (see `ui_variant`).
-        }
         Intent::Navigate { feature } => {
-            let entry = features::catalogue_for(state.ui_variant())
+            let entry = features::catalogue()
                 .into_iter()
                 .find(|e| e.id == feature)
                 .ok_or(Refusal::InvalidInput)?;
@@ -3883,7 +3693,7 @@ fn admit(
             state.require_storage()?;
             // A tenant an unsettled import wrote is not there yet (D050); a
             // setup draft is not a tenant until it completes (C29).
-            if !state.committed_tenant(&tenant) || state.v1_hides_tenant(&tenant) {
+            if !state.committed_tenant(&tenant) {
                 return Err(Refusal::InvalidInput);
             }
             if resolution.is_some() && state.data.active.as_ref() == Some(&tenant) {
@@ -3907,9 +3717,7 @@ fn admit(
             effects.extend(state.take_history_jobs());
             effects.push(Effect::Start(state.reissue_context()));
             // The new tenant's Home is what a switch shows (C30, shell.md).
-            if state.ui_variant() == features::UiVariant::V2 {
-                state.active_feature = Some(FeatureId::Home);
-            }
+            state.active_feature = Some(FeatureId::Home);
             state.changed();
         }
         Intent::DismissSwitchGuard => {
@@ -4821,74 +4629,9 @@ fn admit(
                 state.endpoint_review = None;
                 found = true;
             }
-            if matches!(&state.import, ImportState::Review { id, .. } if *id == review) {
-                state.import = ImportState::Idle;
-                found = true;
-            }
             if !found {
                 return Err(Refusal::ReviewInvalid);
             }
-            state.changed();
-        }
-        Intent::ChooseProfileImport => {
-            state.require_storage()?;
-            if matches!(state.import, ImportState::Choosing { .. }) {
-                return Err(Refusal::Busy);
-            }
-            let lease = state.lease();
-            state.import = ImportState::Choosing { lease };
-            effects.push(Effect::ChooseImport { lease });
-            state.changed();
-        }
-        Intent::ConfirmProfileImport { review, selected } => {
-            if state.consumed_reviews.contains(&review) {
-                return Err(Refusal::ReviewConsumed);
-            }
-            state.require_storage()?;
-            let ImportState::Review { id, preview, .. } = &state.import else {
-                return Err(Refusal::ReviewInvalid);
-            };
-            if *id != review {
-                return Err(Refusal::ReviewInvalid);
-            }
-            let mut chosen = Vec::new();
-            for index in &selected {
-                let candidate = preview
-                    .candidates
-                    .iter()
-                    .find(|c| c.index == *index)
-                    .ok_or(Refusal::InvalidInput)?;
-                if candidate.problem.is_some()
-                    || chosen.iter().any(|c: &ImportCandidate| c.index == *index)
-                {
-                    return Err(Refusal::InvalidInput);
-                }
-                chosen.push(candidate.clone());
-            }
-            if chosen.is_empty() || state.data.tenants.len() + chosen.len() > MAX_TENANTS {
-                return Err(Refusal::InvalidInput);
-            }
-            let before = state.data.clone();
-            for candidate in chosen {
-                let profile = ProfileDraft {
-                    label: candidate.label,
-                    tsg_id: candidate.tsg_id,
-                    destination: candidate.destination.ok_or(Refusal::InvalidInput)?,
-                    environment: Default::default(),
-                }
-                .validate()
-                .ok_or(Refusal::InvalidInput)?;
-                state.data.tenants.push(Tenant::new(TenantProfile {
-                    id: TenantId::issue().ok_or(Refusal::ShuttingDown)?,
-                    label: profile.label,
-                    tsg_id: profile.tsg_id,
-                    destination: profile.destination,
-                    environment: profile.environment,
-                }));
-            }
-            state.save_with(&before)?;
-            state.import = ImportState::Idle;
-            state.consumed_reviews.push(review);
             state.changed();
         }
         Intent::ExportDiagnostics => diagnostics_domain::admit_export(state, effects)?,
@@ -4896,19 +4639,7 @@ fn admit(
             state.clear_diagnostics();
             state.changed();
         }
-        intent @ (Intent::InspectV1Import
-        | Intent::PlanV1Import { .. }
-        | Intent::ConfirmV1Import { .. }
-        | Intent::ResumeV1Import { .. }
-        | Intent::RollBackV1Import { .. }
-        | Intent::ForgetV1ImportReceipt { .. }
-        | Intent::DismissV1Import) => import_v1_domain::admit(state, intent, effects)?,
         Intent::ResetLocalData => {
-            // An import or rollback under way settles first: its receipt
-            // must never outlive (or be written after) the reset.
-            if state.v1_import_busy() {
-                return Err(Refusal::Busy);
-            }
             match state.storage {
                 StorageHealth::Resetting => return Err(Refusal::Busy),
                 // Another instance may own this data root and namespace.
@@ -4954,7 +4685,6 @@ fn admit(
             session.clear();
             state.storage = StorageHealth::Resetting;
             state.reset_failure = None;
-            state.import = ImportState::Idle;
             // Report books go with the data; pending writes find nothing.
             state.reports.clear();
             state.libraries.clear();
@@ -5050,10 +4780,9 @@ fn admit(
             learner,
             attempt_id,
         } => {
-            let hidden = state.v1_hides_draft(&attempt_id);
             let (operation, starts) = state.admit_offline(
                 learner,
-                learner_domain::OfflineOp::LoadDraft(attempt_id, hidden),
+                learner_domain::OfflineOp::LoadDraft(attempt_id, false),
             )?;
             operation_ref = Some(operation);
             effects.push(Effect::Start(starts));
@@ -5254,7 +4983,6 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     settle_store(&inner, &tenant, class, lease, record, mode, result);
                 });
             }
-            Effect::V1Import(job) => import_v1_domain::run(inner, job),
             Effect::ExportDiagnostics { lease } => diagnostics_domain::export(inner, lease),
             Effect::Cleanup => {
                 drain_cleanup(inner);
@@ -5672,13 +5400,6 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                     }
                 });
             }
-            Effect::ChooseImport { lease } => {
-                let inner = Arc::clone(inner);
-                tokio::spawn(async move {
-                    let chosen = inner.adapters.picker.choose().await;
-                    settle_import(&inner, lease, chosen);
-                });
-            }
             Effect::Reset => {
                 let inner = Arc::clone(inner);
                 tokio::spawn(async move {
@@ -5793,15 +5514,6 @@ fn run_effects(inner: &Arc<Inner>, effects: Vec<Effect>) {
                         }
                         // Diagnostics go with the data (D051).
                         if !worker.diagnostics.purge() {
-                            return Err(ResetFailure {
-                                stage: ResetStage::Document,
-                                reason: VaultError::Unavailable,
-                            });
-                        }
-                        // Import receipts go with the work they describe.
-                        if let Some(root) = &worker.adapters.import_root
-                            && !crate::import_v1::receipt::purge(root)
-                        {
                             return Err(ResetFailure {
                                 stage: ResetStage::Document,
                                 reason: VaultError::Unavailable,
@@ -6193,39 +5905,6 @@ fn drain_cleanup(inner: &Arc<Inner>) {
     });
 }
 
-fn settle_import(inner: &Arc<Inner>, lease: u64, chosen: Option<Result<ImportFile, ImportError>>) {
-    let Ok(mut state) = lock(inner) else {
-        return;
-    };
-    if !matches!(state.import, ImportState::Choosing { lease: l } if l == lease) {
-        return;
-    }
-    state.import = match chosen {
-        None => ImportState::Idle,
-        Some(Err(error)) => ImportState::Failed(error),
-        Some(Ok(file)) => {
-            let labels: Vec<String> = state
-                .data
-                .tenants
-                .iter()
-                .map(|t| t.profile.label.clone())
-                .collect();
-            match import::preview(file.bytes, &labels) {
-                Ok(preview) => match ReviewId::issue() {
-                    Some(id) => ImportState::Review {
-                        id,
-                        file_name: display_name(&file.name),
-                        preview,
-                    },
-                    None => ImportState::Failed(ImportError::Unsupported),
-                },
-                Err(error) => ImportState::Failed(error),
-            }
-        }
-    };
-    state.changed();
-}
-
 fn display_name(name: &str) -> String {
     let base = name.rsplit('/').next().unwrap_or(name);
     base.chars().filter(|c| !c.is_control()).take(128).collect()
@@ -6249,7 +5928,6 @@ fn settle_reset(inner: &Arc<Inner>, result: Result<bool, ResetFailure>) {
                 inner.session.clear();
                 state.data = Data::default();
                 // Receipts and diagnostics were purged with the data.
-                state.v1_import = import_v1_domain::V1Import::default();
                 state.diagnostics = diagnostics_domain::DiagnosticsState::default();
                 state.storage = StorageHealth::Ready;
                 state.reset_failure = None;
@@ -6291,17 +5969,6 @@ fn wall_secs(clock_offset: u32) -> u32 {
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| u32::try_from(d.as_secs()).unwrap_or(u32::MAX))
         .saturating_add(clock_offset)
-}
-
-#[cfg(feature = "test-fixtures")]
-impl Core {
-    /// Whether an armed fixture interruption is still waiting for its exact
-    /// commit point. Read-only; tests must not simulate exit before it fires.
-    pub fn v1_import_interruption_pending(&self) -> bool {
-        lock(&self.inner)
-            .map(|state| state.v1_import.interrupt_at.is_some())
-            .unwrap_or(true)
-    }
 }
 
 #[cfg(test)]

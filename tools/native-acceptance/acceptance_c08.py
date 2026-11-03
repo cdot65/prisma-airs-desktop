@@ -42,7 +42,7 @@ CLIENT_ID = "c08-native@1234567890.iam.panserviceaccount.com"
 SECRET = "synthetic-c08-native-client-secret"
 TSG = "1234567890"
 PROFILE = "Production guardrails"
-SCAN_SERVICE = "io.cdot.prisma-airs-desktop.v2.fixture.scan"
+SCAN_SERVICE = "io.cdot.airs-desktop.fixture.scan"
 MGMT_ORIGIN_FILE = os.path.join(fx.DATA, "fixture-management-origin")
 REDACTED = ["SYNTHETIC-C08-KEY-VALUE", "SYNTHETIC-C08-AUTH-CODE", "SYNTHETIC-C08-DP-CODE"]
 LOG = []
@@ -114,7 +114,7 @@ def main():
     try:
         return run()
     finally:
-        fx.sh(["pkill", "-f", fx.PROCESS])
+        fx.stop_app()
         fx.clean_fixture_root()
 
 
@@ -165,7 +165,7 @@ def reach(app, zoom, label):
 def run():
     prepared = json.load(open(os.path.join(EVIDENCE, "native-prepare.json")))
     bundle = os.path.join(ROOT, prepared["bundle"])
-    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop-v2")
+    exe = os.path.join(bundle, "Contents/MacOS/prisma-airs-desktop")
     if sha256(exe) != prepared["executable_sha256"]:
         raise SystemExit("prepared executable changed since native-prepare")
     work = tempfile.mkdtemp(prefix="airs-v2-c08-acceptance-")
@@ -362,8 +362,8 @@ def run():
     return evaluate(prepared, obs)
 
 
-WEBKIT_DIRS = [os.path.join(fx.HOME, "Library/WebKit/io.cdot.prisma-airs-desktop.v2.fixture"),
-               os.path.join(fx.HOME, "Library/Caches/io.cdot.prisma-airs-desktop.v2.fixture")]
+WEBKIT_DIRS = [os.path.join(fx.HOME, "Library/WebKit/io.cdot.airs-desktop.fixture"),
+               os.path.join(fx.HOME, "Library/Caches/io.cdot.airs-desktop.fixture")]
 
 
 def scan_data_root():

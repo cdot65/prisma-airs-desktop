@@ -83,9 +83,7 @@ impl Desk {
 #[tokio::test]
 async fn the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_setup_view() {
     let mut desk = Desk::new();
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     desk.send(
         json!({"kind": "beginTenantSetup", "mode": "firstRun", "profile": {
         "label": "Northwind Health", "tsgId": "1762204418",
@@ -154,9 +152,7 @@ async fn the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_se
 #[tokio::test]
 async fn add_mode_has_no_required_scan_key_and_the_sheet_discards_its_draft_on_cancel() {
     let mut desk = Desk::new();
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     desk.send(json!({"kind": "setOnboarding", "state": "done"}))
         .await
         .expect("done");

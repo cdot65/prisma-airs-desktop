@@ -1265,7 +1265,7 @@ describe('C41 API Client board', () => {
         expect(status()).toHaveAttribute('data-state', 'new')
     })
 
-    it('shows the start panel with the recents and the v1 import when no collection is open, and the built-in collection opens from it', async () => {
+    it('shows the start panel with recents and no profile import when no collection is open, and the built-in collection opens from it', async () => {
         const snapshot = fxApi()
         const { user, requests } = await (async () => {
             const native = scriptedNative({
@@ -1274,7 +1274,6 @@ describe('C41 API Client board', () => {
                     ...snapshot.workbench,
                     collection: null,
                     recent: [{ index: 0, name: 'Topics', folder: 'api' }],
-                    adoptionSettled: false,
                 },
             })
             const requests = workbench(native, answers())
@@ -1286,7 +1285,7 @@ describe('C41 API Client board', () => {
         const start = await screen.findByText('No collection is open.')
         expect(start).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Topics (api)' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Import v1 API Client profile…' })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Import v1 API Client profile…' })).toBeNull()
         await user.click(screen.getByRole('button', { name: 'Open Strata Cloud Manager' }))
         await waitFor(() => expect(requests.filter((r) => r.kind === 'openBuiltIn')).toHaveLength(1))
         await user.click(screen.getByRole('button', { name: 'Topics (api)' }))

@@ -1,0 +1,4950 @@
+{
+  "schema": "airs-v2/worf-worktree-audit/1",
+  "recorded_utc": "2026-11-01T15:13:16.882832+00:00",
+  "read_only_repository_audit": true,
+  "main_reference": "03e572be41ee7d63ad66f9f41a8315560e5b1ecd",
+  "main_working_head_when_audited": "03e572be41ee7d63ad66f9f41a8315560e5b1ecd",
+  "main_working_tree_comparison": "byte comparison to existing main working files, including authorized owner changes; not only committed HEAD",
+  "worktrees": [
+    {
+      "name": "prisma-airs-desktop-v2-c42",
+      "branch": "c42-academy",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c42",
+      "committed": {
+        "head": "6b270b3a38e71d97ccd79c7b6345bebc2f6bd3f0",
+        "ancestor_of_main": true,
+        "classification": "already-ancestor-of-main",
+        "unique_commits": [],
+        "cherry": []
+      },
+      "status_count": 53,
+      "classifications": {
+        "equal": 45,
+        "source-stale": 2,
+        "dependency-symlink": 6
+      },
+      "files": [
+        {
+          "status": " M",
+          "path": "Cargo.lock",
+          "type": "regular",
+          "bytes": 131396,
+          "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 131396,
+            "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/package.json",
+          "type": "regular",
+          "bytes": 2176,
+          "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2176,
+            "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/Cargo.toml",
+          "type": "regular",
+          "bytes": 4160,
+          "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4160,
+            "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/tauri.conf.json",
+          "type": "regular",
+          "bytes": 1270,
+          "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1270,
+            "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-inference.test.tsx",
+          "type": "regular",
+          "bytes": 42814,
+          "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 42814,
+            "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.test.tsx",
+          "type": "regular",
+          "bytes": 39549,
+          "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 39549,
+            "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.tsx",
+          "type": "regular",
+          "bytes": 68082,
+          "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 68082,
+            "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/playground.tsx",
+          "type": "regular",
+          "bytes": 29061,
+          "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 29061,
+            "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.test.tsx",
+          "type": "regular",
+          "bytes": 51090,
+          "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 51090,
+            "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.tsx",
+          "type": "regular",
+          "bytes": 23060,
+          "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23060,
+            "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/sign-in-panel.tsx",
+          "type": "regular",
+          "bytes": 14978,
+          "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 14978,
+            "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.test.tsx",
+          "type": "regular",
+          "bytes": 17560,
+          "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 17560,
+            "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.tsx",
+          "type": "regular",
+          "bytes": 27627,
+          "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27627,
+            "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.test.tsx",
+          "type": "regular",
+          "bytes": 6833,
+          "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6833,
+            "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.tsx",
+          "type": "regular",
+          "bytes": 10695,
+          "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 10695,
+            "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-call.ts",
+          "type": "regular",
+          "bytes": 12849,
+          "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12849,
+            "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-view.tsx",
+          "type": "regular",
+          "bytes": 45127,
+          "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 45127,
+            "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/Cargo.toml",
+          "type": "regular",
+          "bytes": 7780,
+          "sha256": "9757d0b602b2da29203e6ebe4386ebf51dbfbbe9483382945aadcc4dd6f59590",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 8108,
+            "sha256": "e305f529ffff3a7b11a259b03064afa1665f9e7983bf13c38e11ce90d524c7af",
+            "executable": false
+          },
+          "classification": "source-stale",
+          "reason": "Main includes later C44 test registrations / CollectionView.scope remedy; preserve original bytes under worktree-preservation rather than replacing current source."
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/authority/workbench_domain.rs",
+          "type": "regular",
+          "bytes": 91900,
+          "sha256": "5db145db92e55e5a8545637d0d7f76beadaec0937e2bd0fec5b317fb470cda99",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 92081,
+            "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b",
+            "executable": false
+          },
+          "classification": "source-stale",
+          "reason": "Main includes later C44 test registrations / CollectionView.scope remedy; preserve original bytes under worktree-preservation rather than replacing current source."
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/harness/engine.rs",
+          "type": "regular",
+          "bytes": 6018,
+          "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6018,
+            "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/workbench/project.rs",
+          "type": "regular",
+          "bytes": 30122,
+          "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 30122,
+            "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/tests/workbench_documents/main.rs",
+          "type": "regular",
+          "bytes": 50581,
+          "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 50581,
+            "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/Cargo.toml",
+          "type": "regular",
+          "bytes": 1719,
+          "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1719,
+            "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/budgets.rs",
+          "type": "regular",
+          "bytes": 27775,
+          "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27775,
+            "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/live_academy.rs",
+          "type": "regular",
+          "bytes": 40826,
+          "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 40826,
+            "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/signing.rs",
+          "type": "regular",
+          "bytes": 23948,
+          "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23948,
+            "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/tests/live_run/academy.rs",
+          "type": "regular",
+          "bytes": 62373,
+          "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 62373,
+            "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "docs/architecture/live-manifest.template.json",
+          "type": "regular",
+          "bytes": 13460,
+          "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 13460,
+            "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "packages/desktop-contracts/package.json",
+          "type": "regular",
+          "bytes": 385,
+          "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 385,
+            "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/darwin-arm64.tar.gz",
+          "type": "regular",
+          "bytes": 113497192,
+          "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 113497192,
+            "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/pin.json",
+          "type": "regular",
+          "bytes": 1179,
+          "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1179,
+            "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c19.py",
+          "type": "regular",
+          "bytes": 22180,
+          "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 22180,
+            "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c20.py",
+          "type": "regular",
+          "bytes": 28066,
+          "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 28066,
+            "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": ".inputs",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.inputs",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".tools",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".work",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/harness/prerequisites.tsx",
+          "type": "regular",
+          "bytes": 4469,
+          "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4469,
+            "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/workbench/workbench-start.test.tsx",
+          "type": "regular",
+          "bytes": 4464,
+          "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4464,
+            "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/assertions.rs",
+          "type": "regular",
+          "bytes": 15466,
+          "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15466,
+            "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/contracts.rs",
+          "type": "regular",
+          "bytes": 15413,
+          "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15413,
+            "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/tests/signed_artifact.rs",
+          "type": "regular",
+          "bytes": 5499,
+          "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 5499,
+            "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/academy-2.1-follow-up.md",
+          "type": "regular",
+          "bytes": 12025,
+          "sha256": "febeabd20186efcf0d59be24da8160afbf1d6113384fd1e4cd2a38b5051fd51d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12025,
+            "sha256": "febeabd20186efcf0d59be24da8160afbf1d6113384fd1e4cd2a38b5051fd51d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-build-0.2.0.json",
+          "type": "regular",
+          "bytes": 1258,
+          "sha256": "fe2a33b8f88138c0a242b7804f5ee379b40233ab7cd721056a357da50d4d9d32",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1258,
+            "sha256": "fe2a33b8f88138c0a242b7804f5ee379b40233ab7cd721056a357da50d4d9d32",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-build.json",
+          "type": "regular",
+          "bytes": 1258,
+          "sha256": "961e8d16307f4c95be07fb2b868659ec2d413795263eb5d8a643162e2410785b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1258,
+            "sha256": "961e8d16307f4c95be07fb2b868659ec2d413795263eb5d8a643162e2410785b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-signing-0.2.0.json",
+          "type": "regular",
+          "bytes": 6425,
+          "sha256": "74a6b938cd620cfb1692eddb2f138433b33faa5e672ace9be5dade987d8f7a14",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6425,
+            "sha256": "74a6b938cd620cfb1692eddb2f138433b33faa5e672ace9be5dade987d8f7a14",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-signing.json",
+          "type": "regular",
+          "bytes": 6425,
+          "sha256": "5778f88dbad1c3bd905d788123a22b20739204b52d01e1674027259d41c54ef9",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6425,
+            "sha256": "5778f88dbad1c3bd905d788123a22b20739204b52d01e1674027259d41c54ef9",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/academy-2.1/README.md",
+          "type": "regular",
+          "bytes": 2690,
+          "sha256": "279cbcea83fa5294ec60b60daca51d6182c5fc7cff2aa667860e99549d08d1fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2690,
+            "sha256": "279cbcea83fa5294ec60b60daca51d6182c5fc7cff2aa667860e99549d08d1fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/academy-2.1/verification.json",
+          "type": "regular",
+          "bytes": 3346,
+          "sha256": "a02238c23a3d0cb0ac742732453b776a83d0606fd382adbc5f7162430d13f8f9",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 3346,
+            "sha256": "a02238c23a3d0cb0ac742732453b776a83d0606fd382adbc5f7162430d13f8f9",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/release/2.0.0.md",
+          "type": "regular",
+          "bytes": 3505,
+          "sha256": "13e05b3314f0a0f4f44cd5631c3fbaec44e658e584b764f4b480e3ae23c81f5b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 3505,
+            "sha256": "13e05b3314f0a0f4f44cd5631c3fbaec44e658e584b764f4b480e3ae23c81f5b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "packages/desktop-contracts/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/packages/desktop-contracts/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "tools/release/c26_installed.py",
+          "type": "regular",
+          "bytes": 21179,
+          "sha256": "f253fc64acce0f010e197e8deda610a498490f922e68c2e459e302befdfc0c97",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 21179,
+            "sha256": "f253fc64acce0f010e197e8deda610a498490f922e68c2e459e302befdfc0c97",
+            "executable": false
+          },
+          "classification": "equal"
+        }
+      ]
+    },
+    {
+      "name": "prisma-airs-desktop-v2-c43",
+      "branch": "c43-wizard",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c43",
+      "committed": {
+        "head": "d0854fcec4766b5c79e3519ce12a5697749121e4",
+        "ancestor_of_main": true,
+        "classification": "already-ancestor-of-main",
+        "unique_commits": [],
+        "cherry": []
+      },
+      "status_count": 53,
+      "classifications": {
+        "equal": 45,
+        "source-stale": 2,
+        "dependency-symlink": 6
+      },
+      "files": [
+        {
+          "status": " M",
+          "path": "Cargo.lock",
+          "type": "regular",
+          "bytes": 131396,
+          "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 131396,
+            "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/package.json",
+          "type": "regular",
+          "bytes": 2176,
+          "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2176,
+            "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/Cargo.toml",
+          "type": "regular",
+          "bytes": 4160,
+          "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4160,
+            "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/tauri.conf.json",
+          "type": "regular",
+          "bytes": 1270,
+          "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1270,
+            "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-inference.test.tsx",
+          "type": "regular",
+          "bytes": 42814,
+          "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 42814,
+            "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.test.tsx",
+          "type": "regular",
+          "bytes": 39549,
+          "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 39549,
+            "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.tsx",
+          "type": "regular",
+          "bytes": 68082,
+          "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 68082,
+            "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/playground.tsx",
+          "type": "regular",
+          "bytes": 29061,
+          "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 29061,
+            "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.test.tsx",
+          "type": "regular",
+          "bytes": 51090,
+          "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 51090,
+            "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.tsx",
+          "type": "regular",
+          "bytes": 23060,
+          "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23060,
+            "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/sign-in-panel.tsx",
+          "type": "regular",
+          "bytes": 14978,
+          "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 14978,
+            "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.test.tsx",
+          "type": "regular",
+          "bytes": 17560,
+          "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 17560,
+            "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.tsx",
+          "type": "regular",
+          "bytes": 27627,
+          "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27627,
+            "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.test.tsx",
+          "type": "regular",
+          "bytes": 6833,
+          "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6833,
+            "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.tsx",
+          "type": "regular",
+          "bytes": 10695,
+          "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 10695,
+            "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-call.ts",
+          "type": "regular",
+          "bytes": 12849,
+          "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12849,
+            "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-view.tsx",
+          "type": "regular",
+          "bytes": 45127,
+          "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 45127,
+            "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/Cargo.toml",
+          "type": "regular",
+          "bytes": 7886,
+          "sha256": "7132b2964a9e26e14106314ea42d23c0d074fdfe9e6b0b68e4732105ff868307",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 8108,
+            "sha256": "e305f529ffff3a7b11a259b03064afa1665f9e7983bf13c38e11ce90d524c7af",
+            "executable": false
+          },
+          "classification": "source-stale",
+          "reason": "Main includes later C44 test registrations / CollectionView.scope remedy; preserve original bytes under worktree-preservation rather than replacing current source."
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/authority/workbench_domain.rs",
+          "type": "regular",
+          "bytes": 91900,
+          "sha256": "5db145db92e55e5a8545637d0d7f76beadaec0937e2bd0fec5b317fb470cda99",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 92081,
+            "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b",
+            "executable": false
+          },
+          "classification": "source-stale",
+          "reason": "Main includes later C44 test registrations / CollectionView.scope remedy; preserve original bytes under worktree-preservation rather than replacing current source."
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/harness/engine.rs",
+          "type": "regular",
+          "bytes": 6018,
+          "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6018,
+            "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/workbench/project.rs",
+          "type": "regular",
+          "bytes": 30122,
+          "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 30122,
+            "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/tests/workbench_documents/main.rs",
+          "type": "regular",
+          "bytes": 50581,
+          "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 50581,
+            "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/Cargo.toml",
+          "type": "regular",
+          "bytes": 1719,
+          "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1719,
+            "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/budgets.rs",
+          "type": "regular",
+          "bytes": 27775,
+          "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27775,
+            "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/live_academy.rs",
+          "type": "regular",
+          "bytes": 40826,
+          "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 40826,
+            "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/signing.rs",
+          "type": "regular",
+          "bytes": 23948,
+          "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23948,
+            "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/tests/live_run/academy.rs",
+          "type": "regular",
+          "bytes": 62373,
+          "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 62373,
+            "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "docs/architecture/live-manifest.template.json",
+          "type": "regular",
+          "bytes": 13460,
+          "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 13460,
+            "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "packages/desktop-contracts/package.json",
+          "type": "regular",
+          "bytes": 385,
+          "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 385,
+            "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/darwin-arm64.tar.gz",
+          "type": "regular",
+          "bytes": 113497192,
+          "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 113497192,
+            "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/pin.json",
+          "type": "regular",
+          "bytes": 1179,
+          "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1179,
+            "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c19.py",
+          "type": "regular",
+          "bytes": 22180,
+          "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 22180,
+            "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c20.py",
+          "type": "regular",
+          "bytes": 28066,
+          "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 28066,
+            "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": ".inputs",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.inputs",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".tools",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".work",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/harness/prerequisites.tsx",
+          "type": "regular",
+          "bytes": 4469,
+          "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4469,
+            "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/workbench/workbench-start.test.tsx",
+          "type": "regular",
+          "bytes": 4464,
+          "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4464,
+            "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/assertions.rs",
+          "type": "regular",
+          "bytes": 15466,
+          "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15466,
+            "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/contracts.rs",
+          "type": "regular",
+          "bytes": 15413,
+          "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15413,
+            "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/tests/signed_artifact.rs",
+          "type": "regular",
+          "bytes": 5499,
+          "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 5499,
+            "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/academy-2.1-follow-up.md",
+          "type": "regular",
+          "bytes": 12025,
+          "sha256": "febeabd20186efcf0d59be24da8160afbf1d6113384fd1e4cd2a38b5051fd51d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12025,
+            "sha256": "febeabd20186efcf0d59be24da8160afbf1d6113384fd1e4cd2a38b5051fd51d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-build-0.2.0.json",
+          "type": "regular",
+          "bytes": 1258,
+          "sha256": "fe2a33b8f88138c0a242b7804f5ee379b40233ab7cd721056a357da50d4d9d32",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1258,
+            "sha256": "fe2a33b8f88138c0a242b7804f5ee379b40233ab7cd721056a357da50d4d9d32",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-build.json",
+          "type": "regular",
+          "bytes": 1258,
+          "sha256": "961e8d16307f4c95be07fb2b868659ec2d413795263eb5d8a643162e2410785b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1258,
+            "sha256": "961e8d16307f4c95be07fb2b868659ec2d413795263eb5d8a643162e2410785b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-signing-0.2.0.json",
+          "type": "regular",
+          "bytes": 6425,
+          "sha256": "74a6b938cd620cfb1692eddb2f138433b33faa5e672ace9be5dade987d8f7a14",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6425,
+            "sha256": "74a6b938cd620cfb1692eddb2f138433b33faa5e672ace9be5dade987d8f7a14",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-signing.json",
+          "type": "regular",
+          "bytes": 6425,
+          "sha256": "5778f88dbad1c3bd905d788123a22b20739204b52d01e1674027259d41c54ef9",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6425,
+            "sha256": "5778f88dbad1c3bd905d788123a22b20739204b52d01e1674027259d41c54ef9",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/academy-2.1/README.md",
+          "type": "regular",
+          "bytes": 2690,
+          "sha256": "279cbcea83fa5294ec60b60daca51d6182c5fc7cff2aa667860e99549d08d1fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2690,
+            "sha256": "279cbcea83fa5294ec60b60daca51d6182c5fc7cff2aa667860e99549d08d1fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/academy-2.1/verification.json",
+          "type": "regular",
+          "bytes": 3346,
+          "sha256": "a02238c23a3d0cb0ac742732453b776a83d0606fd382adbc5f7162430d13f8f9",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 3346,
+            "sha256": "a02238c23a3d0cb0ac742732453b776a83d0606fd382adbc5f7162430d13f8f9",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/release/2.0.0.md",
+          "type": "regular",
+          "bytes": 3505,
+          "sha256": "13e05b3314f0a0f4f44cd5631c3fbaec44e658e584b764f4b480e3ae23c81f5b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 3505,
+            "sha256": "13e05b3314f0a0f4f44cd5631c3fbaec44e658e584b764f4b480e3ae23c81f5b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "packages/desktop-contracts/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/packages/desktop-contracts/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "tools/release/c26_installed.py",
+          "type": "regular",
+          "bytes": 21179,
+          "sha256": "f253fc64acce0f010e197e8deda610a498490f922e68c2e459e302befdfc0c97",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 21179,
+            "sha256": "f253fc64acce0f010e197e8deda610a498490f922e68c2e459e302befdfc0c97",
+            "executable": false
+          },
+          "classification": "equal"
+        }
+      ]
+    },
+    {
+      "name": "prisma-airs-desktop-v2-c44",
+      "branch": "c44-closure",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c44",
+      "committed": {
+        "head": "4767bf141ce448c6b9d1ba14d80b24d754a6c57a",
+        "ancestor_of_main": true,
+        "classification": "already-ancestor-of-main",
+        "unique_commits": [],
+        "cherry": []
+      },
+      "status_count": 170,
+      "classifications": {
+        "equal": 47,
+        "dependency-symlink": 6,
+        "evidence-absent": 117
+      },
+      "files": [
+        {
+          "status": " M",
+          "path": "Cargo.lock",
+          "type": "regular",
+          "bytes": 131396,
+          "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 131396,
+            "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/package.json",
+          "type": "regular",
+          "bytes": 2176,
+          "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2176,
+            "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/Cargo.toml",
+          "type": "regular",
+          "bytes": 4160,
+          "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4160,
+            "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/tauri.conf.json",
+          "type": "regular",
+          "bytes": 1270,
+          "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1270,
+            "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-inference.test.tsx",
+          "type": "regular",
+          "bytes": 42814,
+          "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 42814,
+            "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.test.tsx",
+          "type": "regular",
+          "bytes": 39549,
+          "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 39549,
+            "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.tsx",
+          "type": "regular",
+          "bytes": 68082,
+          "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 68082,
+            "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/playground.tsx",
+          "type": "regular",
+          "bytes": 29061,
+          "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 29061,
+            "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.test.tsx",
+          "type": "regular",
+          "bytes": 51090,
+          "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 51090,
+            "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.tsx",
+          "type": "regular",
+          "bytes": 23060,
+          "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23060,
+            "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/sign-in-panel.tsx",
+          "type": "regular",
+          "bytes": 14978,
+          "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 14978,
+            "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.test.tsx",
+          "type": "regular",
+          "bytes": 17560,
+          "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 17560,
+            "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.tsx",
+          "type": "regular",
+          "bytes": 27627,
+          "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27627,
+            "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.test.tsx",
+          "type": "regular",
+          "bytes": 6833,
+          "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6833,
+            "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.tsx",
+          "type": "regular",
+          "bytes": 10695,
+          "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 10695,
+            "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-call.ts",
+          "type": "regular",
+          "bytes": 12849,
+          "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12849,
+            "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-view.tsx",
+          "type": "regular",
+          "bytes": 45127,
+          "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 45127,
+            "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/Cargo.toml",
+          "type": "regular",
+          "bytes": 8108,
+          "sha256": "e305f529ffff3a7b11a259b03064afa1665f9e7983bf13c38e11ce90d524c7af",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 8108,
+            "sha256": "e305f529ffff3a7b11a259b03064afa1665f9e7983bf13c38e11ce90d524c7af",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/authority/workbench_domain.rs",
+          "type": "regular",
+          "bytes": 92081,
+          "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 92081,
+            "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/harness/engine.rs",
+          "type": "regular",
+          "bytes": 6018,
+          "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6018,
+            "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/workbench/project.rs",
+          "type": "regular",
+          "bytes": 30122,
+          "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 30122,
+            "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/tests/workbench_documents/main.rs",
+          "type": "regular",
+          "bytes": 50581,
+          "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 50581,
+            "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/Cargo.toml",
+          "type": "regular",
+          "bytes": 1719,
+          "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1719,
+            "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/budgets.rs",
+          "type": "regular",
+          "bytes": 27775,
+          "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27775,
+            "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/live_academy.rs",
+          "type": "regular",
+          "bytes": 40826,
+          "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 40826,
+            "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/signing.rs",
+          "type": "regular",
+          "bytes": 23948,
+          "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23948,
+            "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/tests/live_run/academy.rs",
+          "type": "regular",
+          "bytes": 62373,
+          "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 62373,
+            "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "docs/architecture/live-manifest.template.json",
+          "type": "regular",
+          "bytes": 13460,
+          "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 13460,
+            "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "packages/desktop-contracts/package.json",
+          "type": "regular",
+          "bytes": 385,
+          "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 385,
+            "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/darwin-arm64.tar.gz",
+          "type": "regular",
+          "bytes": 113497192,
+          "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 113497192,
+            "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/pin.json",
+          "type": "regular",
+          "bytes": 1179,
+          "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1179,
+            "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c19.py",
+          "type": "regular",
+          "bytes": 22180,
+          "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 22180,
+            "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c20.py",
+          "type": "regular",
+          "bytes": 28066,
+          "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 28066,
+            "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": ".inputs",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.inputs",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".tools",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".work",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/harness/prerequisites.tsx",
+          "type": "regular",
+          "bytes": 4469,
+          "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4469,
+            "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/workbench/workbench-start.test.tsx",
+          "type": "regular",
+          "bytes": 4464,
+          "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4464,
+            "sha256": "b079554ad323174fa02615d5874f3b107629a914f70232001ea71da5939567c5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/assertions.rs",
+          "type": "regular",
+          "bytes": 15466,
+          "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15466,
+            "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/contracts.rs",
+          "type": "regular",
+          "bytes": 15413,
+          "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15413,
+            "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/tests/signed_artifact.rs",
+          "type": "regular",
+          "bytes": 5499,
+          "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 5499,
+            "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/academy-2.1-follow-up.md",
+          "type": "regular",
+          "bytes": 12025,
+          "sha256": "febeabd20186efcf0d59be24da8160afbf1d6113384fd1e4cd2a38b5051fd51d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12025,
+            "sha256": "febeabd20186efcf0d59be24da8160afbf1d6113384fd1e4cd2a38b5051fd51d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-build-0.2.0.json",
+          "type": "regular",
+          "bytes": 1258,
+          "sha256": "fe2a33b8f88138c0a242b7804f5ee379b40233ab7cd721056a357da50d4d9d32",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1258,
+            "sha256": "fe2a33b8f88138c0a242b7804f5ee379b40233ab7cd721056a357da50d4d9d32",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-build.json",
+          "type": "regular",
+          "bytes": 1258,
+          "sha256": "961e8d16307f4c95be07fb2b868659ec2d413795263eb5d8a643162e2410785b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1258,
+            "sha256": "961e8d16307f4c95be07fb2b868659ec2d413795263eb5d8a643162e2410785b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-signing-0.2.0.json",
+          "type": "regular",
+          "bytes": 6425,
+          "sha256": "74a6b938cd620cfb1692eddb2f138433b33faa5e672ace9be5dade987d8f7a14",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6425,
+            "sha256": "74a6b938cd620cfb1692eddb2f138433b33faa5e672ace9be5dade987d8f7a14",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C26/release-signing.json",
+          "type": "regular",
+          "bytes": 6425,
+          "sha256": "5778f88dbad1c3bd905d788123a22b20739204b52d01e1674027259d41c54ef9",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6425,
+            "sha256": "5778f88dbad1c3bd905d788123a22b20739204b52d01e1674027259d41c54ef9",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/bindings.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/bindings.log",
+          "type": "regular",
+          "bytes": 60,
+          "sha256": "a53dcdfa62c9ad6f5a9fee4bf029363e5ec253d9a77ba6485562a49a6794699a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/clippy-default.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/clippy-default.log",
+          "type": "regular",
+          "bytes": 261,
+          "sha256": "a57a3b1d1772aee4bd2cf3a13c53fdb52fe8ae0c2dc3296ba00d190d6d70edbc",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/clippy.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/clippy.log",
+          "type": "regular",
+          "bytes": 429,
+          "sha256": "c39669f14e82da0061d56ab8883be5d89ab2cdabd6b540859941edb731b0ec2e",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/contracts-typecheck.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/contracts-typecheck.log",
+          "type": "regular",
+          "bytes": 72,
+          "sha256": "48323564a9a718ceee4400dec176d99f52dbca2e44f896088afc838b2377c7e4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/core-fixtures.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/core-fixtures.log",
+          "type": "regular",
+          "bytes": 65925,
+          "sha256": "86deca3aa28fd0a67296efd5870690e726aa7868e2450363893b9ff33b74e5ac",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/core-lib.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/core-lib.log",
+          "type": "regular",
+          "bytes": 19791,
+          "sha256": "d1e8fe66d60a84bf64a79458187793079b966e7d0193816cad4833174948d157",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/desktop-build.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/desktop-build.log",
+          "type": "regular",
+          "bytes": 19155,
+          "sha256": "fdbe330cf0113c3ef25d5399282431c873c3bbf6763899bdb9576fc89f168b43",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/desktop-typecheck.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/desktop-typecheck.log",
+          "type": "regular",
+          "bytes": 62,
+          "sha256": "c8f63d9cdafe3e78d683b697b769c9acb04c95e076bde2e4d64f7a4c6ae4d8dd",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/fixture-command.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/fixture-command.log",
+          "type": "regular",
+          "bytes": 972,
+          "sha256": "c946c476875c69dd387debb79f8333b9bb848e13e9834fad77850f8cf28bc857",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/host.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/host.log",
+          "type": "regular",
+          "bytes": 5326,
+          "sha256": "729b03706dbfe178a1291c9930850d3a28d4ce22ce44214903c0877b04167878",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/inputs-after.sha256",
+          "type": "regular",
+          "bytes": 3067793,
+          "sha256": "682e3299362d8b67a87ccad3b81ad37fd868db201d99fbb385ef90dfbd11a593",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/inputs-before.sha256",
+          "type": "regular",
+          "bytes": 3067793,
+          "sha256": "682e3299362d8b67a87ccad3b81ad37fd868db201d99fbb385ef90dfbd11a593",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/notices.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/notices.log",
+          "type": "regular",
+          "bytes": 59,
+          "sha256": "efb6d000aeb3121eb3f7a710e226957a8889ff1e530cc9f17dbc5bdeb597d59a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/rustfmt.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/rustfmt.log",
+          "type": "regular",
+          "bytes": 36,
+          "sha256": "6103ed9860b3d5528f2d4d935b0e62ce86231023272ae88325ab480914e8e518",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/shell-controller.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/shell-controller.log",
+          "type": "regular",
+          "bytes": 3252,
+          "sha256": "56a085039a759baf64b7c0e5e20bf42e1d44f438f40007997d494f58d29a893e",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/vitest-truth.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/vitest-truth.log",
+          "type": "regular",
+          "bytes": 2377,
+          "sha256": "4250be7baa7cac7181eda35550feb35313bab4da73675b3cf8cab46cf0312964",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/vitest.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/vitest.log",
+          "type": "regular",
+          "bytes": 121488,
+          "sha256": "d26b4769d40569b558fe553bcf9601329ad76a98e7851f919ac64453c8bbdf73",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/xtask-lib.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-01/xtask-lib.log",
+          "type": "regular",
+          "bytes": 2362,
+          "sha256": "4eb7b568f8916c802d985f492de3642a2416ca8fd86f91690c979d7be67db187",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/bindings.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/bindings.log",
+          "type": "regular",
+          "bytes": 60,
+          "sha256": "a53dcdfa62c9ad6f5a9fee4bf029363e5ec253d9a77ba6485562a49a6794699a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/clippy-default.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/clippy-default.log",
+          "type": "regular",
+          "bytes": 261,
+          "sha256": "884ac590a4456f9a2fbbfaeb6843b7c335af5d2d56dff13dbf44411bce201b78",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/clippy.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/clippy.log",
+          "type": "regular",
+          "bytes": 429,
+          "sha256": "87d74b1c3401b43843254a08ffe04172d5921482f773e7565c0e111b4c81ed90",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/contracts-typecheck.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/contracts-typecheck.log",
+          "type": "regular",
+          "bytes": 72,
+          "sha256": "48323564a9a718ceee4400dec176d99f52dbca2e44f896088afc838b2377c7e4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/core-fixtures.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/core-fixtures.log",
+          "type": "regular",
+          "bytes": 66447,
+          "sha256": "3bea2d145f3b3ef9b7c434391d7682523a4d0b6085b64cb8c526920ecb09178a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/core-lib.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/core-lib.log",
+          "type": "regular",
+          "bytes": 19791,
+          "sha256": "cde3b9b052bb94b39e7d7ad8941e4dfc08ff58e62a1ad663f01b7100c38a8f51",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/desktop-build.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/desktop-build.log",
+          "type": "regular",
+          "bytes": 19155,
+          "sha256": "548e2d9062a37df1b79b609a6767621eb8ef31a0675344a228d7a3aebc0c3644",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/desktop-typecheck.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/desktop-typecheck.log",
+          "type": "regular",
+          "bytes": 62,
+          "sha256": "c8f63d9cdafe3e78d683b697b769c9acb04c95e076bde2e4d64f7a4c6ae4d8dd",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/fixture-command.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/fixture-command.log",
+          "type": "regular",
+          "bytes": 606,
+          "sha256": "2d6735efac6d476d80eaa5d24d7183101b932d0a969d246fdf5fc9d4070b0db4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/host.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/host.log",
+          "type": "regular",
+          "bytes": 5326,
+          "sha256": "7550e628e6c353f1bf6d452d581cc228763d3bbed5fec5ee78cd9db53c65ac4d",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/inputs-after.sha256",
+          "type": "regular",
+          "bytes": 3070021,
+          "sha256": "0e96c3ac3b0c6a8beb0576ca10633046f99ace4f04df5d0e406cd12737af34b5",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/inputs-before.sha256",
+          "type": "regular",
+          "bytes": 3070021,
+          "sha256": "0e96c3ac3b0c6a8beb0576ca10633046f99ace4f04df5d0e406cd12737af34b5",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/notices.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/notices.log",
+          "type": "regular",
+          "bytes": 59,
+          "sha256": "efb6d000aeb3121eb3f7a710e226957a8889ff1e530cc9f17dbc5bdeb597d59a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/rustfmt.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/rustfmt.log",
+          "type": "regular",
+          "bytes": 36,
+          "sha256": "6103ed9860b3d5528f2d4d935b0e62ce86231023272ae88325ab480914e8e518",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/shell-controller.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/shell-controller.log",
+          "type": "regular",
+          "bytes": 3252,
+          "sha256": "e3a86d7bdf3ef9feff4913db6bf6b6045a2add7bdd95728d95b89e7fb01c0cf0",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/vitest-truth.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/vitest-truth.log",
+          "type": "regular",
+          "bytes": 2377,
+          "sha256": "17a71b28412c92757821ec2cecf93f7797e51144fb4e847a78cdf59c695c5ce7",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/vitest.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/vitest.log",
+          "type": "regular",
+          "bytes": 123160,
+          "sha256": "b9c26dca0fc7989af931b399f55155a40469aaf38a731f64e90a16b30354d448",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/xtask-lib.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-02/xtask-lib.log",
+          "type": "regular",
+          "bytes": 2362,
+          "sha256": "89dae6eb37b905dfc3a92287db4eff10c98bfa50f029d4ccd854a7673f9826e9",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/bindings.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/bindings.log",
+          "type": "regular",
+          "bytes": 60,
+          "sha256": "a53dcdfa62c9ad6f5a9fee4bf029363e5ec253d9a77ba6485562a49a6794699a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/clippy-default.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/clippy-default.log",
+          "type": "regular",
+          "bytes": 261,
+          "sha256": "f96a7eaf232a8829f4213cd29df836cdfcdb93d89ff5c41c354d320d656d12e8",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/clippy.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/clippy.log",
+          "type": "regular",
+          "bytes": 315,
+          "sha256": "2428a4716bb803431aee7ab78f200cb539f2d7d7664abd09688e3fea8519ecfc",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/contracts-typecheck.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/contracts-typecheck.log",
+          "type": "regular",
+          "bytes": 72,
+          "sha256": "48323564a9a718ceee4400dec176d99f52dbca2e44f896088afc838b2377c7e4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/core-fixtures.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/core-fixtures.log",
+          "type": "regular",
+          "bytes": 66333,
+          "sha256": "cee9be3a17545870c6933d2359d52e3157ab8d4a4f15511cd196ca84d1c2bcbe",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/core-lib.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/core-lib.log",
+          "type": "regular",
+          "bytes": 19791,
+          "sha256": "6241ba10e5398a2435705d0e4559add3696e62cdf526d975cba1a4e7c8df9bec",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/desktop-build.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/desktop-build.log",
+          "type": "regular",
+          "bytes": 19155,
+          "sha256": "fd6743708d74f191c8d720b670017f93b929a73825e1dd0e1fc72e890a7e33af",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/desktop-typecheck.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/desktop-typecheck.log",
+          "type": "regular",
+          "bytes": 62,
+          "sha256": "c8f63d9cdafe3e78d683b697b769c9acb04c95e076bde2e4d64f7a4c6ae4d8dd",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/fixture-command.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/fixture-command.log",
+          "type": "regular",
+          "bytes": 606,
+          "sha256": "2d6735efac6d476d80eaa5d24d7183101b932d0a969d246fdf5fc9d4070b0db4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/host.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/host.log",
+          "type": "regular",
+          "bytes": 5326,
+          "sha256": "0da12902c3a7d73379bed8b7c9c77487326005ea5f0d93af4c70a325b0f2d6f6",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/inputs-after.sha256",
+          "type": "regular",
+          "bytes": 3071588,
+          "sha256": "cd041a09d4d3585bce7ce5db5a6ef72bb704fafab10c86556c5b2a7588742f35",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/inputs-before.sha256",
+          "type": "regular",
+          "bytes": 3071588,
+          "sha256": "cd041a09d4d3585bce7ce5db5a6ef72bb704fafab10c86556c5b2a7588742f35",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/notices.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/notices.log",
+          "type": "regular",
+          "bytes": 59,
+          "sha256": "efb6d000aeb3121eb3f7a710e226957a8889ff1e530cc9f17dbc5bdeb597d59a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/rustfmt.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/rustfmt.log",
+          "type": "regular",
+          "bytes": 36,
+          "sha256": "6103ed9860b3d5528f2d4d935b0e62ce86231023272ae88325ab480914e8e518",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/shell-controller.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/shell-controller.log",
+          "type": "regular",
+          "bytes": 3252,
+          "sha256": "99020a9493572f4239fa5d350290dab18c0a30f8db2e30bd73f79b964ec00dc6",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/vitest-truth.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/vitest-truth.log",
+          "type": "regular",
+          "bytes": 2377,
+          "sha256": "9d0d80f166a22c8cfb40c6965caec2b40db5b1ebc2a1b5508af4c3df465b226a",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/vitest.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/vitest.log",
+          "type": "regular",
+          "bytes": 110798,
+          "sha256": "0d99c5e105e4ad3080dc9a66ac3a75ea8a40516e764e5bed999c9f416dcc4d1f",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/xtask-lib.exit",
+          "type": "regular",
+          "bytes": 2,
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/attempt-03/xtask-lib.log",
+          "type": "regular",
+          "bytes": 2362,
+          "sha256": "fb0ccea0a0101469ac75b49a45282c98c643ed08db1e80a8e1851bc649216935",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/run-attempt-01.json",
+          "type": "regular",
+          "bytes": 6896,
+          "sha256": "d4bf831a460c70f6bd6674c3d12d8a38236983c31f249d0f903d76de4d4c4de4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/run-attempt-02.json",
+          "type": "regular",
+          "bytes": 6896,
+          "sha256": "de7d65ff6f9e4066be9b0cc390e480009fefa6e047fcabf1a8a78cd7dc5e0d2e",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/C44/runs/run-attempt-03.json",
+          "type": "regular",
+          "bytes": 6896,
+          "sha256": "473228b7880f95ef0d575ed7b154922f886796844e7d9e9a1aa39665590bf5f4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/academy-2.1/README.md",
+          "type": "regular",
+          "bytes": 2690,
+          "sha256": "279cbcea83fa5294ec60b60daca51d6182c5fc7cff2aa667860e99549d08d1fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2690,
+            "sha256": "279cbcea83fa5294ec60b60daca51d6182c5fc7cff2aa667860e99549d08d1fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/evidence/academy-2.1/verification.json",
+          "type": "regular",
+          "bytes": 3346,
+          "sha256": "a02238c23a3d0cb0ac742732453b776a83d0606fd382adbc5f7162430d13f8f9",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 3346,
+            "sha256": "a02238c23a3d0cb0ac742732453b776a83d0606fd382adbc5f7162430d13f8f9",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-01/diff.patch",
+          "type": "regular",
+          "bytes": 228285,
+          "sha256": "626467170247369f25a632a4a3d8ece38bcebd817f27e184afecaef59785e563",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-01/message.txt",
+          "type": "regular",
+          "bytes": 1051,
+          "sha256": "c36c5d948711821e99697688a97f8ae247ac359afffd3bb6176f1cf09c496584",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-01/request.json",
+          "type": "regular",
+          "bytes": 26459,
+          "sha256": "5cdf9e73081b64c2c12900b18ac79891b45840ebd80de52995291d468a322fc4",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-01/source-inventory.json",
+          "type": "regular",
+          "bytes": 21397,
+          "sha256": "7e535baac3ff19cb2656ff0a4a093ce2cdad507b737bd80271da3629df82de00",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-01/thread-reply.log",
+          "type": "regular",
+          "bytes": 1299117,
+          "sha256": "0523784960cbabedbbd3d396215557b4ac97485459f572ceab54b725b475fbae",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-01/verdict-returned.json",
+          "type": "regular",
+          "bytes": 14095,
+          "sha256": "fa6d16ed7af876f808d16ebab0fbc543fddf160413c1e7d508df929b5c7bdf7e",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-02/diff.patch",
+          "type": "regular",
+          "bytes": 20352136,
+          "sha256": "78e4b36446151ee8bd01ee681cea4662f0b29464f52c6e707050b1648dc76e70",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-02/message.txt",
+          "type": "regular",
+          "bytes": 1051,
+          "sha256": "29bd4b8147d331ba6aa8dae80ce4641916b3c60e2a60ab2f80db1720433867d2",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-02/request.json",
+          "type": "regular",
+          "bytes": 99551,
+          "sha256": "09bb8b86d2089806e044eada2cc4cf802ace88bcd059a34288d060ab1562c5ed",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-02/source-inventory.json",
+          "type": "regular",
+          "bytes": 118485,
+          "sha256": "d257ff9c375dc675c6db4a8f5f3c0e0028af8c72f39c0aa1b58d62b3a930d029",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-02/thread-reply.log",
+          "type": "regular",
+          "bytes": 1411557,
+          "sha256": "6cc67cbffba9adc87bb2542de319fb8447560886e7b7d53899c8867f5476a0bd",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/planning/reviews/C44/attempt-02/verdict-returned.json",
+          "type": "regular",
+          "bytes": 12864,
+          "sha256": "6b975b1749f256d97b6d2e40782365c0fbc40d067b4a69dbc0c37855e82ecc12",
+          "executable": false,
+          "main_same_path": {
+            "type": "absent"
+          },
+          "classification": "evidence-absent"
+        },
+        {
+          "status": "??",
+          "path": "docs/release/2.0.0.md",
+          "type": "regular",
+          "bytes": 3505,
+          "sha256": "13e05b3314f0a0f4f44cd5631c3fbaec44e658e584b764f4b480e3ae23c81f5b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 3505,
+            "sha256": "13e05b3314f0a0f4f44cd5631c3fbaec44e658e584b764f4b480e3ae23c81f5b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "packages/desktop-contracts/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/packages/desktop-contracts/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "tools/release/c26_installed.py",
+          "type": "regular",
+          "bytes": 21179,
+          "sha256": "f253fc64acce0f010e197e8deda610a498490f922e68c2e459e302befdfc0c97",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 21179,
+            "sha256": "f253fc64acce0f010e197e8deda610a498490f922e68c2e459e302befdfc0c97",
+            "executable": false
+          },
+          "classification": "equal"
+        }
+      ]
+    },
+    {
+      "name": "prisma-airs-desktop-v2-c44-scope",
+      "branch": "c44-scope-fix",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c44-scope",
+      "committed": {
+        "head": "c1474ef568bf4d49642be17bef97700f593527c2",
+        "ancestor_of_main": false,
+        "classification": "all-unique-nonmerge-patches-already-cherry-picked",
+        "unique_commits": [
+          {
+            "id": "c1474ef568bf4d49642be17bef97700f593527c2",
+            "subject": "C44: retire the prior collection editor during render (P09, D059)",
+            "parents": [
+              "78580602bcc5e7d42a463e85377397e6caf51651"
+            ],
+            "merge": false
+          },
+          {
+            "id": "78580602bcc5e7d42a463e85377397e6caf51651",
+            "subject": "C44: bind API documents to the core's full-root scope (P09, D059)",
+            "parents": [
+              "589ee56b1d4ff4c976999000ed330f8709f11e32"
+            ],
+            "merge": false
+          }
+        ],
+        "cherry": [
+          {
+            "id": "78580602bcc5e7d42a463e85377397e6caf51651",
+            "patch_equivalent_to_main": true
+          },
+          {
+            "id": "c1474ef568bf4d49642be17bef97700f593527c2",
+            "patch_equivalent_to_main": true
+          }
+        ]
+      },
+      "status_count": 7,
+      "classifications": {
+        "dependency-symlink": 7
+      },
+      "files": [
+        {
+          "status": "??",
+          "path": ".inputs",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.inputs",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".tools",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".work",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "packages/desktop-contracts/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/packages/desktop-contracts/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "target",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c44/target",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        }
+      ]
+    },
+    {
+      "name": "prisma-airs-desktop-v2-c29-live",
+      "branch": "c29-l19",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c29-live",
+      "committed": {
+        "head": "055a551325e10cfb32ddc2410ac3ec2adcdf24a0",
+        "ancestor_of_main": false,
+        "classification": "all-unique-nonmerge-patches-already-cherry-picked",
+        "unique_commits": [
+          {
+            "id": "055a551325e10cfb32ddc2410ac3ec2adcdf24a0",
+            "subject": "C29: record authorized Vulture wizard verification pass after correction",
+            "parents": [
+              "c3be5070a2dd36f4fda414aa006f55d9555bdbde"
+            ],
+            "merge": false
+          },
+          {
+            "id": "c3be5070a2dd36f4fda414aa006f55d9555bdbde",
+            "subject": "docs(live): retain typed proof of the two L19 verify admissions",
+            "parents": [
+              "089531900580df47b0ef86963694758286fc97d1"
+            ],
+            "merge": false
+          },
+          {
+            "id": "089531900580df47b0ef86963694758286fc97d1",
+            "subject": "docs(live): retain settled L19 rejection and exhausted allowance",
+            "parents": [
+              "d22603d5d29074f7f011717daccf335715157c2c"
+            ],
+            "merge": false
+          },
+          {
+            "id": "d22603d5d29074f7f011717daccf335715157c2c",
+            "subject": "fix(live): wait for wizard settlement and retain read reservations",
+            "parents": [
+              "e13aeddbe0fe1c953dad5170d9e70b789566dbdc"
+            ],
+            "merge": false
+          },
+          {
+            "id": "e13aeddbe0fe1c953dad5170d9e70b789566dbdc",
+            "subject": "test(onboarding): drive the bounded L19 read with private input",
+            "parents": [
+              "a07647e2f5017eee146d6726aee1f001d420765f"
+            ],
+            "merge": false
+          },
+          {
+            "id": "a07647e2f5017eee146d6726aee1f001d420765f",
+            "subject": "fix(live): designate the bounded C29 wizard probe separately",
+            "parents": [
+              "31169c2b9fae7a226b5d18c6665f02b883f83370"
+            ],
+            "merge": false
+          }
+        ],
+        "cherry": [
+          {
+            "id": "a07647e2f5017eee146d6726aee1f001d420765f",
+            "patch_equivalent_to_main": true
+          },
+          {
+            "id": "e13aeddbe0fe1c953dad5170d9e70b789566dbdc",
+            "patch_equivalent_to_main": true
+          },
+          {
+            "id": "d22603d5d29074f7f011717daccf335715157c2c",
+            "patch_equivalent_to_main": true
+          },
+          {
+            "id": "089531900580df47b0ef86963694758286fc97d1",
+            "patch_equivalent_to_main": true
+          },
+          {
+            "id": "c3be5070a2dd36f4fda414aa006f55d9555bdbde",
+            "patch_equivalent_to_main": true
+          },
+          {
+            "id": "055a551325e10cfb32ddc2410ac3ec2adcdf24a0",
+            "patch_equivalent_to_main": true
+          }
+        ]
+      },
+      "status_count": 45,
+      "classifications": {
+        "equal": 37,
+        "evidence-conflict": 1,
+        "dependency-symlink": 7
+      },
+      "files": [
+        {
+          "status": " M",
+          "path": "Cargo.lock",
+          "type": "regular",
+          "bytes": 131396,
+          "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 131396,
+            "sha256": "f24fede44c16c41fe0f72f849284886f777220bdbc82034070ff6952b2ca2af6",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/package.json",
+          "type": "regular",
+          "bytes": 2176,
+          "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 2176,
+            "sha256": "be6f21ed7537e185ace57ff110ec1ad616a212077fe046b196d7a4ef9958c25e",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/Cargo.toml",
+          "type": "regular",
+          "bytes": 4160,
+          "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4160,
+            "sha256": "1029adaed9c6068fc1e3f110058e9280083546eb596859313a6eded29e2e4f3f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src-tauri/tauri.conf.json",
+          "type": "regular",
+          "bytes": 1270,
+          "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1270,
+            "sha256": "a298c59aa6a43a43bf9c27bcb693cd97ec0057e306884cdeab1431cb4a6b5b93",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-inference.test.tsx",
+          "type": "regular",
+          "bytes": 42814,
+          "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 42814,
+            "sha256": "e93e6756b183034c85145b1db99d18aea7df030b731692998e716ce3782e2bda",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.test.tsx",
+          "type": "regular",
+          "bytes": 39549,
+          "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 39549,
+            "sha256": "9891547206ec0520c91032e0bad933062f0bb2fdc5670d88506e294ce0bb7571",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/gateway-view.tsx",
+          "type": "regular",
+          "bytes": 68082,
+          "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 68082,
+            "sha256": "bb26a832ef717c36f30f65787af4e3ced4d274bada860897d26ff1297e95ca23",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/gateway/playground.tsx",
+          "type": "regular",
+          "bytes": 29061,
+          "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 29061,
+            "sha256": "5929b1787f4cc9b8968cba08f260f645de65316335ffc48c242e7b40c6aac0db",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.test.tsx",
+          "type": "regular",
+          "bytes": 51090,
+          "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 51090,
+            "sha256": "a58dcd4d6b25a13dfc33a5e5c7a3fcb6fb9c93664f4c26aa95b163c5e5b67d00",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/harness-view.tsx",
+          "type": "regular",
+          "bytes": 23060,
+          "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23060,
+            "sha256": "4a271dce465a3daa8871db7288d5251b1c14d5504c329e91a6e1354f06507f73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/harness/sign-in-panel.tsx",
+          "type": "regular",
+          "bytes": 14978,
+          "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 14978,
+            "sha256": "b5a8bc1d5c35bb0f67b9d6375ae6bd63dd3d6c6b820fde0ab5f5f28e74a9039f",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.test.tsx",
+          "type": "regular",
+          "bytes": 17560,
+          "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 17560,
+            "sha256": "94d5b93b0f308e2bc191f7491c0006f73d4c0e6dfbe46f5703f592a0bd4321d7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/library/library-view.tsx",
+          "type": "regular",
+          "bytes": 27627,
+          "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27627,
+            "sha256": "af31d1915ea021d84cdca3dc5934a606537f0aace48ae26baf51d88d6c3e61ab",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.test.tsx",
+          "type": "regular",
+          "bytes": 6833,
+          "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6833,
+            "sha256": "85aafa8f2b8899fcb72855e7ebf80bda291da116e49d32e42de493ba2f66af73",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/tenants/management-credential.tsx",
+          "type": "regular",
+          "bytes": 10695,
+          "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 10695,
+            "sha256": "126da98aadecdb3d16a8da566dfc9d52834254bca89ba1848e0394c2663342f4",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-call.ts",
+          "type": "regular",
+          "bytes": 12849,
+          "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 12849,
+            "sha256": "cedae1dd512ba9cbfa2716b5183f078ff8e2e1fb6bfec0a4be051740fa6471fc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "apps/desktop/src/features/workbench/workbench-view.tsx",
+          "type": "regular",
+          "bytes": 45127,
+          "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 45127,
+            "sha256": "ac25ba7bef1d2874bfa9454324b25313049015474a53259b2dc072b4de60ee02",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/Cargo.toml",
+          "type": "regular",
+          "bytes": 8108,
+          "sha256": "e305f529ffff3a7b11a259b03064afa1665f9e7983bf13c38e11ce90d524c7af",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 8108,
+            "sha256": "e305f529ffff3a7b11a259b03064afa1665f9e7983bf13c38e11ce90d524c7af",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/authority/workbench_domain.rs",
+          "type": "regular",
+          "bytes": 92081,
+          "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 92081,
+            "sha256": "e8195180fae7bcdca9a79c9260fff6ffc9d5118380db1d3f62a02ba05f500b2b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/harness/engine.rs",
+          "type": "regular",
+          "bytes": 6018,
+          "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 6018,
+            "sha256": "747c3d780a573e9ee2436cb52878a3795bea08cb6813dfdef057c5dada14bcfc",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/src/workbench/project.rs",
+          "type": "regular",
+          "bytes": 30122,
+          "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 30122,
+            "sha256": "0052dbf21a4257a70c147b2c30b1ee6a656e1ac80df17a7640e62df3f180c4e2",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/desktop-core/tests/workbench_documents/main.rs",
+          "type": "regular",
+          "bytes": 50581,
+          "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 50581,
+            "sha256": "0b86a1a65f45964e088bf984afa3dc963b8e0a0edb04c3d5c6130f1aa810aac7",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/Cargo.toml",
+          "type": "regular",
+          "bytes": 1719,
+          "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1719,
+            "sha256": "30d4dccf8db90331abc91a9498781dd2942945b73e80d70915fc5358b159b7fd",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/budgets.rs",
+          "type": "regular",
+          "bytes": 27775,
+          "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 27775,
+            "sha256": "74a6d900070106c1d6376161209fc8f29557e7ac500e452b6e7abe5d94c8fb71",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/live_academy.rs",
+          "type": "regular",
+          "bytes": 40826,
+          "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 40826,
+            "sha256": "094b853311364aa381299d59ca548a40559c67315fc1cafb69849fa2a959ea7b",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/src/signing.rs",
+          "type": "regular",
+          "bytes": 23948,
+          "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 23948,
+            "sha256": "c5b6b82a656aeac2534925d7db21ff59705b5a55724b6c1592e6ddb830833e66",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "crates/xtask/tests/live_run/academy.rs",
+          "type": "regular",
+          "bytes": 62373,
+          "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 62373,
+            "sha256": "28f085d44d11366b153792f191b49239a403da0efad1bec0867f49dbfa7eacb5",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "docs/architecture/live-manifest.template.json",
+          "type": "regular",
+          "bytes": 13460,
+          "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 13460,
+            "sha256": "649c0595fc2f2ed4f8c228dd9d62020b620bcd8d8365dd545077ee472074f330",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "docs/planning/evidence/C25/live-scope.json",
+          "type": "regular",
+          "bytes": 21587,
+          "sha256": "1e07c2101889a39e1927b7769e5f3145317b0d95b450c65190bdec495a6464fe",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 20746,
+            "sha256": "7624abf68391c92c808d19bdcd33e522c7636ceff8fefe85dd549b83bbfc152a",
+            "executable": false
+          },
+          "classification": "evidence-conflict",
+          "archive_only": true,
+          "reason": "Generated L19 manifest validation: family list18->19 and approval/hash/time metadata differ. Preserve under worktree-preservation/c29-live; do not replace canonical historical C25 live-scope."
+        },
+        {
+          "status": " M",
+          "path": "packages/desktop-contracts/package.json",
+          "type": "regular",
+          "bytes": 385,
+          "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 385,
+            "sha256": "17c8c352fb80ce7196f6394ff9d3dc1f11d037cfea4bbbdfa11077fbcb8da94d",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/darwin-arm64.tar.gz",
+          "type": "regular",
+          "bytes": 113497192,
+          "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 113497192,
+            "sha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "resources/harness/pin.json",
+          "type": "regular",
+          "bytes": 1179,
+          "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 1179,
+            "sha256": "dfe1bc27e36846a7dcb5355412f084d7c79bcd9a715517ecb1be7c4d7c57b24c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c19.py",
+          "type": "regular",
+          "bytes": 22180,
+          "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 22180,
+            "sha256": "a2d7751f38d1af5b3126c825e0599c447e728d65ec6ada813c198a38ee2ef426",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": " M",
+          "path": "tools/native-acceptance/acceptance_c20.py",
+          "type": "regular",
+          "bytes": 28066,
+          "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 28066,
+            "sha256": "2221ad07d39046d1177e2b48714bc93ee85146056e1044986ea22dda9231ee2a",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": ".inputs",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.inputs",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".tools",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".work",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/src/features/harness/prerequisites.tsx",
+          "type": "regular",
+          "bytes": 4469,
+          "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 4469,
+            "sha256": "96a7cdf49305cfd2530e4e97d87a72151e7eb9493ce7137bba17aff7ae508591",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/assertions.rs",
+          "type": "regular",
+          "bytes": 15466,
+          "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15466,
+            "sha256": "d77ff0978c0d9c92cbb075cfdb4edb392f2e6a610af9556abdf8b3ebac9ed7f8",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/src/live_academy/contracts.rs",
+          "type": "regular",
+          "bytes": 15413,
+          "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 15413,
+            "sha256": "4481c1b2fdad4afb8076fa6a8ec1f5c4d6822959d9e4b25dfdf486a5d0b67a52",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "crates/xtask/tests/signed_artifact.rs",
+          "type": "regular",
+          "bytes": 5499,
+          "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+          "executable": false,
+          "main_same_path": {
+            "type": "regular",
+            "bytes": 5499,
+            "sha256": "5d8f23e4baec48e21b383194c6dd3ed1fae310430a0de2e20216fde87bae626c",
+            "executable": false
+          },
+          "classification": "equal"
+        },
+        {
+          "status": "??",
+          "path": "node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "packages/desktop-contracts/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/packages/desktop-contracts/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "target",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-c44/target",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        }
+      ]
+    },
+    {
+      "name": "prisma-airs-desktop-v2-merge",
+      "branch": "p09-merge",
+      "path": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-merge",
+      "committed": {
+        "head": "54dadae150b11113d3d6a916d15ce0f1ae178d2d",
+        "ancestor_of_main": false,
+        "classification": "old-merge-only-history-preserve-ref-no-source-merge",
+        "unique_commits": [
+          {
+            "id": "54dadae150b11113d3d6a916d15ce0f1ae178d2d",
+            "subject": "Merge branch 'c43-wizard' into p09-merge",
+            "parents": [
+              "4c889e7e1ad5b2f615e67e42cf504fccf8598ed8",
+              "d0854fcec4766b5c79e3519ce12a5697749121e4"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "apps/desktop/src/styles/tokens.css",
+              "crates/desktop-core/Cargo.toml",
+              "docs/architecture/native-checks.json"
+            ]
+          },
+          {
+            "id": "4c889e7e1ad5b2f615e67e42cf504fccf8598ed8",
+            "subject": "Merge branch 'c42-academy' into p09-merge",
+            "parents": [
+              "1b3eeba86c5353432800083b7e4f1f35cb89289b",
+              "6b270b3a38e71d97ccd79c7b6345bebc2f6bd3f0"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "apps/desktop/src/styles/tokens.css",
+              "crates/desktop-core/Cargo.toml",
+              "docs/architecture/native-checks.json"
+            ]
+          },
+          {
+            "id": "1b3eeba86c5353432800083b7e4f1f35cb89289b",
+            "subject": "Merge branch 'c41-api' into p09-merge",
+            "parents": [
+              "fbf838f4f6c6c48f4f7aa9b550dea0ce59ed5b7f",
+              "f3041172815bd0d262d886d0ffc649e669dda2f0"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "apps/desktop/src/styles/tokens.css",
+              "apps/desktop/src/v2/workbench/copy.ts",
+              "apps/desktop/src/v2/workbench/workbench.test.tsx",
+              "crates/desktop-core/Cargo.toml",
+              "docs/architecture/native-checks.json"
+            ]
+          },
+          {
+            "id": "fbf838f4f6c6c48f4f7aa9b550dea0ce59ed5b7f",
+            "subject": "Merge branch 'c40-cases' into p09-merge",
+            "parents": [
+              "b22f59365333ab556f8cb2facb7d33ae6a737744",
+              "a51a8dbf19a729f6cb2a9fe108ce9eea75c58b81"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "apps/desktop/src/styles/tokens.css",
+              "docs/architecture/native-checks.json"
+            ]
+          },
+          {
+            "id": "b22f59365333ab556f8cb2facb7d33ae6a737744",
+            "subject": "Merge branch 'c39b-admin' into p09-merge",
+            "parents": [
+              "541f90f61086c97a7a84085845bb6fe6b57de1e4",
+              "7ac1477a41812626222309f292f7e2cb1d8a476b"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "apps/desktop/src/styles/tokens.css",
+              "docs/architecture/native-checks.json"
+            ]
+          },
+          {
+            "id": "541f90f61086c97a7a84085845bb6fe6b57de1e4",
+            "subject": "Merge branch 'c39-admin' into p09-merge",
+            "parents": [
+              "04932c9cfdf4d6df5ffef7c5bc761093e4a864f8",
+              "7db22a3f55fae161797aae146217b5c5b41d898d"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "crates/desktop-core/Cargo.toml",
+              "docs/architecture/native-checks.json"
+            ]
+          },
+          {
+            "id": "04932c9cfdf4d6df5ffef7c5bc761093e4a864f8",
+            "subject": "Merge branch 'c37-inbox' into p09-merge",
+            "parents": [
+              "cbffbe4e7309473811c29d5fbc10b16683d51b3d",
+              "9857fea6c153d8591c527a1a1f317741147429a9"
+            ],
+            "merge": true,
+            "combined_resolution_paths": [
+              "apps/desktop/src/styles/tokens.css",
+              "crates/desktop-core/Cargo.toml",
+              "docs/architecture/native-checks.json"
+            ]
+          }
+        ],
+        "cherry": []
+      },
+      "status_count": 6,
+      "classifications": {
+        "dependency-symlink": 6
+      },
+      "files": [
+        {
+          "status": "??",
+          "path": ".inputs",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.inputs",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".tools",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.tools",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": ".work",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/.work",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "apps/desktop/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/apps/desktop/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        },
+        {
+          "status": "??",
+          "path": "packages/desktop-contracts/node_modules",
+          "type": "symlink",
+          "target": "/Users/cdot/development/redtail/prisma-airs-desktop-v2/packages/desktop-contracts/node_modules",
+          "main_same_path": {
+            "type": "directory"
+          },
+          "classification": "dependency-symlink"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "No repository/worktree files, indexes, branches or refs deliberately changed; only this requested external audit artifact is written.",
+    "Dependency/build symlinks are recorded as links without traversing external contents; recreate dependencies in Worf VM.",
+    "All listed SHA-256 values are source or repository evidence bytes; no private external credential configuration was accessed.",
+    "Do not overwrite immutable raw review artifacts or existing historical evidence."
+  ],
+  "detached_dry_merge": {
+    "worktree_path": "/private/tmp/claude-501/airs-merge-dry",
+    "worktree_directory_exists": false,
+    "prunable": true,
+    "committed": {
+      "head": "00df913a31408c1b6ff5666e36cc8ed9346a24a4",
+      "ancestor_of_main": false,
+      "classification": "old-merge-only-history-preserve-ref-no-source-merge",
+      "unique_commits": [
+        {
+          "id": "00df913a31408c1b6ff5666e36cc8ed9346a24a4",
+          "subject": "dry merge c44-closure",
+          "parents": [
+            "8d1065ed9e06d46c59365ff7d3b6ff16d0b84473",
+            "e78a328033e7af93b805eb1a3f6452ce55876f53"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "apps/desktop/src/styles/tokens.css",
+            "apps/desktop/src/v2/workbench/api-client.test.tsx",
+            "apps/desktop/src/v2/workbench/api-client.tsx",
+            "apps/desktop/src/v2/workbench/copy.ts",
+            "apps/desktop/src/v2/workbench/request-editor.tsx",
+            "crates/desktop-core/Cargo.toml",
+            "docs/architecture/native-checks.json",
+            "tools/native-acceptance/acceptance_c38.py",
+            "tools/native-acceptance/acceptance_c40.py",
+            "tools/native-acceptance/acceptance_c41.py",
+            "tools/native-acceptance/acceptance_c42.py",
+            "tools/native-acceptance/acceptance_c43.py"
+          ]
+        },
+        {
+          "id": "8d1065ed9e06d46c59365ff7d3b6ff16d0b84473",
+          "subject": "dry merge c43-wizard",
+          "parents": [
+            "5bcb4263ac3050c1d8ea5bd7a7e141e58fc489b8",
+            "8b0d6aa05473ea27e96d9ad34646b06168a2a55a"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "apps/desktop/src/styles/tokens.css",
+            "crates/desktop-core/Cargo.toml",
+            "docs/architecture/native-checks.json"
+          ]
+        },
+        {
+          "id": "5bcb4263ac3050c1d8ea5bd7a7e141e58fc489b8",
+          "subject": "dry merge c42-academy",
+          "parents": [
+            "239e83b805a0f4f53be8ec033f165e84d78905ec",
+            "509b292a24d6d8c380c863f86f6a5a740139258a"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "crates/desktop-core/Cargo.toml",
+            "docs/architecture/native-checks.json"
+          ]
+        },
+        {
+          "id": "239e83b805a0f4f53be8ec033f165e84d78905ec",
+          "subject": "dry merge c41-api",
+          "parents": [
+            "4ef2cb4c0e1268c9394ba6d1fb70b273476f7340",
+            "e405e5a2f42d8044a4eca59122d6727f74ee9866"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "apps/desktop/src/styles/tokens.css",
+            "apps/desktop/src/v2/workbench/copy.ts",
+            "apps/desktop/src/v2/workbench/workbench.test.tsx",
+            "crates/desktop-core/Cargo.toml",
+            "docs/architecture/native-checks.json"
+          ]
+        },
+        {
+          "id": "4ef2cb4c0e1268c9394ba6d1fb70b273476f7340",
+          "subject": "dry merge c40-cases",
+          "parents": [
+            "77804de39aadf33b487abc86c1ba3b54aa850027",
+            "2ce7c80900c7fe4b2f491823182922ac8afdbdea"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "apps/desktop/src/styles/tokens.css",
+            "docs/architecture/native-checks.json"
+          ]
+        },
+        {
+          "id": "77804de39aadf33b487abc86c1ba3b54aa850027",
+          "subject": "dry merge c39b-admin",
+          "parents": [
+            "c3d3fe1afe2ba0e9bf0e01f742e1342d2589a25b",
+            "5eda22584dc03720c90bf0b43bd54e58da541e68"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "apps/desktop/src/styles/tokens.css",
+            "docs/architecture/native-checks.json"
+          ]
+        },
+        {
+          "id": "c3d3fe1afe2ba0e9bf0e01f742e1342d2589a25b",
+          "subject": "dry merge c39-admin",
+          "parents": [
+            "9c94732c04977837cf40823775e38258ba9d3885",
+            "7db22a3f55fae161797aae146217b5c5b41d898d"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "crates/desktop-core/Cargo.toml",
+            "docs/architecture/native-checks.json"
+          ]
+        },
+        {
+          "id": "9c94732c04977837cf40823775e38258ba9d3885",
+          "subject": "dry merge c37-inbox",
+          "parents": [
+            "12368c6c697aa3a7fb3d491a7b31977e811eea80",
+            "9857fea6c153d8591c527a1a1f317741147429a9"
+          ],
+          "merge": true,
+          "combined_resolution_paths": [
+            "apps/desktop/src/styles/tokens.css",
+            "crates/desktop-core/Cargo.toml",
+            "docs/architecture/native-checks.json"
+          ]
+        }
+      ],
+      "cherry": []
+    },
+    "recommendation": "Create/push an archive ref at this existing commit so prunable detached merge history survives; do not merge its older tree into main."
+  },
+  "summary": {
+    "worktree_count": 6,
+    "file_classifications": {
+      "equal": 174,
+      "source-stale": 4,
+      "dependency-symlink": 38,
+      "evidence-absent": 117,
+      "evidence-conflict": 1
+    },
+    "source_integration": "No missing application implementation patch found; existing changes either already merged/cherry-picked, byte-identical owner copies, or stale copies lacking later fixes.",
+    "evidence_integration": "117 absent C44 historical evidence/review files can be copied additively; one differing generated C25/L19 validation and four stale source copies should be archived with their original relative paths."
+  }
+}

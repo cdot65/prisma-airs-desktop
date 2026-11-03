@@ -149,7 +149,7 @@ impl Manifest {
             }
         }
         if self.chunks.len() != usize::from(Subject::LAST_CHUNK) {
-            return Err(invalid("checks.json must define exactly C01-C44"));
+            return Err(invalid("checks.json must define exactly C01-C45"));
         }
         for (id, chunk) in &self.chunks {
             let fixed = Subject::parse(id)?.is_docs_only();
@@ -177,7 +177,7 @@ impl Manifest {
             .map(|n| Subject::Chunk(n).to_string())
             .collect();
         if phase_members != expected || self.phases.len() != usize::from(Subject::LAST_PHASE) {
-            return Err(invalid("phases must partition C01-C44 in order"));
+            return Err(invalid("phases must partition C01-C45 in order"));
         }
         for argv in self.all_static_commands() {
             check_argv(argv)?;
@@ -419,6 +419,10 @@ impl Manifest {
     pub fn plan(&self, subject: Subject, kind: RunKind) -> Result<Vec<Command>> {
         let chunks: Vec<Subject> = match subject {
             Subject::Chunk(_) => vec![subject],
+            // P10 uses the approved C45 broad baseline and explicit coverage
+            // consumer, not replay of retired C01-C44 commands (including old
+            // login-Keychain probes). Subsequent reviews reuse that candidate.
+            Subject::Phase(10) => self.phase_chunks(subject)?,
             Subject::Phase(_) => {
                 let last = self
                     .phase_chunks(subject)?
@@ -484,5 +488,40 @@ impl Manifest {
             command.argv = crate::runner::substitute(&command.argv, subject)?;
         }
         Ok(planned)
+    }
+}
+
+#[cfg(test)]
+mod c45_plan_tests {
+    #[test]
+    fn p10_uses_the_current_baseline_without_private_keychain_replay() {
+        let repo = crate::Repo::discover();
+        let manifest = super::Manifest::load(&repo.manifest()).expect("manifest");
+        let plan = manifest
+            .plan(crate::Subject::Phase(10), crate::runner::RunKind::Test)
+            .expect("P10 plan");
+        assert!(
+            plan.iter()
+                .all(|c| c.label.starts_with("setup/") || c.label.starts_with("C45/"))
+        );
+        let host = plan
+            .iter()
+            .find(|c| c.argv.iter().any(|a| a == "desktop-host"))
+            .expect("current Host coverage");
+        assert!(host.argv.windows(2).any(|a| a
+            == [
+                "--skip",
+                "the_classic_login_keychain_api_is_available_read_only"
+            ]));
+        assert!(host.argv.windows(2).any(|a| a
+            == [
+                "--skip",
+                "records_round_trip_in_the_v2_namespace_without_touching_the_search_list"
+            ]));
+        assert!(
+            !plan
+                .iter()
+                .any(|c| c.argv.iter().any(|a| a == "imports_rollback"))
+        );
     }
 }

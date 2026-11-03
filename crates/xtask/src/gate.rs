@@ -631,7 +631,7 @@ pub mod fixtures {
     pub const EXECUTABLE: &str = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
     pub const BUNDLE_SHA: &str = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
     pub const BUNDLE: &str = "target/fixture.app";
-    pub const FIXTURE_ID: &str = "io.cdot.prisma-airs-desktop.v2.fixture";
+    pub const FIXTURE_ID: &str = "io.cdot.airs-desktop.fixture";
     pub const EVIDENCE: &str = "docs/planning/evidence/C01/native/capture.json";
 
     pub fn fingerprints() -> Fingerprints {
@@ -785,7 +785,7 @@ pub mod fixtures {
                 vec![
                     Artifact {
                         name: "fixture-executable".to_owned(),
-                        path: "target/fixture.app/Contents/MacOS/prisma-airs-desktop-v2".to_owned(),
+                        path: "target/fixture.app/Contents/MacOS/prisma-airs-desktop".to_owned(),
                         sha256: EXECUTABLE.to_owned(),
                     },
                     Artifact {

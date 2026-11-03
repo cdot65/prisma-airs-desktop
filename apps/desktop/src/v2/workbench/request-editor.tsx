@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { DocumentView, Fields, ImportNote, Preview, RunView, RunningView, SendReviewView } from '@prisma-airs/desktop-contracts'
-import { type WorkbenchCall, fieldText, resultText, saveRefusalText } from '../../features/workbench/workbench-call'
+import { type WorkbenchCall, fieldText, resultText, saveRefusalText } from '../../modules/workbench/workbench-call'
 import { Btn } from '../controls'
 import { Glyph } from '../icons'
 import { API_COPY as C, BODY_KINDS, METHODS, methodColor } from './copy'

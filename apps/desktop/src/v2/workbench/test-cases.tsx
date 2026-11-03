@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CaseProduct, CaseView, FeatureId, Intent, LibraryNotice, ShellSnapshot } from '@prisma-airs/desktop-contracts'
-import { type Dispatch, outcomeMessage } from '../../features/tenants/dispatch'
+import { type Dispatch, outcomeMessage } from '../../modules/tenants/dispatch'
 import { clockOf } from '../copy'
 import { Btn, Field } from '../controls'
 import { Glyph, type GlyphName } from '../icons'

@@ -1,10 +1,9 @@
 //! C28 (D058): the v2 shell's Rust-owned presentation state through the
-//! production authority interface: the `ui_variant` flag, the per-variant
 //! feature catalogue the menu/sidebar/palette share, `navigate`, onboarding
 //! transitions and the "show the calls" preference, all persisted or
 //! session-scoped exactly as state-ownership.md assigns them.
 
-use desktop_core::features::{self, FeatureId, OnboardingState, UiVariant};
+use desktop_core::features::{self, FeatureId, OnboardingState};
 use desktop_core::fixtures::{self, Handles, ScriptedStore};
 use desktop_core::store::PersistedState;
 use desktop_core::{
@@ -74,7 +73,7 @@ async fn a_fresh_store_is_the_one_presentation_with_onboarding_needed_and_calls_
     // C44: there is one presentation. A fresh store is v2 with Home first (⌘1).
     let desk = Desk::new();
     let snap = desk.snap();
-    assert_eq!(snap.ui_variant, UiVariant::V2);
+
     assert_eq!(snap.onboarding, OnboardingState::Needed);
     assert!(snap.show_calls);
     assert_eq!(snap.active_feature, FeatureId::Home);
@@ -84,14 +83,11 @@ async fn a_fresh_store_is_the_one_presentation_with_onboarding_needed_and_calls_
 }
 
 #[tokio::test]
-async fn the_catalogue_is_v2_whatever_variant_is_asked_for_and_survives_a_restart() {
-    // C44: `setUiVariant` is accepted and changes nothing (older presentations and drivers still send it).
-    let mut desk = Desk::new();
-    desk.send(json!({"kind": "setUiVariant", "variant": "legacy"}))
-        .await
-        .expect("accepted, no-op");
+async fn the_one_catalogue_survives_a_restart() {
+    let desk = Desk::new();
+
     let snap = desk.snap();
-    assert_eq!(snap.ui_variant, UiVariant::V2);
+
     assert_eq!(
         snap.active_feature,
         FeatureId::Home,
@@ -129,21 +125,13 @@ async fn the_catalogue_is_v2_whatever_variant_is_asked_for_and_survives_a_restar
         ]
     );
     assert!(shortcuts[7..].iter().all(Option::is_none));
-    // Every destination the legacy shell listed is still reachable from the v2 catalogue, except the alpha
-    // import, which left the catalogue under D060 (the legacy catalogue itself goes with C45).
+    // The one catalogue exposes every supported destination.
     for id in features::catalogue().iter().map(|f| f.id) {
-        if id == FeatureId::Import {
-            assert!(
-                snap.features.iter().all(|f| f.id != id),
-                "Import still listed (D060)"
-            );
-            continue;
-        }
         assert!(snap.features.iter().any(|f| f.id == id), "{id:?} dropped");
     }
     // Nothing about the presentation is persisted by the switch; a restart is v2 on Home.
     let desk = desk.restart();
-    assert_eq!(desk.snap().ui_variant, UiVariant::V2);
+
     assert_eq!(desk.snap().active_feature, FeatureId::Home);
 }
 
@@ -159,9 +147,7 @@ async fn navigate_accepts_only_catalogued_destinations_and_is_session_scoped() {
         .expect("harness");
     assert_eq!(desk.snap().active_feature, FeatureId::Harness);
     // A variant intent (a no-op since C44) leaves navigation where it is.
-    desk.send(json!({"kind": "setUiVariant", "variant": "v2"}))
-        .await
-        .expect("v2");
+
     assert_eq!(desk.snap().active_feature, FeatureId::Harness);
     // The Inbox arrived in C30: listed and available (an unlisted destination
     // stays refused, never a blank page).
@@ -223,9 +209,9 @@ async fn a_pre_c28_state_document_loads_into_the_one_presentation() {
     object.remove("onboarding");
     object.remove("showCalls");
     let state: PersistedState = serde_json::from_value(doc).expect("older document loads");
-    assert_eq!(state.ui_variant, UiVariant::V2);
+
     assert_eq!(state.onboarding, OnboardingState::Needed);
     assert!(state.show_calls);
     let desk = Desk::from_state(state);
-    assert_eq!(desk.snap().ui_variant, UiVariant::V2);
+    assert_eq!(desk.snap().active_feature, FeatureId::Home);
 }
