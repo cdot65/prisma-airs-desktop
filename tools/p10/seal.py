@@ -7,7 +7,7 @@ sys.path.insert(0,str(Path.cwd()/'docs/planning/evidence/P09/native-controller')
 from native_requirements import load_requirements
 
 DRIVERS=['c36','c43','c32','c31','c39','c11','c10','c03','c04','c05','c06','c07','c24','c35','c37','c38','c40','c41','c42','c44']
-LEGACY={'c03','c04','c05','c06','c07','c10','c11','c24'}
+LEGACY={'c03','c04','c05','c06','c07','c10','c11','c24','c31'}
 
 
 def command_plan(root):
@@ -35,6 +35,20 @@ def verify_plan(root, plan):
     for row in rows:
         require(all(row.get(k)==v for k,v in expected[row['id']].items()),'plan command/raw-kind differs from approved source manifest')
     return True
+
+
+def verify_historical_invocations(root):
+    import ast
+    historical=root/'docs/planning/evidence/P09/remediation-attempt-01/qualification-g11.py'
+    tree=ast.parse(historical.read_text())
+    node=next(n for n in ast.walk(tree) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='queue' for t in n.targets))
+    permitted=(ast.Expression,ast.List,ast.Tuple,ast.Constant,ast.BinOp,ast.Add,ast.ListComp,ast.comprehension,ast.Name,ast.Load,ast.Store)
+    expression=ast.Expression(node.value)
+    require(all(isinstance(n,permitted) for n in ast.walk(expression)),'historical queue is not a literal/comprehension; never execute its supervisor')
+    queue=eval(compile(expression,str(historical),'eval'),{'__builtins__':{}},{})
+    current=[(driver,driver in LEGACY) for driver in DRIVERS]
+    require(current==queue,'current native driver/adapter plan differs from actual retained G11')
+    return {'status':'pass','historical_source':str(historical.relative_to(root)),'historical_source_sha256':sha(historical),'queue':current,'method':'AST-extracted literal queue only; historical supervisor never executed','new_assertions_retired':0}
 
 
 def make(root):

@@ -69,4 +69,20 @@ class NativeContinuationTests(unittest.TestCase):
         self.marker['retained_records']['native-c32']=self.marker['retained_records'].pop('native-c36');self.write('baseline/continuation-02.json',self.marker)
         with self.assertRaisesRegex(ValueError,'failed native driver'):self.verify()
 
+
+class AdapterInvocationTests(unittest.TestCase):
+    def test_current_plan_matches_actual_retained_g11_without_running_it(self):
+        import seal
+        result=seal.verify_historical_invocations(Path(__file__).resolve().parents[2])
+        self.assertEqual(result['status'],'pass')
+        self.assertIn(('c31',True),result['queue'])
+        self.assertIn(('c39',False),result['queue'])
+
+    def test_omitted_c31_adapter_is_rejected_before_any_driver(self):
+        import seal
+        with patch.object(seal,'LEGACY',seal.LEGACY-{'c31'}):
+            with self.assertRaisesRegex(ValueError,'differs from actual retained G11'):
+                seal.verify_historical_invocations(Path(__file__).resolve().parents[2])
+
+
 if __name__=='__main__':unittest.main()

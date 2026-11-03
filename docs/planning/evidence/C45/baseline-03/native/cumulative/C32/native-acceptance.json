@@ -1,0 +1,122 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "C32",
+  "recorded_utc": "2026-11-03T01:44:41Z",
+  "method": "cua",
+  "performed_by": "Codex gpt-6.1-sol orchestrating the real fixture window through macOS Accessibility (System Events and the ax helper) with fixture WebView self-capture; tools/native-acceptance/acceptance_c32_current.py",
+  "host": "VirtualMac2,1; macOS 26.6.2 (25G83)",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+    "identifier": "io.cdot.airs-desktop.fixture",
+    "executable_sha256": "4cdca217bdf315f6688047f9b5ad8f84dbc03e4b07cb13e3dcdaa1524efaf661",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C32-N01",
+      "description": "The Harness renders in the v2 shell on the existing engine: the title row names the tenant, the engine and the workspace; the prerequisites checklist is hidden once satisfied; a fresh tenant shows no seeded conversation, and its first send through the composer starts a user conversation that the real engine answers, titled from that message in the rail (I12).",
+      "result": "pass",
+      "observation": "Harness screen True with its status line True; checklist hidden once satisfied True; no seeded conversation True; the first send started a conversation and was answered True (1 model turns), titled from the message in the rail True",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/observations.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-empty.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-first-send.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-empty-light-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-empty-dark-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-empty-dark-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-empty-light-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-first-light-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-first-dark-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-first-dark-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-first-light-200.png"
+      ]
+    },
+    {
+      "id": "C32-N02",
+      "description": "A command the engine asks to run while the project is read-only is decided in the page (Approve once / Decline) after a project is chosen through the embedded project panel; while it waits, a tenant switch through the switcher, the palette and Go \u203a Switch Tenant\u2026 each shows the guard (Stay, Discard and switch, Archive and switch) and Stay keeps the tenant and the decision (I1, V2-N01); Decline records it and runs nothing, Approve once runs it. With changes allowed, a command is shown as May change things: Approve\u2026 opens the native confirmation, Cancel keeps it pending and runs nothing, Allow once runs it; the guard is the one topmost modal (the rail and the page hidden beneath it) with initial focus on Stay, and Escape closes it with focus returned to the switcher.",
+      "result": "pass",
+      "observation": "project chosen through the embedded panel True; a read-only command asked in the page True naming the call True; guard via switcher True with ['Stay', 'Discard and switch', 'Archive and switch'], the one topmost modal (rail and page hidden) True, initial focus 'Stay', Escape returned focus to the switcher True with the page back True; via palette True, via Go \u203a Switch Tenant\u2026 True; Stay kept Northwind Health True and the decision True; Decline recorded True; Approve once ran it True; with changes allowed the command was shown as May change things True, Approve\u2026 opened the native sheet True, Cancel kept it pending and ran nothing True, Allow once ran it True",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/observations.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-decision.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-guard-switcher.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-approved.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-may-change.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-decision-light-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-decision-dark-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-decision-dark-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-decision-light-200.png"
+      ]
+    },
+    {
+      "id": "C32-N03",
+      "description": "The workspace MCP catalog read the engine asks for (airs_desktop.mcpServers) is shown as read-only and read only once approved in the page; a change the engine proposes appears as a follow-up and writes nothing; Open the review shows it as the operator's typed review in Administration (Apply gated, still nothing written) and leaving it closes the follow-up; End conversation seals it (its transcript saved, the rail marks it ended, the engine is gone) and the next send starts a new conversation; the ended conversation is announced in a status region.",
+      "result": "pass",
+      "observation": "the workspace MCP catalog read asked in the page as read-only True and read once approved True; Apply gated by the typed name True; follow-up staged True with 0 writes; Open the review showed the operator's typed review in Administration True titled for the proposal True (0 writes); leaving it closed the follow-up True; End conversation sealed it True, announced in a status region True, marked ended in the rail True, engine gone True; the next send started a new conversation True",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/observations.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-desktop-read.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-follow-up.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-review.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-ended.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-follow-up-light-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-follow-up-dark-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-follow-up-dark-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-follow-up-light-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-ended-light-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-ended-dark-100.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-ended-dark-200.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-ended-light-200.png"
+      ]
+    },
+    {
+      "id": "C32-N04",
+      "description": "Keyboard: Tab from the message box reaches Send or End; at the 900\u00d7600 minimum and 200% zoom in both themes nothing on the Harness screen lies past the window's right edge and there is no horizontal scroll bar; a focused changed control (New investigation) shows its focus ring (pixels around it change against the unfocused capture); with Reduce Motion on, the ended conversation's toast stays past 6 s until dismissed, and the system setting is restored.",
+      "result": "pass",
+      "observation": "Tab from the message reached ['Send', 'Project, sign-in and workspace tools', 'Open And yesterday?', 'Open Write a file.', 'Open List the files.', 'Open Which profiles block prompt injection?'] (Send or End True); at 900\u00d7600 and 200% overflow light 0 px, dark 0 px, horizontal scroll bars [0, 0]; focus ring on New investigation 1044 px changed (True); Reduce Motion active True: the ended-conversation toast shown True, still present after 8 s True, dismissed True, setting restored True",
+      "evidence": [
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/observations.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-reduce-motion-toast.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-min-200-light.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/tree-harness-min-200-dark.json",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-min-200-light.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-min-200-dark.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-ring-plain.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-ring-new.png",
+        "docs/planning/evidence/C45/baseline-03/native/cumulative/C32/native/captures/harness-reduce-motion-toast.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Pixels come from the fixture build's own WKWebView snapshot; the native file sheet is driven through the fixture sheet adapter.",
+    "The model is the synthetic Gateway service (tools/native-acceptance/mgmt_server.py); the real pinned engine runs against it. The lifecycle fixtures (blocks, mcp, keys) are exercised in the component suite; natively the same decision, follow-up and end paths run with a command approval and a proposal the engine really raises.",
+    "Spoken VoiceOver output was not recorded."
+  ],
+  "screens": [
+    "harness-decision-dark-100.png",
+    "harness-decision-dark-200.png",
+    "harness-decision-light-100.png",
+    "harness-decision-light-200.png",
+    "harness-empty-dark-100.png",
+    "harness-empty-dark-200.png",
+    "harness-empty-light-100.png",
+    "harness-empty-light-200.png",
+    "harness-ended-dark-100.png",
+    "harness-ended-dark-200.png",
+    "harness-ended-light-100.png",
+    "harness-ended-light-200.png",
+    "harness-first-dark-100.png",
+    "harness-first-dark-200.png",
+    "harness-first-light-100.png",
+    "harness-first-light-200.png",
+    "harness-follow-up-dark-100.png",
+    "harness-follow-up-dark-200.png",
+    "harness-follow-up-light-100.png",
+    "harness-follow-up-light-200.png",
+    "harness-min-200-dark.png",
+    "harness-min-200-light.png",
+    "harness-reduce-motion-toast.png",
+    "harness-ring-focused.png",
+    "harness-ring-plain.png"
+  ]
+}
