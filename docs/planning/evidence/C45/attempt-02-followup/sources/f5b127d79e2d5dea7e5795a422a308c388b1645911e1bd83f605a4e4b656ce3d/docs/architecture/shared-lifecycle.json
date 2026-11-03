@@ -1,0 +1,96 @@
+{
+  "schema": "airs-v2/shared-lifecycle/1",
+  "description": "Reviewed dependency lifecycle scripts for the locked Academy input (docs/architecture/inputs.lock.json). Scripts never run during install (--ignore-scripts). shared-lifecycle runs only action=run entries, in .work scratch, as argv without a shell; any discovered script not listed here with its exact package, version, hook and script hash fails the check. Every scoped command passes without running any script, so all entries are reviewed skips.",
+  "scripts": [
+    {
+      "package": "@clerk/shared",
+      "version": "3.47.7",
+      "hook": "postinstall",
+      "script": "node ./scripts/postinstall.mjs",
+      "script_sha256": "efd6fd05b41718acbff00855169f9b17191d40a86b9214ae6a94ac38ac2ed0a1",
+      "action": "skip",
+      "reason": "Clerk SDK install notice; scoped presentation commands never load Clerk at install time"
+    },
+    {
+      "package": "@swc/core",
+      "version": "1.15.43",
+      "hook": "postinstall",
+      "script": "node postinstall.js",
+      "script_sha256": "8863e845ae71970403793549480c0a621aef8b6fc353dd93b046f9cc43542795",
+      "action": "skip",
+      "reason": "binary check; the platform package @swc/core-darwin-arm64 is installed as an optional dependency"
+    },
+    {
+      "package": "browser-tabs-lock",
+      "version": "1.3.0",
+      "hook": "postinstall",
+      "script": "node scripts/postinstall.js",
+      "script_sha256": "2c59f627b59ab77d833031eefab449644a7957093cdf4ddf04beb14a3c8c39f5",
+      "action": "skip",
+      "reason": "install-time notice only; not used by scoped commands"
+    },
+    {
+      "package": "bufferutil",
+      "version": "4.1.0",
+      "hook": "install",
+      "script": "node-gyp-build",
+      "script_sha256": "73c32bcbb50dd17b5f86139028097755803031a4b31753af52fc72cc105b73c1",
+      "action": "skip",
+      "reason": "optional native ws accelerator; ws falls back to JavaScript"
+    },
+    {
+      "package": "core-js",
+      "version": "3.47.0",
+      "hook": "postinstall",
+      "script": "node -e \"try{require('./postinstall')}catch(e){}\"",
+      "script_sha256": "805d0c1942c17b9d94f8747adb1ef7c710c82c9fd12952ee28c66fd04f7bfe2b",
+      "action": "skip",
+      "reason": "funding banner only"
+    },
+    {
+      "package": "esbuild",
+      "version": "0.18.20",
+      "hook": "postinstall",
+      "script": "node install.js",
+      "script_sha256": "912d4d8f507b7b392ae422a459f98da94669a742e4cc43cfe061e630ee2846fe",
+      "action": "skip",
+      "reason": "binary verification; @esbuild/darwin-arm64 optional dependency is installed and resolved directly"
+    },
+    {
+      "package": "esbuild",
+      "version": "0.25.12",
+      "hook": "postinstall",
+      "script": "node install.js",
+      "script_sha256": "912d4d8f507b7b392ae422a459f98da94669a742e4cc43cfe061e630ee2846fe",
+      "action": "skip",
+      "reason": "binary verification; @esbuild/darwin-arm64 optional dependency is installed and resolved directly"
+    },
+    {
+      "package": "esbuild",
+      "version": "0.27.7",
+      "hook": "postinstall",
+      "script": "node install.js",
+      "script_sha256": "912d4d8f507b7b392ae422a459f98da94669a742e4cc43cfe061e630ee2846fe",
+      "action": "skip",
+      "reason": "binary verification; @esbuild/darwin-arm64 optional dependency is installed and resolved directly"
+    },
+    {
+      "package": "esbuild",
+      "version": "0.28.1",
+      "hook": "postinstall",
+      "script": "node install.js",
+      "script_sha256": "912d4d8f507b7b392ae422a459f98da94669a742e4cc43cfe061e630ee2846fe",
+      "action": "skip",
+      "reason": "binary verification; @esbuild/darwin-arm64 optional dependency is installed and resolved directly"
+    },
+    {
+      "package": "utf-8-validate",
+      "version": "6.0.6",
+      "hook": "install",
+      "script": "node-gyp-build",
+      "script_sha256": "73c32bcbb50dd17b5f86139028097755803031a4b31753af52fc72cc105b73c1",
+      "action": "skip",
+      "reason": "optional native ws validator; ws falls back to JavaScript"
+    }
+  ]
+}

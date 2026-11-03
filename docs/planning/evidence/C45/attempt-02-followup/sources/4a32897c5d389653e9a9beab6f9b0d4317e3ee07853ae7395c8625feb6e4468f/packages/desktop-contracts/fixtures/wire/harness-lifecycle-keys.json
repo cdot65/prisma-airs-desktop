@@ -1,0 +1,254 @@
+{
+  "lifecycle": "keys",
+  "question": "Which API keys expire before the audit, and can you rotate them?",
+  "steps": {
+    "asking": {
+      "id": "op-43",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "answering",
+      "failure": null,
+      "stop": null,
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which API keys expire before the audit, and can you rotate them?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the API keys inventory",
+          "state": "streaming"
+        }
+      ],
+      "lastTurn": null,
+      "usage": null,
+      "cleanup": null,
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "7c2a4e9d-3f5b-4c8d-8e1f-2a3b4c5d6e7f",
+      "savedAt": null,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [
+        {
+          "id": "2c3d4e5f60718293a4b5c6d7",
+          "kind": "desktopRead",
+          "command": null,
+          "cwd": null,
+          "reason": null,
+          "files": [],
+          "server": "airs_desktop",
+          "tool": "inventory",
+          "arguments": "{\"resource\":\"apiKeys\",\"limit\":25}",
+          "effect": "readOnly"
+        }
+      ],
+      "proposals": [],
+      "mcp": [],
+      "opening": "Which API keys expire before the audit, and can you rotate them?"
+    },
+    "approved": {
+      "id": "op-43",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "ready",
+      "failure": null,
+      "stop": null,
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which API keys expire before the audit, and can you rotate them?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the API keys inventory",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-1",
+          "role": "assistant",
+          "text": "One key expires before the audit: 'Support key' of support-copilot, on 2026-11-20. I will not rotate it: rotation is a write; it goes through Administration and a review.",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-2",
+          "role": "assistant",
+          "text": "I staged the start of its rotation (an additional key for support-copilot) for your review in Administration. Nothing is issued until you confirm it there.",
+          "state": "complete"
+        }
+      ],
+      "lastTurn": "completed",
+      "usage": null,
+      "cleanup": null,
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "7c2a4e9d-3f5b-4c8d-8e1f-2a3b4c5d6e7f",
+      "savedAt": 1793230000,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [],
+      "proposals": [
+        {
+          "id": "P-1",
+          "summary": "Start the rotation of support-copilot's key in Administration",
+          "draft": {
+            "kind": "apiKeys",
+            "action": "version",
+            "target": "key-1",
+            "body": "{\"cust_app\":\"support-copilot\",\"cust_env\":\"production\",\"cust_cloud_provider\":\"aws\",\"api_key_name\":\"Support key 2\",\"dp_name\":\"dp-1\",\"revoked\":false,\"rotation_time_interval\":30,\"rotation_time_unit\":\"days\"}"
+          },
+          "state": "staged",
+          "review": null
+        }
+      ],
+      "mcp": [],
+      "opening": "Which API keys expire before the audit, and can you rotate them?"
+    },
+    "declined": {
+      "id": "op-43",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "ready",
+      "failure": null,
+      "stop": null,
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which API keys expire before the audit, and can you rotate them?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the API keys inventory",
+          "state": "declined"
+        },
+        {
+          "id": "u-1/a-1",
+          "role": "assistant",
+          "text": "You declined the read, so nothing was read. I cannot tell which keys expire without the key inventory.",
+          "state": "complete"
+        }
+      ],
+      "lastTurn": "completed",
+      "usage": null,
+      "cleanup": null,
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "7c2a4e9d-3f5b-4c8d-8e1f-2a3b4c5d6e7f",
+      "savedAt": 1793230000,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [],
+      "proposals": [],
+      "mcp": [],
+      "opening": "Which API keys expire before the audit, and can you rotate them?"
+    },
+    "ended": {
+      "id": "op-43",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "ended",
+      "failure": null,
+      "stop": "ended",
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which API keys expire before the audit, and can you rotate them?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the API keys inventory",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-1",
+          "role": "assistant",
+          "text": "One key expires before the audit: 'Support key' of support-copilot, on 2026-11-20. I will not rotate it: rotation is a write; it goes through Administration and a review.",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-2",
+          "role": "assistant",
+          "text": "I staged the start of its rotation (an additional key for support-copilot) for your review in Administration. Nothing is issued until you confirm it there.",
+          "state": "complete"
+        }
+      ],
+      "lastTurn": "completed",
+      "usage": null,
+      "cleanup": "graceful",
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "7c2a4e9d-3f5b-4c8d-8e1f-2a3b4c5d6e7f",
+      "savedAt": 1793230000,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [],
+      "proposals": [
+        {
+          "id": "P-1",
+          "summary": "Start the rotation of support-copilot's key in Administration",
+          "draft": {
+            "kind": "apiKeys",
+            "action": "version",
+            "target": "key-1",
+            "body": "{\"cust_app\":\"support-copilot\",\"cust_env\":\"production\",\"cust_cloud_provider\":\"aws\",\"api_key_name\":\"Support key 2\",\"dp_name\":\"dp-1\",\"revoked\":false,\"rotation_time_interval\":30,\"rotation_time_unit\":\"days\"}"
+          },
+          "state": "staged",
+          "review": null
+        }
+      ],
+      "mcp": [],
+      "opening": "Which API keys expire before the audit, and can you rotate them?"
+    }
+  },
+  "saved": {
+    "id": "7c2a4e9d-3f5b-4c8d-8e1f-2a3b4c5d6e7f",
+    "title": "Which API keys expire before the audit, and can you rotate them?",
+    "updated": 1793230000,
+    "entries": 4,
+    "source": "workspaceKey"
+  }
+}

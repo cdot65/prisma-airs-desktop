@@ -1,0 +1,256 @@
+{
+  "lifecycle": "mcp",
+  "question": "Which laptops run an MCP server that is not on the allow list?",
+  "steps": {
+    "asking": {
+      "id": "op-42",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "answering",
+      "failure": null,
+      "stop": null,
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which laptops run an MCP server that is not on the allow list?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the workspace's MCP servers",
+          "state": "streaming"
+        }
+      ],
+      "lastTurn": null,
+      "usage": null,
+      "cleanup": null,
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "6b1f3d8c-2e4a-4b7c-9d0e-1f2a3b4c5d6e",
+      "savedAt": null,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [
+        {
+          "id": "1b2c3d4e5f60718293a4b5c6",
+          "kind": "desktopRead",
+          "command": null,
+          "cwd": null,
+          "reason": null,
+          "files": [],
+          "server": "airs_desktop",
+          "tool": "mcpServers",
+          "arguments": "{}",
+          "effect": "readOnly"
+        }
+      ],
+      "proposals": [],
+      "mcp": [],
+      "opening": "Which laptops run an MCP server that is not on the allow list?"
+    },
+    "approved": {
+      "id": "op-42",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "ready",
+      "failure": null,
+      "stop": null,
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which laptops run an MCP server that is not on the allow list?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the workspace's MCP servers",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-1",
+          "role": "assistant",
+          "text": "The workspace's MCP catalog lists three servers. 'scratch-tools' has no sign-in configured and is not one your team listed as approved. The desktop reads this workspace's catalog, not laptops: per-endpoint data needs an admitted Agentic Endpoint Security service, which this release does not have.",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-2",
+          "role": "assistant",
+          "text": "Recommendation: until 'scratch-tools' is reviewed, add a workspace guardrail that denies requests carrying personal data (the pii-check guardrail on all messages). I staged it for your review in this workspace; it is not applied. It does not block an MCP server by itself: removing 'scratch-tools' from the workspace is done in AI Gateway.",
+          "state": "complete"
+        }
+      ],
+      "lastTurn": "completed",
+      "usage": null,
+      "cleanup": null,
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "6b1f3d8c-2e4a-4b7c-9d0e-1f2a3b4c5d6e",
+      "savedAt": 1793230000,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [],
+      "proposals": [
+        {
+          "id": "P-1",
+          "summary": "Deny requests carrying personal data in this workspace (pii-check, all messages)",
+          "draft": {
+            "kind": "gatewayGuardrails",
+            "action": "create",
+            "target": "",
+            "workspace": "gw-aaaaaaaaaaaaaaaaaaaaaaaa",
+            "body": "{\"name\":\"pii-deny-all-messages\",\"checks\":[{\"id\":\"pii-check\",\"parameters\":{\"scan_scope\":\"all_messages\"}}],\"actions\":{\"deny\":true}}"
+          },
+          "state": "staged",
+          "review": null
+        }
+      ],
+      "mcp": [],
+      "opening": "Which laptops run an MCP server that is not on the allow list?"
+    },
+    "declined": {
+      "id": "op-42",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "ready",
+      "failure": null,
+      "stop": null,
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which laptops run an MCP server that is not on the allow list?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the workspace's MCP servers",
+          "state": "declined"
+        },
+        {
+          "id": "u-1/a-1",
+          "role": "assistant",
+          "text": "You declined the read, so nothing was read. I cannot list the workspace's MCP servers without it.",
+          "state": "complete"
+        }
+      ],
+      "lastTurn": "completed",
+      "usage": null,
+      "cleanup": null,
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "6b1f3d8c-2e4a-4b7c-9d0e-1f2a3b4c5d6e",
+      "savedAt": 1793230000,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [],
+      "proposals": [],
+      "mcp": [],
+      "opening": "Which laptops run an MCP server that is not on the allow list?"
+    },
+    "ended": {
+      "id": "op-42",
+      "workspace": {
+        "id": "16f7e90d-382a-4e78-b577-1b01eb5f8297",
+        "name": "Team A",
+        "slug": "team-a",
+        "scopeName": "scope-team-a"
+      },
+      "endpoint": "https://gateway.example/rt/v1",
+      "phase": "ended",
+      "failure": null,
+      "stop": "ended",
+      "entries": [
+        {
+          "id": "u-1",
+          "role": "operator",
+          "text": "Which laptops run an MCP server that is not on the allow list?",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/call-1",
+          "role": "tool",
+          "text": "Read the workspace's MCP servers",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-1",
+          "role": "assistant",
+          "text": "The workspace's MCP catalog lists three servers. 'scratch-tools' has no sign-in configured and is not one your team listed as approved. The desktop reads this workspace's catalog, not laptops: per-endpoint data needs an admitted Agentic Endpoint Security service, which this release does not have.",
+          "state": "complete"
+        },
+        {
+          "id": "u-1/a-2",
+          "role": "assistant",
+          "text": "Recommendation: until 'scratch-tools' is reviewed, add a workspace guardrail that denies requests carrying personal data (the pii-check guardrail on all messages). I staged it for your review in this workspace; it is not applied. It does not block an MCP server by itself: removing 'scratch-tools' from the workspace is done in AI Gateway.",
+          "state": "complete"
+        }
+      ],
+      "lastTurn": "completed",
+      "usage": null,
+      "cleanup": "graceful",
+      "runtimeVersion": "0.104.0",
+      "source": "workspaceKey",
+      "historyId": "6b1f3d8c-2e4a-4b7c-9d0e-1f2a3b4c5d6e",
+      "savedAt": 1793230000,
+      "saveFailure": null,
+      "unsent": null,
+      "signInFailure": null,
+      "project": null,
+      "write": false,
+      "approvals": [],
+      "proposals": [
+        {
+          "id": "P-1",
+          "summary": "Deny requests carrying personal data in this workspace (pii-check, all messages)",
+          "draft": {
+            "kind": "gatewayGuardrails",
+            "action": "create",
+            "target": "",
+            "workspace": "gw-aaaaaaaaaaaaaaaaaaaaaaaa",
+            "body": "{\"name\":\"pii-deny-all-messages\",\"checks\":[{\"id\":\"pii-check\",\"parameters\":{\"scan_scope\":\"all_messages\"}}],\"actions\":{\"deny\":true}}"
+          },
+          "state": "staged",
+          "review": null
+        }
+      ],
+      "mcp": [],
+      "opening": "Which laptops run an MCP server that is not on the allow list?"
+    }
+  },
+  "saved": {
+    "id": "6b1f3d8c-2e4a-4b7c-9d0e-1f2a3b4c5d6e",
+    "title": "Which laptops run an MCP server that is not on the allow list?",
+    "updated": 1793230000,
+    "entries": 4,
+    "source": "workspaceKey"
+  }
+}

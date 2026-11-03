@@ -43,9 +43,9 @@ def raw_checks(root,record,inputs):
     return {'run_id':raw['run_id'],'commands':len(COMMANDS),'tests':raw['commands'][0]['tests']}
 
 
-def verify(root,record,current=True):
+def verify(root,record,current=True,historical=None):
     require(record['schema']=='airs-desktop/c45-affected-followup/1','followup schema')
-    baseline=read(bound(root,record['baseline_qualification']));base_result=verify_coverage(root,baseline)
+    baseline=read(bound(root,record['baseline_qualification']));base_result=verify_coverage(root,baseline,historical=historical)
     old=read(bound(root,baseline['candidate']));candidate=read(bound(root,record['candidate']))
     before=read(bound(root,record['source_before']))['files'];after=read(bound(root,record['source_after']))['files']
     require(digest(before)==baseline['source_inventory_sha256']==old['source_inventory_sha256'],'baseline source binding')
@@ -57,9 +57,10 @@ def verify(root,record,current=True):
     for key in ('executable_sha256','bundle_sha256','build_flags','conditions','dependency_fingerprint'):
         require(candidate[key]==old[key],'followup app/build/conditions/dependencies changed: '+key)
     require(set(candidate['helper_closure'])==set(old['helper_closure']),'runtime helper membership changed')
+    helper_root=historical.source(record['source_inventory_sha256']) if historical else root
     for name,value in old['helper_closure'].items():
-        if name not in META_ONLY:require(candidate['helper_closure'][name]==value==sha(root/name),'runtime helper changed: '+name)
-    verify_candidate(root,candidate)
+        if name not in META_ONLY:require(candidate['helper_closure'][name]==value==sha(helper_root/name),'runtime helper changed: '+name)
+    verify_candidate(root,candidate,historical=historical)
     checks=raw_checks(root,record['focused_run'],candidate['runner_inputs'])
     for failure in record['old_red']:
         path=bound(root,failure);require(failure['exit_code']==101 and 'test result: FAILED.' in path.read_text(),'causal original failure proof missing')

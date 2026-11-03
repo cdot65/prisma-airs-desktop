@@ -95,7 +95,9 @@ def release_prerequisites(root):
     c45=actual_review(root,"C45",standing["c45"]["attempt"],root/standing["c45_source_archive"])
     require(standing["c45"] == c45,"C45 member proof binding")
     from packet import qualification
-    qualified=qualification(root,root/standing["qualification"]["record"],current=False)
+    from historical import Historical
+    historical=Historical(root,standing["historical_context"])
+    qualified=qualification(root,root/standing["qualification"]["record"],current=False,historical=historical)
     request=read(root/"docs/planning/reviews/P10"/standing["attempt"]/"request.json")
     require(qualified == standing["qualification"] == request["qualification"] and request["predecessors"]["C45"] == c45,"P10 qualified candidate/member binding")
     return {"p09":p09,"p10":p10,"c45":c45,"controller_complete":False,"c26_required_here":False}

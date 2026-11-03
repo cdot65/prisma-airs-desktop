@@ -12,16 +12,20 @@ from phase_packet import validate
 from phase_inputs import full_gate
 
 
-def qualification(root,path,current=True):
+def qualification(root,path,current=True,historical=None):
     record=read(path)
+    if record.get('schema')=='airs-desktop/c45-provenance-followup/1':
+        from provenance_followup import verify as verify_provenance
+        return {'record':str(path.relative_to(root)),'sha256':sha(path),'verified':verify_provenance(root,record,current=current,historical=historical)}
+    require(current or historical is not None,'historical qualification requires explicit archive context')
     if record.get('schema')=='airs-desktop/c45-affected-followup/1':
         from followup import verify as verify_followup
-        return {'record':str(path.relative_to(root)),'sha256':sha(path),'verified':verify_followup(root,record,current=current)}
+        return {'record':str(path.relative_to(root)),'sha256':sha(path),'verified':verify_followup(root,record,current=current,historical=historical)}
     from seal import verify_plan
     verify_plan(root,read(bound(root,record['plan'])))
-    result=verify(root,record)
+    result=verify(root,record,historical=historical)
     candidate=read(bound(root,record['candidate']))
-    verify_candidate(root,candidate)
+    verify_candidate(root,candidate,historical=historical)
     if current:require(digest(source_inventory(root))==record['source_inventory_sha256'],'qualified source changed; declare and verify affected delta')
     return {'record':str(path.relative_to(root)),'sha256':sha(path),'verified':result}
 
@@ -40,7 +44,8 @@ def make(root,subject,attempt):
     require(subject in ['C45','P10'] and attempt.startswith('attempt-') and attempt[8:].isdigit(),'review subject/attempt')
     out=root/'docs/planning/reviews'/subject/attempt
     require(not out.exists(),'preserve old attempt')
-    followup=root/'docs/planning/evidence/C45/attempt-01-followup/qualified-coverage.json'
+    provenance=root/'docs/planning/evidence/C45/attempt-02-followup/qualified-coverage.json'
+    followup=provenance if provenance.exists() else root/'docs/planning/evidence/C45/attempt-01-followup/qualified-coverage.json'
     qualified=qualification(root,followup if followup.exists() else root/'docs/planning/evidence/C45/qualified-coverage.json')
     standing=prerequisites(root,subject)
     source=source_inventory(root)

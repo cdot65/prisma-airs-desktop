@@ -62,7 +62,7 @@ def verify_raw(root, needed, execution, origin):
         raise ValueError("unsupported required raw execution kind")
 
 
-def verify(root, record):
+def verify(root, record, historical=None):
     require(record["schema"] == "airs-desktop/qualified-coverage/1", "coverage schema")
     plan = read(bound(root, record["plan"]))
     require(plan["schema"] == "airs-desktop/required-coverage/1", "plan schema")
@@ -110,9 +110,11 @@ def verify(root, record):
             proof = read(bound(root, rationale["proof"]))
             bindings = proof.get("file_bindings", {})
             require(set(bindings) == set(needed["dependencies"]) and bindings, "dependency membership proof missing")
+            current_files=historical.source(record['source_inventory_sha256']) if historical else root
+            original_files=historical.source(origin['source_inventory_sha256']) if historical else root
             for dependency, binding in bindings.items():
-                require(binding["original_sha256"] == binding["current_sha256"] == sha(root/dependency), "dependency changed: " + dependency)
-                original_source = bound(root, binding["original_file"])
+                require(binding["original_sha256"] == binding["current_sha256"] == sha(current_files/dependency), "dependency changed: " + dependency)
+                original_source = original_files/dependency if historical else bound(root, binding["original_file"])
                 require(sha(original_source) == binding["original_sha256"], "original dependency proof mismatch")
             require(proof.get("unchanged_dependencies") == needed["dependencies"] and proof.get("current_source_inventory_sha256") == record["source_inventory_sha256"] and proof.get("original_candidate_sha256") == original["candidate"]["sha256"], "impact proof does not bind current and original inputs")
     return {"qualified": True, "required": len(ids), "dispositions": {m: sum(r["disposition"] == m for r in rows) for m in sorted({r["disposition"] for r in rows})}, "candidate_sha256": record["candidate"]["sha256"], "source_inventory_sha256": record["source_inventory_sha256"]}

@@ -45,18 +45,19 @@ def verify_source(root, seal):
     return digest(expected)
 
 
-def verify_candidate(root, value):
+def verify_candidate(root, value, historical=None):
     prepared=read(root/value['prepare']['path'])
     require(sha(root/value['prepare']['path'])==value['prepare']['sha256'],'preparation drift')
-    bundle=root/prepared['bundle']
+    bundle=historical.application(value) if historical else root/prepared['bundle']
     require(sha(bundle/'Contents/MacOS/prisma-airs-desktop')==value['executable_sha256']==prepared['executable_sha256'],'candidate executable drift')
     require(bundle_hash(bundle)==value['bundle_sha256']==prepared['bundle_sha256'],'complete candidate bundle drift')
-    for name,value_hash in value['helper_closure'].items():require(sha(root/name)==value_hash,'candidate helper drift: '+name)
+    helper_root=historical.source(value['source_inventory_sha256']) if historical else root
+    for name,value_hash in value['helper_closure'].items():require(sha(helper_root/name)==value_hash,'candidate helper drift: '+name)
     if value.get('build_origin'):
         import platform
         origin=value['build_origin'];path=root/origin['record']
         require(sha(path)==origin['sha256'],'build origin proof drift')
-        audit=verify_build_reuse(root,read(path),value['runner_inputs'],platform.platform(),platform.node())
+        audit=verify_build_reuse(root,read(path),value['runner_inputs'],platform.platform(),platform.node(),historical=historical)
         require(audit==origin['audit'],'build reuse audit drift')
     return value
 
@@ -64,6 +65,9 @@ def verify_candidate(root, value):
 # No application/config/dependency path is permitted. Old raw build and failed
 # smoke remain immutable; this is not a new execution of that build.
 BUILD_REUSE_PATHS = {
+    'tools/p10/historical.py','tools/p10/test_historical.py',
+    'tools/p10/provenance_followup.py','tools/p10/qualification.py',
+    'tools/p10/review_gate.py','tools/p10/followup.py',
     'crates/xtask/tests/controlled_live.rs',
     'crates/xtask/tests/live_run/common.rs',
     'crates/xtask/examples/c45_baseline.rs',
@@ -81,7 +85,7 @@ BUILD_REUSE_PATHS = {
 }
 
 
-def verify_build_reuse(root, record, current_identity, platform_name, hostname):
+def verify_build_reuse(root, record, current_identity, platform_name, hostname, historical=None):
     from qualification import bound
     from stages import verify_completed
     require(record['schema']=='airs-desktop/c45-helper-only-build-reuse/1','build reuse schema')
@@ -90,13 +94,15 @@ def verify_build_reuse(root, record, current_identity, platform_name, hostname):
     after=read(bound(root,record['current_source']))['files']
     changed=sorted(name for name in set(before)|set(after) if before.get(name)!=after.get(name))
     require(changed==record['declared_changed_paths'] and set(changed)<=BUILD_REUSE_PATHS,'undeclared or application-affecting build-reuse delta')
-    require(source_inventory(root)==after,'current build-reuse source changed')
+    if historical:
+        historical.source(digest(before));historical.source(digest(after))
+    else:require(source_inventory(root)==after,'current build-reuse source changed')
     require(digest(before)==old['source_inventory_sha256'],'original source seal/candidate mismatch')
     require(current_identity['dependencies']==old['runner_inputs']['dependencies'] and current_identity['build_flags']==old['runner_inputs']['build_flags'],'build dependency/toolchain/flags changed')
-    require(old['conditions']['platform']==platform_name and old['conditions']['hostname']==hostname,'build execution conditions changed')
+    if not historical:require(old['conditions']['platform']==platform_name and old['conditions']['hostname']==hostname,'build execution conditions changed')
     state_path=bound(root,record['original_build_stage']);state=read(state_path)
     verify_completed(root,state_path.parent,state,state['argv'],digest(before))
-    prepared=read(bound(root,old['prepare']));bundle=root/prepared['bundle']
+    prepared=read(bound(root,old['prepare']));bundle=historical.application(old) if historical else root/prepared['bundle']
     require(sha(bundle/'Contents/MacOS/prisma-airs-desktop')==old['executable_sha256']==prepared['executable_sha256'],'retained executable changed')
     require(bundle_hash(bundle)==old['bundle_sha256']==prepared['bundle_sha256'],'retained complete bundle changed')
     return {'original_candidate_sha256':record['original_candidate']['sha256'],'original_build_stage_sha256':record['original_build_stage']['sha256'],'declared_helper_only_delta':changed,'executable_sha256':old['executable_sha256'],'bundle_sha256':old['bundle_sha256'],'new_build_executed':False,'meaning':'Exact unchanged application retained from actual baseline02 build; changed C45 selector and qualification provenance execute current affected verification.'}

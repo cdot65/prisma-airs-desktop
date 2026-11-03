@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Refined Native v2 — rationale</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0}</style></helmet>
+<div style="width: 800px; height: 1080px; box-sizing: border-box; padding: 32px 36px; background: #f6f2e9; color: #14141a; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; font-size: 13px; display: flex; flex-direction: column; gap: 16px; border: 1px solid #e0d9ca; border-radius: 12px;">
+  <div style="display: flex; align-items: center; gap: 8px;"><span style="padding: 2px 9px; border-radius: 999px; background: #f4dfd3; color: #b4441a; font-size: 12px; font-weight: 600;">Foundation: 01 Refined Native</span><span style="color: #635d50;">Replaces Swiss Ledger v2</span></div>
+  <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.02em;">Refined Native v2</h1>
+  <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #4a463c;">The calm, Mac-native shell from concept 01, now carrying everything we agreed: six products, a sidebar grouped by what you are doing, the v1 API Client, and every product managed from one accordion in Administration.</p>
+  <section style="background: #fbf8f1; border: 1px solid #e0d9ca; border-radius: 12px; overflow: hidden;">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+      <div style="display: grid; grid-template-columns: 132px 1fr; gap: 12px; padding: 9px 16px; border-top: 1px solid #e0d9ca; line-height: 1.45;"><b>{{r.k}}</b><span style="color: #4a463c;">{{r.v}}</span></div>
+    </sc-for>
+  </section>
+  <section style="background: #fbf8f1; border: 1px solid #e0d9ca; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+    <b>Open questions</b>
+    <sc-for list="{{qs}}" as="q" hint-placeholder-count="3"><div style="display: flex; gap: 10px; line-height: 1.45;"><span style="width: 20px; height: 20px; border-radius: 50%; background: #f4dfd3; color: #b4441a; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{{q.n}}</span><span>{{q.t}}</span></div></sc-for>
+  </section>
+  <div style="margin-top: auto; color: #635d50; font-size: 12px;">Presentation only · invented data (Northwind Health, Halcyon Bank, Juniper Logistics) · light and dark</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":800,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const rows = [
+      ['Look', 'System font, warm paper (#f6f2e9) with a burnt-orange accent; dark mode is the warm gruvbox palette from 01. Rounded cards, quiet borders.'],
+      ['Spacing', 'One comfortable rhythm everywhere, taken from the setup wizard: 32–44px page margins, 26px page titles, 18–20px card padding, 12px row padding, 32px buttons and fields.'],
+      ['Sidebar', 'Home ⌘1 · Inbox ⌘2 · Harness ⌘3 · Academy ⌘4 · Test Cases ⌘5 · API Client ⌘6 · Administration ⌘7, with the six products listed under Administration.'],
+      ['Status', 'One place, bottom of the sidebar: connection, Harness, Keychain, jobs. Settings and appearance sit with it.'],
+      ['Tenant', 'Top of the sidebar, like Slack: avatar, tenant name, environment and Gateway workspace. Its menu holds tenant settings, the tenant list (⌃1–⌃4) and Add a tenant, which opens the setup wizard as a sheet without the Welcome and Academy steps. Switching asks first if a Harness decision or a review is open.'],
+      ['Home and Inbox', 'Separate sidebar entries. Home has six product cards, five items needing attention and quick actions; Inbox lists everything that needs you.'],
+      ['First run', 'A setup wizard: tenant and OAuth 2.0 credentials (scan and Gateway workspace keys optional), product cards, connection checks, optional starter test cases and an optional Academy account.'],
+      ['Administration', 'An accordion of the six products. Each row shows the product’s figure and status; open it for tabs, tables, the Playground and edits.'],
+      ['Changes', 'Edits open a review drawer: diff, impact, typed name, then a macOS-style confirm. Red Teaming stays read-only.'],
+      ['API Client', 'Mirrors v1: collection and environment, request tree, open-request tabs, Params/Headers/Body/Auth, coloured JSON.'],
+      ['Explain', 'An optional switch in the toolbar adds plain-language notes to each screen. Off by default.']
+    ].map(([k, v]) => ({ k, v }));
+    const qs = [
+      ['1', 'Home lists all six products. Should unlicensed products be hidden, or shown as "Not connected"?'],
+      ['2', 'AIS has its own section. Should it sit under AI Gateway instead, since enforcement happens there?'],
+      ['3', 'Products appear under Administration. Should they also be top-level sidebar entries?']
+    ].map(([n, t]) => ({ n, t }));
+    return { rows, qs };
+  }
+}
+</script>
+</body>
+</html>

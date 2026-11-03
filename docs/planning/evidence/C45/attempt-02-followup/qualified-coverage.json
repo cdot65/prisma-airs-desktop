@@ -1,0 +1,61 @@
+{
+  "schema": "airs-desktop/c45-provenance-followup/1",
+  "parent_qualification": {
+    "path": "docs/planning/evidence/C45/attempt-01-followup/qualified-coverage.json",
+    "sha256": "9cbc95f019391194b2887471b9ec75836036d9192d49eb932d9a0328cdd58580"
+  },
+  "historical_context": {
+    "path": "docs/planning/evidence/C45/attempt-02-followup/historical-context.json",
+    "sha256": "93e759d2e2cde0804a47d83b00ad953aaeb1abe385adad198cd0c83a7361b7af"
+  },
+  "candidate": {
+    "path": "docs/planning/evidence/C45/attempt-02-followup/candidate.json",
+    "sha256": "5abcf5021a8ec61d167de169e21f1ea60d30d7a14dc61c57c2b1f66c8f2e9ff5"
+  },
+  "source_before": {
+    "path": "docs/planning/evidence/C45/attempt-01-followup/source-seal.json",
+    "sha256": "74bbeabe9b8671dfea75378b5018bed073c8f74d3d5b7c6bd55daf068e0b2a5f"
+  },
+  "source_after": {
+    "path": "docs/planning/evidence/C45/attempt-02-followup/source-seal.json",
+    "sha256": "dd23c0220a696e3ef9fd8eff1002ed71a3e58a60712ac46c4d3f4618a0a09264"
+  },
+  "source_inventory_sha256": "e2234e2a59f854967708cc570be4cdbaac33336af713c5f2d7f3b09c7aa8795f",
+  "declared_changed_paths": [
+    "tools/p10/candidate.py",
+    "tools/p10/followup.py",
+    "tools/p10/historical.py",
+    "tools/p10/packet.py",
+    "tools/p10/provenance_followup.py",
+    "tools/p10/qualification.py",
+    "tools/p10/review_gate.py",
+    "tools/p10/test_historical.py"
+  ],
+  "focused_checks": {
+    "path": "docs/planning/evidence/C45/attempt-02-followup/focused-checks.json",
+    "sha256": "7a796e5894e4674714134275f01a24f3e86ce7687bb600f50bb81a8ec619707b"
+  },
+  "actual_previous_review": {
+    "request.json": {
+      "path": "docs/planning/reviews/C45/attempt-02/request.json",
+      "sha256": "dd6bbb6a54c05319b400c67d3d08d05e7e7e7a2f1811433a033f7394f81490eb"
+    },
+    "verdict-returned.json": {
+      "path": "docs/planning/reviews/C45/attempt-02/verdict-returned.json",
+      "sha256": "1c7fb74cfdaf0941bc8e2ee32a6ad1853f9a1fea7911ddee230f89876541fc9c"
+    },
+    "post-review-audit.json": {
+      "path": "docs/planning/reviews/C45/attempt-02/post-review-audit.json",
+      "sha256": "3492feb23ab7fbb2dfc471203225c494eff65cca6e99d2410b1396996d7ac5e1"
+    },
+    "receipt.json": {
+      "path": "docs/planning/reviews/C45/attempt-02/receipt.json",
+      "sha256": "8818f95d8fc3296bdac5ba651328b7012217e1a9b2c2ba301d1fb73d8a70b200"
+    },
+    "acceptance.md": {
+      "path": "docs/planning/reviews/C45/attempt-02/acceptance.md",
+      "sha256": "bc1f0cb51634e18e39fb61a7f40e318a7635a7fb87693b27ba98040a3370b7c4"
+    }
+  },
+  "reason": "Actual C45attempt02 R1/E1: historical qualification had live checkout/machine checks. Explicit hash-bound eight-generation source/fullbundle archives now validate original application/helpers/conditions independently; strict current reuse retained. Actual6archive/current regressions plus7followup/5buildreuse/13coverage/4release-proof tests passed, original145coverage/72synthetic tests preserved with original raw bindings. No application/config/dependency/native-helper change or new native/Rust execution."
+}

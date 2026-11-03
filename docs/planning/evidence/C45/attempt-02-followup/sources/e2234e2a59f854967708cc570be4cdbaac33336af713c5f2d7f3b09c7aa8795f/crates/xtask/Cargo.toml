@@ -1,0 +1,56 @@
+[package]
+name = "xtask"
+version = "1.0.0"
+description = "Build-time check, review and artifact controller for Prisma AIRS Desktop"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Exposes deterministic controller fixtures to its integration tests.
+test-fixtures = []
+
+[dependencies]
+desktop-core = { path = "../desktop-core" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+# The controlled live runner (C25) drives the production core.
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "time"] }
+zeroize = { version = "=1.9.1", features = ["std"] }
+url = "=2.5.8"
+
+[dev-dependencies]
+# Synthetic TLS endpoints for the live runner's fixture tests (already
+# locked through desktop-core's tests).
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "time", "macros", "net", "io-util"] }
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+time = "=0.3.55"
+# The workspace MCP plane fixture (shared with desktop-core's tests).
+base64 = "=0.22.1"
+
+[lints]
+workspace = true
+
+[[test]]
+name = "shell_controller"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "controlled_live"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "signed_artifact"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "live_run"
+path = "tests/live_run/main.rs"
+required-features = ["test-fixtures"]

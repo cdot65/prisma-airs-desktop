@@ -1,0 +1,9 @@
+# Worktree preservation before the Worf VM move
+
+The owner requested all latest work be committed to remote main on 2026-11-01. This audit covers the main checkout and every existing task worktree, including untracked historical gates and older merge experiments. `index.json` maps each nonignored worktree file to the identical bytes retained in main, an additive historical artifact, a deletion/tombstone, or a snapshot here. The two audit manifests retain branch tips, ancestry/patch-equivalence results and dependency-symlink targets; `main-pending.json` binds the previously uncommitted main files and `main-pending.patch` retains their original patch.
+
+Current active source is the integrated main tree. Older worktree Cargo/test lists, collection scoping and fixture helpers do not replace its later fixes. Conflicting historical evidence retains original bytes and original internal paths in `snapshots/`; it is archival provenance, not a new passing native gate. Recovered C37 attempt-03 scored 9/9/9/9/9; C39b attempt-01-c39b scored 9/8/9/8/8 with four required fixes and two gaps (later C39 remediation remains the current standing). Existing raw verdicts were not edited.
+
+All previously pending main work is preserved, including the owner's 2.0.0/release and Academy work. October C26 signed/install records and `docs/release/2.0.0.md` are historical/draft inputs, not release approval. The installed record contains failures. D060 and the approved later C45/P10 fresh-identity work supersede that older naming/import plan. Publishing source does not publish a release or close P09/P10/C26.
+
+Build dependencies and generated targets are recreated in a fresh clone; old absolute symlinks are not installed. No private manifests, Keychains, CLI tenant TOMLs, authentication tokens or signing keys are copied. The retained historical L19 executable is separately LFS-managed and byte-verified; no additional live verification is authorized.

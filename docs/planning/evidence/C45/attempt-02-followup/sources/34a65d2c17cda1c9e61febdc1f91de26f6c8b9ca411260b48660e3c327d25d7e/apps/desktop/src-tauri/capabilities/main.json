@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "The packaged main window may call only the two application commands.",
+  "local": true,
+  "windows": ["main"],
+  "webviews": ["main"],
+  "permissions": ["allow-desktop-dispatch", "allow-desktop-observe"]
+}

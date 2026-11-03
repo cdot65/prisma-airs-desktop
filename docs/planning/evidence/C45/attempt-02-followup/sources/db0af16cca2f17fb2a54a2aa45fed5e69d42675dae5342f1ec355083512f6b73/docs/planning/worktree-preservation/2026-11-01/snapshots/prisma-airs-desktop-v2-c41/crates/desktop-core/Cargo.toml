@@ -1,0 +1,251 @@
+[package]
+name = "desktop-core"
+version = "2.0.0"
+description = "Prisma AIRS Desktop v2 application core: native authority, context and outcomes"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = []
+# Deterministic fixtures for integration tests. Never enabled by shipping builds.
+test-fixtures = ["dep:libc"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync", "rt", "time", "macros"] }
+ts-rs.workspace = true
+sha2.workspace = true
+hex.workspace = true
+getrandom = "=0.4.3"
+zeroize = { version = "=1.9.1", features = ["std"] }
+# D027/D033: the published SDK, scan and management families, with the
+# app-owned transport.
+scm-sdk = { version = "=0.2.4", default-features = false, features = ["scan", "management", "red-team", "model-security", "agentguard", "gateway"] }
+# DESIGN "Native transport policy": rustls with the platform verifier, explicit
+# proxy modes, gzip only; redirects and retries are disabled per client.
+reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "http2", "gzip", "stream", "system-proxy"] }
+bytes = "=1.12.1"
+http = "=1.5.0"
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+url = "=2.5.8"
+tokio-util = { version = "=0.7.20", default-features = false }
+# Reviewed extra roots are validated as X.509 trust anchors before use.
+rustls-pki-types = { version = "=1.15.1", features = ["std"] }
+rustls-webpki = { version = "=0.103.15", default-features = false, features = ["std", "aws-lc-rs"] }
+# The learner's avatar is decoded with bounds, oriented and re-encoded as a
+# 512 px JPEG before upload and on readback (as v1 did); decoders only.
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "webp"] }
+# Offline Academy work is sealed with XChaCha20-Poly1305 (v1's cipher crate).
+chacha20poly1305 = { version = "=0.10.1", default-features = false, features = ["alloc"] }
+# API Client projects (C14): v1's TOML project files edited in place with
+# their comments and layout kept, and Insomnia v5 exports (YAML or JSON).
+toml_edit = { version = "=0.25.17", default-features = false, features = ["parse", "display"] }
+serde_yaml_ng = "=0.10.0"
+# API Client execution (C15): Set-Cookie parsing for the bounded,
+# host-only cookie jar (already locked through the desktop host).
+cookie = { version = "=0.18.2", default-features = false }
+# Harness company sign-in (C20, D047): verified JWT decoding with the
+# aws-lc-rs provider the transport already ships; JWKs only (no PEM).
+jsonwebtoken = { version = "=11.1.0", default-features = false, features = ["aws_lc_rs"] }
+base64 = "=0.22.1"
+# The fixture sidecar launcher's process group (test-fixtures only; already
+# locked through tokio).
+libc = { version = "=0.2.191", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["sync", "macros", "rt", "rt-multi-thread", "net", "io-util", "time", "test-util"] }
+# Synthetic TLS endpoints and proxies for the native transport contracts.
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["aws_lc_rs", "tls12"] }
+flate2 = "=1.1.10"
+time = "=0.3.55"
+
+[[test]]
+name = "context_credentials"
+path = "tests/context_credentials/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_shell"
+path = "tests/ui_v2_shell/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_onboarding"
+path = "tests/ui_v2_onboarding/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_setup_reads"
+path = "tests/ui_v2_setup_reads/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_inbox"
+path = "tests/ui_v2_inbox/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_reviews"
+path = "tests/ui_v2_reviews/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_harness"
+path = "tests/ui_v2_harness/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_workbench"
+path = "tests/ui_v2_workbench/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_shell_port"
+path = "tests/ui_v2_shell_port/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_home"
+path = "tests/ui_v2_home/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_harness_port"
+path = "tests/ui_v2_harness_port/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_admin"
+path = "tests/ui_v2_admin/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "ui_v2_api"
+path = "tests/ui_v2_api/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "sync_scan"
+path = "tests/sync_scan/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "academy_identity"
+path = "tests/academy_identity/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "academy_learner"
+path = "tests/academy_learner/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "academy_program"
+path = "tests/academy_program/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "academy_offline"
+path = "tests/academy_offline/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "management_reads"
+path = "tests/management_reads/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "runtime_changes"
+path = "tests/runtime_changes/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "dlp_subset"
+path = "tests/dlp_subset/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "sessions_reports"
+path = "tests/sessions_reports/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "library_observation"
+path = "tests/library_observation/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "workbench_documents"
+path = "tests/workbench_documents/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "workbench_execution"
+path = "tests/workbench_execution/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "redteam_model_reads"
+path = "tests/redteam_model_reads/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "gateway_reads"
+path = "tests/gateway_reads/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "gateway_changes"
+path = "tests/gateway_changes/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "gateway_inference"
+path = "tests/gateway_inference/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "harness_identity_history"
+path = "tests/harness_identity_history/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "harness_tools"
+path = "tests/harness_tools/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "workspace_mcp"
+path = "tests/workspace_mcp/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "native_quality"
+path = "tests/native_quality/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "imports_rollback"
+path = "tests/imports_rollback/main.rs"
+required-features = ["test-fixtures"]
+
+[[test]]
+name = "harness_process"
+path = "tests/harness_process/main.rs"
+required-features = ["test-fixtures"]
+
+# A scripted stand-in for the engine's desktop-server (C19 protocol and
+# lifecycle failures the real engine cannot be made to produce).
+[[bin]]
+name = "harness-fixture-sidecar"
+path = "src/bin/harness_fixture_sidecar.rs"
+required-features = ["test-fixtures"]
+
+[lints]
+workspace = true

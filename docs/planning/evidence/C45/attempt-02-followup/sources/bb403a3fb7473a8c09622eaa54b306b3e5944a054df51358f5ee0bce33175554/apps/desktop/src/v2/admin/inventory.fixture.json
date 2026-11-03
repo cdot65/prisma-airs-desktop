@@ -1,0 +1,730 @@
+{
+  "products": [
+    {
+      "id": "runtimeSecurity",
+      "label": "AI Runtime Security",
+      "availability": {
+        "state": "available"
+      },
+      "readOnly": false,
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["ManagementResource (counts)", "ScanRecordView"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "playground",
+          "label": "Playground",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["scan.rs (synchronous scan)"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "security-profiles",
+          "label": "Security profiles",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["ManagementResource::Profiles"],
+          "actions": [
+            {
+              "kind": "profiles",
+              "action": "create",
+              "label": "New profile…",
+              "row": false
+            },
+            {
+              "kind": "profiles",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "profiles",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            }
+          ],
+          "denied": [],
+          "resource": "profiles"
+        },
+        {
+          "id": "custom-topics",
+          "label": "Custom topics",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["ManagementResource::Topics"],
+          "actions": [
+            {
+              "kind": "topics",
+              "action": "create",
+              "label": "New topic…",
+              "row": false
+            },
+            {
+              "kind": "topics",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "topics",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            }
+          ],
+          "denied": [],
+          "resource": "topics"
+        },
+        {
+          "id": "applications",
+          "label": "Applications",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["ManagementResource::Applications"],
+          "actions": [
+            {
+              "kind": "applications",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "applications",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "applications",
+              "action": "create",
+              "reason": "not admitted: applications are created with their first API key"
+            }
+          ],
+          "resource": "applications"
+        },
+        {
+          "id": "api-keys",
+          "label": "API keys",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["ManagementResource::ApiKeys"],
+          "actions": [
+            {
+              "kind": "apiKeys",
+              "action": "create",
+              "label": "New API key…",
+              "row": false
+            },
+            {
+              "kind": "apiKeys",
+              "action": "version",
+              "label": "Issue additional key…",
+              "row": true
+            },
+            {
+              "kind": "apiKeys",
+              "action": "rotate",
+              "label": "Regenerate…",
+              "row": true
+            },
+            {
+              "kind": "apiKeys",
+              "action": "delete",
+              "label": "Remove…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "apiKeys",
+              "action": "update",
+              "reason": "not admitted: a key's fields are not editable"
+            }
+          ],
+          "resource": "apiKeys"
+        },
+        {
+          "id": "dlp",
+          "label": "DLP",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": [
+            "ManagementResource::DlpCatalog",
+            "ManagementResource::DataPatterns",
+            "ManagementResource::DataProfiles",
+            "ManagementResource::FilteringProfiles",
+            "ManagementResource::Dictionaries"
+          ],
+          "actions": [
+            {
+              "kind": "dataPatterns",
+              "action": "create",
+              "label": "New data pattern…",
+              "row": false
+            },
+            {
+              "kind": "dataPatterns",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "dataPatterns",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            },
+            {
+              "kind": "dictionaries",
+              "action": "create",
+              "label": "New dictionary…",
+              "row": false
+            },
+            {
+              "kind": "dictionaries",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "dictionaries",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            },
+            {
+              "kind": "dataProfiles",
+              "action": "create",
+              "label": "New data profile…",
+              "row": false
+            },
+            {
+              "kind": "dataProfiles",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "filteringProfiles",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "dataProfiles",
+              "action": "delete",
+              "reason": "not admitted"
+            },
+            {
+              "kind": "filteringProfiles",
+              "action": "create",
+              "reason": "not admitted"
+            },
+            {
+              "kind": "filteringProfiles",
+              "action": "delete",
+              "reason": "not admitted"
+            }
+          ],
+          "resource": "dataPatterns"
+        },
+        {
+          "id": "deployment-profiles",
+          "label": "Deployment profiles",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["ManagementResource::DeploymentProfiles"],
+          "actions": [],
+          "denied": [],
+          "resource": "deploymentProfiles"
+        }
+      ]
+    },
+    {
+      "id": "gateway",
+      "label": "AI Gateway",
+      "availability": {
+        "state": "available"
+      },
+      "readOnly": false,
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["GatewayRead::Observe", "GatewayRead::Prerequisites"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "workspaces",
+          "label": "Workspaces",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["GatewayRead::Inventory", "GatewayRead::Detail"],
+          "actions": [
+            {
+              "kind": "gatewayWorkspaces",
+              "action": "create",
+              "label": "New workspace…",
+              "row": false
+            },
+            {
+              "kind": "gatewayWorkspaces",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayWorkspaces",
+              "action": "delete",
+              "label": "Archive…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "gatewayWorkspaces",
+              "action": "rotate",
+              "reason": "not admitted"
+            }
+          ],
+          "resource": null
+        },
+        {
+          "id": "routes",
+          "label": "Routes",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["GatewayRead::Inventory", "GatewayRead::Detail"],
+          "actions": [
+            {
+              "kind": "gatewayRoutes",
+              "action": "create",
+              "label": "New route…",
+              "row": false
+            },
+            {
+              "kind": "gatewayRoutes",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayRoutes",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "gatewayRoutes",
+              "action": "version",
+              "reason": "not admitted"
+            }
+          ],
+          "resource": null
+        },
+        {
+          "id": "providers",
+          "label": "Providers",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["GatewayRead::Inventory", "GatewayRead::Detail"],
+          "actions": [
+            {
+              "kind": "gatewayProviders",
+              "action": "create",
+              "label": "New provider…",
+              "row": false
+            },
+            {
+              "kind": "gatewayProviders",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayProviders",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "gatewayProviders",
+              "action": "models",
+              "reason": "not admitted"
+            }
+          ],
+          "resource": null
+        },
+        {
+          "id": "guardrails",
+          "label": "Guardrails",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["GatewayRead::Inventory", "GatewayRead::Detail"],
+          "actions": [
+            {
+              "kind": "gatewayGuardrails",
+              "action": "create",
+              "label": "New guardrail…",
+              "row": false
+            },
+            {
+              "kind": "gatewayGuardrails",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayGuardrails",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            }
+          ],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "keys",
+          "label": "Keys",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["GatewayRead::Inventory (service keys, user keys)"],
+          "actions": [
+            {
+              "kind": "gatewayServiceKeys",
+              "action": "create",
+              "label": "New key…",
+              "row": false
+            },
+            {
+              "kind": "gatewayServiceKeys",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayServiceKeys",
+              "action": "rotate",
+              "label": "Rotate…",
+              "row": true
+            },
+            {
+              "kind": "gatewayServiceKeys",
+              "action": "delete",
+              "label": "Remove…",
+              "row": true
+            },
+            {
+              "kind": "gatewayUserKeys",
+              "action": "create",
+              "label": "New key…",
+              "row": false
+            },
+            {
+              "kind": "gatewayUserKeys",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayUserKeys",
+              "action": "rotate",
+              "label": "Rotate…",
+              "row": true
+            },
+            {
+              "kind": "gatewayUserKeys",
+              "action": "delete",
+              "label": "Remove…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "gatewayServiceKeys",
+              "action": "version",
+              "reason": "not admitted: Gateway keys rotate in place (no additional key, no staged rotation, no reminder)"
+            },
+            {
+              "kind": "gatewayUserKeys",
+              "action": "version",
+              "reason": "not admitted: Gateway keys rotate in place (no additional key, no staged rotation, no reminder)"
+            }
+          ],
+          "resource": null
+        },
+        {
+          "id": "integrations",
+          "label": "Integrations",
+          "disposition": {
+            "kind": "change"
+          },
+          "reads": ["GatewayRead::IntegrationModels"],
+          "actions": [
+            {
+              "kind": "gatewayIntegrations",
+              "action": "create",
+              "label": "New integration…",
+              "row": false
+            },
+            {
+              "kind": "gatewayIntegrations",
+              "action": "update",
+              "label": "Edit…",
+              "row": true
+            },
+            {
+              "kind": "gatewayIntegrations",
+              "action": "delete",
+              "label": "Delete…",
+              "row": true
+            },
+            {
+              "kind": "gatewayIntegrations",
+              "action": "models",
+              "label": "Replace model list…",
+              "row": true
+            }
+          ],
+          "denied": [
+            {
+              "kind": "gatewayIntegrations",
+              "action": "rotate",
+              "reason": "not admitted"
+            }
+          ],
+          "resource": null
+        },
+        {
+          "id": "limits",
+          "label": "Limits",
+          "disposition": {
+            "kind": "removed",
+            "reason": "the prototype's route budget limits have no admitted read or change; budgets appear in Routes detail only when the service returns them (C16)"
+          },
+          "reads": [],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "logs",
+          "label": "Logs",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["GatewayRead::Observe (telemetry)"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "mcp-servers",
+          "label": "MCP servers",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["GatewayRead::McpServers"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        }
+      ]
+    },
+    {
+      "id": "redTeam",
+      "label": "AI Red Teaming",
+      "availability": {
+        "state": "available"
+      },
+      "readOnly": true,
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["red_team::statistics"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "targets",
+          "label": "Targets",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": [
+            "red_team::red_team_scans (target_id, target_type only; names never shown, P22)"
+          ],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "scans",
+          "label": "Scans",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["red_team::red_team_scans"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "attack-results",
+          "label": "Attack results",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["red_team::attacks (paged)"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "reports",
+          "label": "Reports",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["red_team static reports (metadata only)"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        }
+      ]
+    },
+    {
+      "id": "modelSkill",
+      "label": "Model and skill scans",
+      "availability": {
+        "state": "available"
+      },
+      "readOnly": true,
+      "tabs": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": [
+            "red_team::skill_statistics",
+            "red_team::model_scans (counts)"
+          ],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "model-scans",
+          "label": "Model scans",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["red_team::model_scans"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "skill-scans",
+          "label": "Skill scans",
+          "disposition": {
+            "kind": "read"
+          },
+          "reads": ["red_team::skill_scans (pseudonymised)"],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "codebase-scans",
+          "label": "Codebase scans",
+          "disposition": {
+            "kind": "unavailable",
+            "reason": "needs an admitted codebase-scan read"
+          },
+          "reads": [],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        },
+        {
+          "id": "policies",
+          "label": "Policies",
+          "disposition": {
+            "kind": "unavailable",
+            "reason": "needs an admitted supply-chain policy service"
+          },
+          "reads": [],
+          "actions": [],
+          "denied": [],
+          "resource": null
+        }
+      ]
+    },
+    {
+      "id": "agenticIdentity",
+      "label": "Agentic Identity Security",
+      "availability": {
+        "state": "unavailable",
+        "reason": "Not available in this release · needs an admitted Agentic Identity Security service (D058)"
+      },
+      "readOnly": true,
+      "tabs": []
+    },
+    {
+      "id": "agenticEndpoint",
+      "label": "Agentic Endpoint Security",
+      "availability": {
+        "state": "unavailable",
+        "reason": "Not available in this release · needs an admitted Agentic Endpoint Security service (D058)"
+      },
+      "readOnly": true,
+      "tabs": []
+    }
+  ]
+}
