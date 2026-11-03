@@ -27,7 +27,7 @@ def main():
     assert which in ['c03','c04','c05','c06','c07','c10','c11','c24','c31','c32',*[f'c{i}' for i in range(35,45)]]
     legacy = len(sys.argv) > 2 and sys.argv[2] == 'legacy'
     chunk = which.upper()
-    phase = ROOT / 'docs/planning/evidence/C45/baseline-02'
+    phase = ROOT / 'docs/planning/evidence/C45/baseline-03'
     prepared = json.loads((phase / 'native-prepare.json').read_text())
     exe = ROOT / prepared['bundle'] / 'Contents/MacOS/prisma-airs-desktop'
     assert hashlib.sha256(exe.read_bytes()).hexdigest() == prepared['executable_sha256']

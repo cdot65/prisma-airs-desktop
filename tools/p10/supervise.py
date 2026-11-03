@@ -9,11 +9,11 @@ import datetime,fcntl,json,os,platform,shutil,subprocess,sys,time,traceback
 ROOT=Path(__file__).resolve().parents[2]
 os.chdir(ROOT)
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from candidate import verify_source,verify_candidate,helper_closure,bundle_hash
+from candidate import verify_source,verify_candidate,helper_closure,bundle_hash,verify_build_reuse
 from qualification import read,sha,require,digest
 from seal import DRIVERS,LEGACY,verify_plan
 from stages import collect,verify_completed,verify_conditions
-BASE=ROOT/'docs/planning/evidence/C45/baseline-02'
+BASE=ROOT/'docs/planning/evidence/C45/baseline-03'
 RUN=ROOT/'.evidence-private/worf-agent/2026-11-02-c45-p10-01'
 ENV=os.environ.copy()
 ENV['PATH']=str(ROOT/'.tools/bin')+':'+str(Path.home()/'.cargo/bin')+':'+str(Path.home()/'.nvm/versions/node/v24.21.0/bin')+':/usr/bin:/bin:/usr/sbin:/sbin'
@@ -52,7 +52,7 @@ def foreground():
     return value
 
 
-def source_guard():return verify_source(ROOT,'docs/planning/evidence/C45/baseline-02/source-seal.json')
+def source_guard():return verify_source(ROOT,'docs/planning/evidence/C45/baseline-03/source-seal.json')
 
 
 def execute(stage,argv,candidate=None):
@@ -96,12 +96,20 @@ def main():
     if owner.exists():require(read(owner)['supervisor_sha256']==sha(__file__),'supervisor changed during recovery')
     write(owner,{'pid':os.getpid(),'time':now(),'source_fingerprint':source,'supervisor_sha256':sha(__file__),'terminal_ancestry':chain,'global_ui_lock':'/private/tmp/prisma-airs-desktop-native-writer.lock'})
     status('C45 one-generation qualification active',source_fingerprint=source,foreground=foreground())
-    execute('build',['cargo','run','--locked','-p','xtask','--','native-prepare','--chunk','C45','--target','aarch64-apple-darwin','--features','test-fixtures'])
+    reuse=None
+    if (BASE/'build-reuse.json').exists():
+        current=json.loads(subprocess.check_output(['cargo','run','--locked','-q','-p','xtask','--example','c45_baseline','--','identity'],cwd=ROOT,env=ENV,text=True))
+        reuse=verify_build_reuse(ROOT,read(BASE/'build-reuse.json'),current,platform.platform(),platform.node())
+        write(BASE/'build-reuse-audit.json',reuse)
+        status('retained exact actual baseline02 build; no rebuild executed',build_reuse=reuse)
+    else:
+        execute('build',['cargo','run','--locked','-p','xtask','--','native-prepare','--chunk','C45','--target','aarch64-apple-darwin','--features','test-fixtures'])
     if not (BASE/'native-prepare.json').exists():shutil.copy2(ROOT/'docs/planning/evidence/C45/native-prepare.json',BASE/'native-prepare.json')
     if not (BASE/'candidate.json').exists():
         prepared=read(BASE/'native-prepare.json')
         fp=json.loads(subprocess.check_output(['cargo','run','--locked','-q','-p','xtask','--example','c45_baseline','--','identity'],cwd=ROOT,env=ENV,text=True))
         candidate={'schema':'airs-desktop/candidate/1','execution_root':str(ROOT),'source_inventory_sha256':source,'executable_sha256':prepared['executable_sha256'],'bundle_sha256':prepared['bundle_sha256'],'prepare':{'path':str((BASE/'native-prepare.json').relative_to(ROOT)),'sha256':sha(BASE/'native-prepare.json')},'helper_closure':plan['helper_closure'],'build_flags':{'features':prepared['features'],'target':prepared['target'],'commands':prepared['commands'],'manifest_sha256':sha(ROOT/'docs/architecture/checks.json')},'conditions':{'platform':platform.platform(),'hostname':platform.node(),'guest':'Worf VM','synthetic_only':True,'RUST_TEST_THREADS':'4','fixture_identifier':prepared['identifier'],'ui_writer':'one guest Terminal-owned exact-PID/birth fixture driver'},'dependency_fingerprint':fp['dependencies'],'runner_inputs':{k:fp[k] for k in ['source','dependencies','build_flags']}}
+        if reuse:candidate['build_origin']={'record':'docs/planning/evidence/C45/baseline-03/build-reuse.json','sha256':sha(BASE/'build-reuse.json'),'audit':reuse}
         verify_candidate(ROOT,candidate);write(BASE/'candidate.json',candidate)
     candidate=read(BASE/'candidate.json');verify_candidate(ROOT,candidate)
     current=json.loads(subprocess.check_output(['cargo','run','--locked','-q','-p','xtask','--example','c45_baseline','--','identity'],cwd=ROOT,env=ENV,text=True))

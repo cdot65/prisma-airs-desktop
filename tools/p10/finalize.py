@@ -11,9 +11,9 @@ def ref(root,path):return {'path':str(path.relative_to(root)),'sha256':sha(path)
 
 
 def finish(root):
-    base=root/'docs/planning/evidence/C45/baseline-02';plan=read(base/'required-coverage.json')
+    base=root/'docs/planning/evidence/C45/baseline-03';plan=read(base/'required-coverage.json')
     verify_plan(root,plan)
-    source=verify_source(root,'docs/planning/evidence/C45/baseline-02/source-seal.json')
+    source=verify_source(root,'docs/planning/evidence/C45/baseline-03/source-seal.json')
     candidate=read(base/'candidate.json');verify_candidate(root,candidate)
     require(candidate['source_inventory_sha256']==source,'candidate source drift')
     candidate_ref=ref(root,base/'candidate.json');rows=[]

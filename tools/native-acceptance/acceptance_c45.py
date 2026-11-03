@@ -12,7 +12,7 @@ import acceptance_c29 as c29
 import v2_setup as setup
 
 ROOT=Path.cwd().resolve()
-BASE=ROOT/'docs/planning/evidence/C45/baseline-02'
+BASE=ROOT/'docs/planning/evidence/C45/baseline-03'
 LOG=[]
 
 
@@ -41,10 +41,15 @@ def main():
         # Inspect the native About panel without completing any regional/live setup.
         app.front()
         script=f'''tell application "System Events" to tell (first application process whose unix id is {app.pid})
-set aboutItem to first menu item of menu 1 of menu bar item "Prisma AIRS Desktop" of menu bar 1 whose name starts with "About "
+set appMenu to menu bar item 2 of menu bar 1
+set appMenuName to name of appMenu
+if appMenuName does not start with "Prisma AIRS Desktop" then error "Unexpected application menu: " & appMenuName
+set aboutItem to first menu item of menu 1 of appMenu whose name starts with "About "
 click aboutItem
+return appMenuName
 end tell'''
         result=fx.sh(['osascript','-e',script]);assert result.returncode==0,result.stderr
+        observations['actual_native_application_menu']=result.stdout.strip()
         tree,about=app.wait_for(lambda t:app.has_text(t,'1.0.0'),10)
         observations['about']=save('about',tree)
         assert about and app.has_text(tree,'Prisma AIRS Desktop'),'native About must expose product/version'

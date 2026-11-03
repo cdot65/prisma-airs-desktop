@@ -38,7 +38,7 @@ def verify_plan(root, plan):
 
 
 def make(root):
-    base=root/'docs/planning/evidence/C45/baseline-02';base.mkdir(exist_ok=True)
+    base=root/'docs/planning/evidence/C45/baseline-03';base.mkdir(exist_ok=True)
     require(not (base/'source-seal.json').exists(),'preserve previous seal')
     requirements=[]
     for command in command_plan(root):

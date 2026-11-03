@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/tools/native-acceptance/acceptance_c45.py", line 80, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+  File "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102/tools/native-acceptance/acceptance_c45.py", line 47, in main
+    result=fx.sh(['osascript','-e',script]);assert result.returncode==0,result.stderr
+AssertionError: 109:219: execution error: System Events got an error: Can’t get menu bar item "Prisma AIRS Desktop" of menu bar 1 of application process 1 whose unix id = 37518. (-1728)
+
