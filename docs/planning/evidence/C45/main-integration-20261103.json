@@ -1,0 +1,100 @@
+{
+  "schema": "airs-desktop/c45-main-integration-proof/1",
+  "recorded_utc": "2026-11-03T04:02:55.487915+00:00",
+  "method": "Observed clean main fast-forward fromc8b804d3 toaccepted4d3dd1a4. Fullsource modes/links/hashes equal isolated reviewed tree; actual Runner dependency/buildflags match. Runner source hashes intentionally differ ONLY because .git/config is a regular file in main and a deleted pseudo-entry under worktree .git file; both complete inventories reconstructed to actual Rust hashes and every nonmetadata entry equal. No old source hash relabeled. Current fullbundle/exe/helper proof and150coverage reverified. No application build/test/native execution for merge.",
+  "main": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current",
+  "original_execution_root": "/Users/cdot/development/redtail/prisma-airs-desktop-v2-current/.work/c45-p10-20261102",
+  "head": "4d3dd1a412105239d3aec61730264b20070319fc",
+  "source_inventory_sha256": "e2234e2a59f854967708cc570be4cdbaac33336af713c5f2d7f3b09c7aa8795f",
+  "runner_identity": {
+    "build_flags": "2297ceee449ef48451ba25e8889ab79330fb560b3d0ce9c390be01fd259d6017",
+    "dependencies": "672e93cbbd8981425b794c284c3c70a406fbd1ee1c36d25c1e7bfe112e5b93da",
+    "source": "31c9e649a5e3852ee1de9ead83939ef1d43069150f3df1c8a96a55f8a8ce4503"
+  },
+  "original_runner_identity": {
+    "build_flags": "2297ceee449ef48451ba25e8889ab79330fb560b3d0ce9c390be01fd259d6017",
+    "dependencies": "672e93cbbd8981425b794c284c3c70a406fbd1ee1c36d25c1e7bfe112e5b93da",
+    "source": "b83eaf0cbc25687554217f8dfc88dbe9e13bb145cc8684d8aed7cc6324636545"
+  },
+  "runner_metadata_delta": {
+    "main": {
+      "path": ".git/config",
+      "mode": "100644",
+      "sha256": "72edc887bcc70a5fbed8feacffd8d37423ad3f66b934b6bb0ab5cc7d59d095b5"
+    },
+    "original": {
+      "path": ".git/config",
+      "mode": "deleted",
+      "sha256": ""
+    },
+    "all_other_entries_equal": true,
+    "entry_count": 1131
+  },
+  "executable_sha256": "4cdca217bdf315f6688047f9b5ad8f84dbc03e4b07cb13e3dcdaa1524efaf661",
+  "bundle_sha256": "f0f14e6be19d7b5a9dce7c848b2fc1b0d3404bbae61e40a89cfbb631402e7fb9",
+  "c45": {
+    "subject": "C45",
+    "attempt": "attempt-03",
+    "request_sha256": "a751e4f97b1240cac2e34a784add4dca351be82220a463aa2568c28709c5095e",
+    "verdict_sha256": "16c090c9c096819fc4c3e6ab1ef868d1eb6c2838eecbd043a5b3f88cb465c96e",
+    "audit_sha256": "913edc2dbbffdd70d4b6545631d0f4217361538f24de2b2b068d5a134819d598",
+    "receipt_sha256": "2988d460db59ca9d829f5438dbd31acf1d476e2ceffb9f2dd586996785b491df",
+    "scores": {
+      "architecture": 9,
+      "behavior": 9,
+      "authority_security": 9,
+      "validation": 9,
+      "overall": 9
+    },
+    "fingerprints": {
+      "source": "e2234e2a59f854967708cc570be4cdbaac33336af713c5f2d7f3b09c7aa8795f",
+      "dependencies": "672e93cbbd8981425b794c284c3c70a406fbd1ee1c36d25c1e7bfe112e5b93da",
+      "build_flags": "64b885ed987da87c1268133b3d724012a5b2203e29b735bb511f7a017e126905",
+      "evidence": "f0e710f59da617951344a601cfb3ed3313119e0c8f47e018c1a8f5a1484166d0"
+    }
+  },
+  "qualification": {
+    "record": "docs/planning/evidence/C45/attempt-02-followup/qualified-coverage.json",
+    "sha256": "8852b06d62c88afc2a999746ed1187eb949210bd55f1c8bd837612a64ab8bc0f",
+    "verified": {
+      "qualified": true,
+      "required": 150,
+      "previous": {
+        "record": "docs/planning/evidence/C45/attempt-01-followup/qualified-coverage.json",
+        "sha256": "9cbc95f019391194b2887471b9ec75836036d9192d49eb932d9a0328cdd58580",
+        "verified": {
+          "qualified": true,
+          "required": 145,
+          "baseline": {
+            "qualified": true,
+            "required": 142,
+            "dispositions": {
+              "carried_unaffected": 50,
+              "executed": 76,
+              "reused_exact": 16
+            },
+            "candidate_sha256": "21435e1afacda392ab0066e164431168a0adb128cf9a24f009b6f4d5e4f4bbe0",
+            "source_inventory_sha256": "3cbcdf7266f44f49d8b3b992070dd80deb3518257181df27762a101f8cc124ac"
+          },
+          "affected": {
+            "run_id": "test-20261103T033520Z-70ce8e",
+            "commands": 3,
+            "tests": {
+              "passed": 72,
+              "failed": 0
+            }
+          },
+          "source_inventory_sha256": "34a65d2c17cda1c9e61febdc1f91de26f6c8b9ca411260b48660e3c327d25d7e",
+          "candidate_sha256": "271826842fcf3bfdcf079be206058476aa8916d73afbe0a89835af6580b8e801",
+          "meaning": "Original baseline stays historical; named test/provenance-only delta, exact unchanged app/runtime helpers and new affected checks verified. No new native or baseline execution claimed."
+        }
+      },
+      "focused_python_targets": 5,
+      "source_inventory_sha256": "e2234e2a59f854967708cc570be4cdbaac33336af713c5f2d7f3b09c7aa8795f",
+      "candidate_sha256": "5abcf5021a8ec61d167de169e21f1ea60d30d7a14dc61c57c2b1f66c8f2e9ff5",
+      "meaning": "Historical archives validate original sources/application/helpers/conditions independently of current checkout or builder. Current reuse remains strict. Original145coverage and72synthetic tests retained; only affected Python proof tests executed."
+    }
+  },
+  "original_raw_bindings_preserved": true,
+  "new_test_or_native_execution": false
+}
