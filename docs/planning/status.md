@@ -1,3 +1,5 @@
+Current acceptance update — 2026-11-03: P09 attempt-02 and C45 attempt-03 each passed actual independent 9/9/9/9/9 with empty required fixes/blockers/gaps and audited full gates. C45 attempt-01 (9/9/9/8/8) and attempt-02 (9/8/9/8/8), their D034 acceptances and all raw findings remain unchanged. Narrow synthetic-test and archival-proof corrections passed affected checks; one exact application/native baseline retained. P10 independent phase review remains pending; C26/P08 open, no release/live/publication authorized.
+
 # Current state
 
 ## Current Worf acceptance — 2026-11-02
@@ -148,3 +150,7 @@ C45 attempt-01 audit complete: actual full_gate_pass=False, D034 eligible=True. 
 C45 attempt-02 actual independent returned scores {"architecture": 9, "authority_security": 9, "behavior": 8, "overall": 8, "validation": 8}; audit pending. Raw verdict retained at docs/planning/reviews/C45/attempt-02/verdict-returned.json.
 
 C45 attempt-02 audit complete: actual full_gate_pass=False, D034 eligible=True. P10 actual independent phase review remains; no controller completion or owner score override inferred.
+
+C45 attempt-03 actual independent returned scores {"architecture": 9, "authority_security": 9, "behavior": 9, "overall": 9, "validation": 9}; audit pending. Raw verdict retained at docs/planning/reviews/C45/attempt-03/verdict-returned.json.
+
+C45 attempt-03 audit complete: actual full_gate_pass=True, D034 eligible=True. P10 actual independent phase review remains; no controller completion or owner score override inferred.

@@ -1,0 +1,67 @@
+{
+  "subject": "C45",
+  "attempt": "attempt-03",
+  "request_sha256": "a751e4f97b1240cac2e34a784add4dca351be82220a463aa2568c28709c5095e",
+  "raw_verdict_sha256": "16c090c9c096819fc4c3e6ab1ef868d1eb6c2838eecbd043a5b3f88cb465c96e",
+  "scores": {
+    "architecture": 9,
+    "behavior": 9,
+    "authority_security": 9,
+    "validation": 9,
+    "overall": 9
+  },
+  "full_gate_pass": true,
+  "d034_eligible": true,
+  "transport": {
+    "invocation_sha256": "63ea16f7c8c4621306460ea63c2f459a50ace2a704da24274b7906abbd36f04e",
+    "thread_reply_sha256": "30785800a5accb19f1a7c4a193ce75a4847b7435ee58e8fb170d820c1b8d4847",
+    "feature_probe_sha256": "bb4d01d583993c8e3c431e0437092e6c288e9b5da919595063853d37e2d89862",
+    "reviewer_sessions_observed": [
+      "01a19f89-eb7a-7142-a01c-2ab631b936ac"
+    ]
+  },
+  "source_frozen": true,
+  "controller_complete": false,
+  "qualification": {
+    "record": "docs/planning/evidence/C45/attempt-02-followup/qualified-coverage.json",
+    "sha256": "8852b06d62c88afc2a999746ed1187eb949210bd55f1c8bd837612a64ab8bc0f",
+    "verified": {
+      "qualified": true,
+      "required": 150,
+      "previous": {
+        "record": "docs/planning/evidence/C45/attempt-01-followup/qualified-coverage.json",
+        "sha256": "9cbc95f019391194b2887471b9ec75836036d9192d49eb932d9a0328cdd58580",
+        "verified": {
+          "qualified": true,
+          "required": 145,
+          "baseline": {
+            "qualified": true,
+            "required": 142,
+            "dispositions": {
+              "carried_unaffected": 50,
+              "executed": 76,
+              "reused_exact": 16
+            },
+            "candidate_sha256": "21435e1afacda392ab0066e164431168a0adb128cf9a24f009b6f4d5e4f4bbe0",
+            "source_inventory_sha256": "3cbcdf7266f44f49d8b3b992070dd80deb3518257181df27762a101f8cc124ac"
+          },
+          "affected": {
+            "run_id": "test-20261103T033520Z-70ce8e",
+            "commands": 3,
+            "tests": {
+              "passed": 72,
+              "failed": 0
+            }
+          },
+          "source_inventory_sha256": "34a65d2c17cda1c9e61febdc1f91de26f6c8b9ca411260b48660e3c327d25d7e",
+          "candidate_sha256": "271826842fcf3bfdcf079be206058476aa8916d73afbe0a89835af6580b8e801",
+          "meaning": "Original baseline stays historical; named test/provenance-only delta, exact unchanged app/runtime helpers and new affected checks verified. No new native or baseline execution claimed."
+        }
+      },
+      "focused_python_targets": 5,
+      "source_inventory_sha256": "e2234e2a59f854967708cc570be4cdbaac33336af713c5f2d7f3b09c7aa8795f",
+      "candidate_sha256": "5abcf5021a8ec61d167de169e21f1ea60d30d7a14dc61c57c2b1f66c8f2e9ff5",
+      "meaning": "Historical archives validate original sources/application/helpers/conditions independently of current checkout or builder. Current reuse remains strict. Original145coverage and72synthetic tests retained; only affected Python proof tests executed."
+    }
+  }
+}
