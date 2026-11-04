@@ -68,7 +68,8 @@ def origins(root, selection, candidate):
                 and raw['argv'][1] in [
                     'tools/native-acceptance/acceptance_p11.py',
                     'tools/native-acceptance/acceptance_p11_resume.py',
-                    'tools/native-acceptance/acceptance_p11_continue.py']
+                    'tools/native-acceptance/acceptance_p11_continue.py',
+                    'tools/native-acceptance/acceptance_p11_finish.py']
                 and (i != 0 or driver == 'acceptance_p11.py'),
                 'native origin execution identity differs')
         require(raw['executable_sha256'] == candidate['executable_sha256']
