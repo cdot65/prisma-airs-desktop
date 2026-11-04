@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import proof
 
@@ -260,6 +261,172 @@ class ProofTests(unittest.TestCase):
         dist.write_text('changed retained frontend\n')
         with self.assertRaisesRegex(ValueError, 'retained frontend bytes changed'):
             verify()
+
+    def check_selection_fixture(self):
+        """Synthetic partial-run carry; none of these fixture commands execute."""
+        subprocess.run(['/usr/bin/git', 'init', '-q'], cwd=self.root, check=True)
+        module = self.root / 'crates/desktop-core/src/authority/setup_warning_domain.rs'
+        module.parent.mkdir(parents=True)
+        module.write_text('before conditional style fixture\n')
+        before_module = proof.sha(module)
+        original_path, original = self.run_fixture('check')
+        folder = self.root / 'docs/planning/evidence/P11/check-fixture'
+        folder.mkdir(parents=True)
+        original_path.parent.rename(folder / 'original')
+        original_path = folder / 'original/run.json'
+        before = {'files': proof.source_inventory(self.root),
+                  'git_config': proof.file_identity(self.root / '.git/config')}
+        original.update(run_id='fixture-original', started_utc='fixture-start',
+                        finished_utc='fixture-end', status='failed', failure='C46/check/6')
+        original['inputs_before'] = original['inputs_after'] = dict(self.inputs, source=proof.inventory_source(before))
+        failed = False
+        for row in original['commands']:
+            if row['label'] == 'C46/check/6':
+                failed = True
+                row.update(status='failed', exit_code=101)
+            elif failed:
+                row.update(status='blocked', exit_code=None)
+        module.write_text('after conditional style fixture\n')
+        self.addCleanup(patch.stopall)
+        patch.object(proof, 'CHECK_LINT_SHA256', (before_module, proof.sha(module))).start()
+        after = {'files': proof.source_inventory(self.root), 'git_config': before['git_config']}
+        inputs = dict(self.inputs, source=proof.inventory_source(after))
+        supplement_path = folder / 'supplement/run.json'
+        supplement_path.parent.mkdir()
+        supplement = dict(schema='airs-desktop/p11-check-supplement/1', subject='P11', kind='check',
+                          run_id='fixture-supplement', started_utc='fixture-new-start',
+                          finished_utc='fixture-new-end', status='passed', failure=None,
+                          inputs_before=inputs, inputs_after=inputs, commands=[])
+        rows = []
+        for i, needed in enumerate(proof.command_plan(self.root, 'check')):
+            mode = 'carried_unaffected' if needed['label'] in proof.CHECK_CARRY_LABELS else 'executed'
+            rows.append(dict(label=needed['label'], disposition=mode,
+                             reason='Synthetic unchanged-impact fixture.' if mode == 'carried_unaffected' else None))
+            if mode == 'executed':
+                log = supplement_path.parent / f'{i}.log'
+                log.write_text('Synthetic current check fixture, never executed.\n')
+                supplement['commands'].append(dict(label=needed['label'], argv=needed['argv'], cwd='.',
+                    status='passed', exit_code=0, note=None, log=log.name,
+                    output_sha256=proof.sha(log), tests=None))
+        selection_path = folder / 'selection.json'
+        selection = dict(schema='airs-desktop/p11-check-selection/1', execution_root=str(self.root),
+                         runner_inputs=inputs, changed_paths=[str(module.relative_to(self.root))],
+                         reason='Synthetic evidence-carry fixture.', rows=rows)
+
+        def bind():
+            for name, value in [('before', before), ('after', after)]:
+                p = folder / (name + '.json')
+                p.write_text(json.dumps(value))
+                selection['original_source' if name == 'before' else 'current_source'] = proof.reference(self.root, p)
+            original_path.write_text(json.dumps(original))
+            supplement_path.write_text(json.dumps(supplement))
+            selection['original_run'] = proof.reference(self.root, original_path)
+            selection['supplement'] = proof.reference(self.root, supplement_path)
+            selection_path.write_text(json.dumps(selection))
+
+        def verify():
+            return proof.validate_run(self.root, selection_path, 'check', inputs)
+        bind()
+        return bind, verify, selection, original, supplement, after, module
+
+    def test_check_selection_preserves_failed_run_and_rejects_invalid_carry(self):
+        bind, verify, selection, original, supplement, after, module = self.check_selection_fixture()
+        result = verify()
+        self.assertEqual(original['status'], 'failed')
+        self.assertEqual(sum(r['disposition'] == 'carried_unaffected' for r in result['selected']), 6)
+        baseline = copy.deepcopy(selection)
+        for change in ('omit', 'duplicate', 'failed-carry', 'missing-reason', 'undeclared', 'wrong-root'):
+            selection.clear(); selection.update(copy.deepcopy(baseline))
+            if change == 'omit': selection['rows'].pop()
+            elif change == 'duplicate': selection['rows'].append(selection['rows'][-1])
+            elif change == 'failed-carry':
+                next(r for r in selection['rows'] if r['label'] == 'C46/check/6')['disposition'] = 'carried_unaffected'
+            elif change == 'missing-reason': selection['rows'][0]['reason'] = None
+            elif change == 'undeclared': selection['changed_paths'] = []
+            else: selection['execution_root'] = str(self.root.parent)
+            bind()
+            with self.subTest(change=change), self.assertRaises(ValueError): verify()
+        selection.clear(); selection.update(baseline); bind()
+        original['commands'][0]['status'] = 'failed'; bind()
+        with self.assertRaisesRegex(ValueError, 'selected raw check command failed'): verify()
+
+    def test_check_selection_rejects_source_dependency_supplement_and_log_drift(self):
+        bind, verify, selection, original, supplement, after, module = self.check_selection_fixture()
+        old = copy.deepcopy(supplement)
+        for change in ('inputs', 'missing-command', 'failed-command', 'wrong-argv'):
+            supplement.clear(); supplement.update(copy.deepcopy(old))
+            if change == 'inputs': supplement['inputs_after'] = dict(supplement['inputs_after'], source='old')
+            elif change == 'missing-command': supplement['commands'].pop()
+            elif change == 'failed-command': supplement['commands'][0]['exit_code'] = 1
+            else: supplement['commands'][0]['argv'] = ['echo', 'success']
+            bind()
+            with self.subTest(change=change), self.assertRaises(ValueError): verify()
+        supplement.clear(); supplement.update(old); bind()
+        original['inputs_before']['dependencies'] = 'different dependencies'; bind()
+        with self.assertRaisesRegex(ValueError, 'dependencies or flags'): verify()
+        original['inputs_before']['dependencies'] = self.inputs['dependencies']; bind()
+        log = self.root / selection['supplement']['path']
+        log = log.parent / supplement['commands'][0]['log']
+        log.write_text('replaced raw output\n')
+        with self.assertRaisesRegex(ValueError, 'log drift'): verify()
+        module.write_text('a subsequent behavior change\n')
+        with self.assertRaisesRegex(ValueError, 'current source differs'): verify()
+
+    def test_rust_test_build_carry_requires_exact_delta_and_current_checks(self):
+        """Synthetic bindings only; no fixture result is an application pass."""
+        test = self.root / proof.CHECK_TEST_PATH
+        test.parent.mkdir(parents=True)
+        test.write_text('before test-only fixture\n')
+        before = proof.sha(test)
+        test.write_text('after test-only fixture\n')
+        after = proof.sha(test)
+        with patch.object(proof, 'CHECK_TEST_LINT_SHA256', (before, after)):
+            folder = self.root / 'fixture-rust-carry'
+            folder.mkdir()
+            build = {'application_inputs_before': {proof.CHECK_TEST_PATH: before}}
+            build_path = folder / 'build.json'
+            build_path.write_text(json.dumps(build))
+            prepare = folder / 'prepare.json'
+            prepare.write_text('{}')
+            candidate = {'prepare': proof.reference(self.root, prepare)}
+            runs = {}
+            for kind in ('check', 'test'):
+                path = folder / (kind + '.json')
+                path.write_text('{"fixture":"binding only, never executed"}')
+                runs[kind] = proof.reference(self.root, path)
+            record = {'runs': runs}
+            carry = {'schema': 'airs-desktop/rust-test-build-carry/1',
+                     'build': proof.reference(self.root, build_path), 'prepare': candidate['prepare'],
+                     'native_rebuilt': False, 'reason': 'Synthetic test-only carry fixture.',
+                     'changed_inputs': {proof.CHECK_TEST_PATH: {'before': before, 'after': after}},
+                     'check_selection': runs['check'], 'tests': runs['test']}
+            carry_path = folder / 'carry.json'
+
+            def verify(changed=None):
+                carry_path.write_text(json.dumps(carry))
+                record['build_input_carry'] = proof.reference(self.root, carry_path)
+                proof.rust_test_carry(self.root, record, build_path, build, candidate,
+                                     changed if changed is not None else [proof.CHECK_TEST_PATH])
+            verify()
+            for changed in ([], ['crates/desktop-core/src/authority/setup_warning_domain.rs'],
+                            [proof.CHECK_TEST_PATH, 'apps/desktop/src/application.tsx']):
+                with self.subTest(changed=changed), self.assertRaises(ValueError): verify(changed)
+            original = copy.deepcopy(carry)
+            for change in ('candidate', 'build', 'delta', 'rebuilt', 'check', 'test'):
+                carry.clear(); carry.update(copy.deepcopy(original))
+                if change == 'candidate': carry['prepare'] = dict(carry['prepare'], sha256='another candidate')
+                elif change == 'build': carry['build'] = dict(carry['build'], sha256='another build')
+                elif change == 'delta': carry['changed_inputs'][proof.CHECK_TEST_PATH]['after'] = 'other edit'
+                elif change == 'rebuilt': carry['native_rebuilt'] = True
+                elif change == 'check': carry.pop('check_selection')
+                else: carry['tests'] = dict(carry['tests'], sha256='stale test run')
+                with self.subTest(change=change), self.assertRaises(ValueError): verify()
+            carry.clear(); carry.update(original)
+            record.pop('runs')
+            with self.assertRaisesRegex(ValueError, 'current Check/Test bindings'): verify()
+            record['runs'] = runs
+            test.write_text('a subsequent test edit\n')
+            with self.assertRaisesRegex(ValueError, 'reviewed Rust test-only change'): verify()
 
 
 if __name__ == '__main__':

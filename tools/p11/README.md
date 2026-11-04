@@ -26,6 +26,24 @@ required inputs. It reuses P10's raw evidence validator and rejects missing or
 changed command/native membership, logs, current source/dependencies, candidate,
 helpers, incomplete build inputs and failed observation exits. The Python source
 hash recomputation was checked against the actual Rust fingerprint algorithm.
+
+For the two reviewed conditional-style fixes, `--check` may name an explicit
+`airs-desktop/p11-check-selection/1` receipt. It binds the original failed Check
+run, exact before/current source inventories, the fixed module's exact hashes,
+and a current `airs-desktop/p11-check-supplement/1` containing only affected or
+previously blocked commands. Every registered command is accounted in order.
+Passing setup/bindings/typecheck/compile results may be `carried_unaffected`
+with a reason; their original source, timestamps and logs remain bound. Format
+and all affected/blocked lint/notice checks execute. This receipt is never a
+new passing full-run record. Tests and native assertions still execute on the
+shared current candidate, and archived standing uses this same strict consumer.
+The dated test-only `unwrap` to descriptive `expect` correction is also bound
+by its exact old/new hashes. `airs-desktop/rust-test-build-carry/1` retains the
+original build/prepare and binds the current Check selection and Test run; only
+that Rust test file may differ. It requires no frontend or native rebuild and
+does not claim either was executed. Executable and complete bundle verification
+remain independent requirements.
+
 For a frontend test-only source change, `--build-input-carry` requires the
 original native build and a successful current-source frontend rebuild whose
 complete output is byte-identical. Its command, input hashes and raw log remain

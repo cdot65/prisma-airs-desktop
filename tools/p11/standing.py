@@ -115,11 +115,7 @@ def verify(root):
     seal = read(bound(root, original['source']))
     require(digest(seal['files']) == source_hash, 'original P11 source seal differs')
     import proof
-    plan = read(bound(root, coverage['plan']))
-    proof.verify_plan(source, plan)
-    require(all(row['disposition'] == 'executed' for row in coverage['coverage']),
-            'changed P11 coverage was not executed')
-    result = verify_coverage(root, coverage, historical=history)
+    result = proof.verify_coverage(root, coverage, historical=history)
     require(result == qualified['verified'], 'archived P11 raw qualification differs')
     candidate = read(bound(root, coverage['candidate']))
     from candidate import verify_candidate

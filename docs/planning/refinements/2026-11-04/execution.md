@@ -32,9 +32,18 @@ seal edits or RC1 asset changes were performed for this refinement work.
 The fixture candidate is built. Its executable SHA-256 is
 `3239facd680ed48306306d6fc8931b9bbe164a73a59042eaf841c92c48d405a8`.
 The original build receipts remain under `evidence/P11/native-build-01` and
-`native-build-02`. The later API footer test-only timing fix retains this build;
+`native-build-02`. The later API footer test-only timing fix retained that build;
 an exact frontend output comparison and explicit build-input carry record the
 unchanged application bytes. This does not report another native/Rust build.
+The integrated check then found two `collapsible_if` lint errors. Their fix
+required an affected rebuild (`native-build-03`); both the executable and full
+bundle are byte-identical to candidate 02. Passing unaffected commands retain
+their original outcomes; the affected and previously blocked checks execute
+separately. No full Rust suite or legacy native matrix is repeated.
+A subsequent lint failure was confined to `unwrap()` calls in the new warning
+test file. Descriptive `expect()` messages replace them. The test-only delta is
+accounted by an explicit build-input carry and the affected lint/test results;
+it does not change or rebuild the retained application.
 
 Native attempts 01–03 failed before any product assertion. The owned-window
 fallback was verified on the real fixture window, but background keystrokes did

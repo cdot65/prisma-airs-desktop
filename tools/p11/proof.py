@@ -23,6 +23,18 @@ APPLICATION_INPUTS = ('apps/desktop', 'crates/desktop-core', 'packages/desktop-c
                       'pnpm-workspace.yaml', 'package.json', 'rust-toolchain.toml',
                       'docs/architecture/inputs.lock.json')
 require, read, sha, bound = coverage.require, coverage.read, coverage.sha, coverage.bound
+CHECK_CARRY_PATHS = {'crates/desktop-core/src/authority/setup_warning_domain.rs',
+                     'crates/desktop-core/tests/setup_warning_recheck.rs',
+                     'tools/p11/proof.py', 'tools/p11/test_proof.py',
+                     'tools/p11/standing.py', 'tools/p11/README.md',
+                     'docs/planning/refinements/2026-11-04/execution.md'}
+CHECK_LINT_SHA256 = ('78670431d22db13786eccddb0fb30328d0596378937d3cc5dacefb91d6089c5a',
+                    '53416c79363d279943b51f7f935514be01b576166241ec3bb2af24a8e8e34e27')
+CHECK_TEST_PATH = 'crates/desktop-core/tests/setup_warning_recheck.rs'
+CHECK_TEST_LINT_SHA256 = ('e9133b4869104afc448a5701685b4b72dffd1405ed687284f370cec04fa906f5',
+                         'e4aef28bf18b15f77d3fac003fbd65c2b6379cd97ee58e8ed43fda1a1f5fc7e5')
+CHECK_CARRY_LABELS = {'setup/1', 'setup/2', 'C46/check/2', 'C46/check/3',
+                     'C46/check/4', 'C46/check/5'}
 
 
 def xtask_source(root):
@@ -130,6 +142,32 @@ def frontend_test_carry(root, record, build_path, build, candidate, changed):
             'frontend equivalence build log drift')
 
 
+def rust_test_carry(root, record, build_path, build, candidate, changed):
+    """Retain the native build for the exact dated unwrap-to-expect test edit.
+
+    Current Check/Test evidence is validated before this consumer. Rust test
+    source is not part of the application target; no native build is claimed.
+    """
+    require(changed == [CHECK_TEST_PATH]
+            and (build['application_inputs_before'].get(CHECK_TEST_PATH),
+                 sha(root / CHECK_TEST_PATH)) == CHECK_TEST_LINT_SHA256,
+            'build carry is not the reviewed Rust test-only change')
+    carry = read(bound(root, record['build_input_carry']))
+    require(carry['schema'] == 'airs-desktop/rust-test-build-carry/1'
+            and carry['build'] == reference(root, build_path)
+            and carry['prepare'] == candidate['prepare'] and carry['native_rebuilt'] is False,
+            'Rust test-only native build carry is not bound')
+    expected = {CHECK_TEST_PATH: {'before': CHECK_TEST_LINT_SHA256[0],
+                                  'after': CHECK_TEST_LINT_SHA256[1]}}
+    require(carry['changed_inputs'] == expected and carry['reason'], 'Rust test-only delta differs')
+    runs = record.get('runs', {})
+    require(runs.get('check') and runs.get('test')
+            and carry.get('check_selection') == runs['check']
+            and carry.get('tests') == runs['test'], 'Rust test carry lacks current Check/Test bindings')
+    bound(root, runs['check'])
+    bound(root, runs['test'])
+
+
 def reference(root, path):
     path = Path(path).resolve()
     require(path.is_relative_to(root.resolve()), 'proof path escapes checkout')
@@ -162,6 +200,9 @@ def command_plan(source, kind):
 
 def validate_run(root, path, kind, runner_inputs):
     raw = read(path)
+    if raw.get('schema') == 'airs-desktop/p11-check-selection/1':
+        require(kind == 'check', 'check selection cannot replace a test run')
+        return validate_check_selection(root, path, runner_inputs)
     require(raw['schema'] == 'airs-v2/run/1' and raw['subject'] == 'P11'
             and raw['kind'] == kind, 'not an actual P11 run of the required kind')
     require(raw['status'] == 'passed' and raw['failure'] is None,
@@ -185,7 +226,100 @@ def validate_run(root, path, kind, runner_inputs):
     return raw
 
 
-def verify_plan(source, plan):
+def inventory_source(record):
+    """Join a retained file inventory to the Rust runner's source fingerprint."""
+    parts = []
+    for name, identity in sorted(record['files'].items()):
+        if name == 'docs/planning/status.md' or name.startswith(('docs/planning/evidence/', 'docs/planning/reviews/')):
+            continue
+        mode = 'symlink' if identity['kind'] == 'symlink' else ('100755' if identity['mode'] & 0o111 else '100644')
+        value = (hashlib.sha256(os.fsencode(identity['target'])).hexdigest()
+                 if mode == 'symlink' else identity['sha256'])
+        parts.append(f'{name}\0{mode}\0{value}\n')
+    config = record['git_config']
+    mode = 'deleted' if config is None else ('100755' if config['mode'] & 0o111 else '100644')
+    parts.append(f'.git/config\0{mode}\0{config["sha256"] if config else ""}\n')
+    return hashlib.sha256(''.join(parts).encode()).hexdigest()
+
+
+def validate_check_selection(root, path, runner_inputs, source=None, files=None):
+    """Account for passing commands of a failed run without relabelling that run.
+
+    Only the two conditional style fixes and this verifier may differ. Current
+    Clippy recompiles the affected library; prior bindings/typechecks and setup
+    keep their original source, command, timestamps, status and log identities.
+    """
+    selection = read(path)
+    require(selection['schema'] == 'airs-desktop/p11-check-selection/1'
+            and selection['runner_inputs'] == runner_inputs and selection['reason'],
+            'check selection binding missing')
+    before = read(bound(root, selection['original_source']))
+    after = read(bound(root, selection['current_source']))
+    require(after['files'] == (source_inventory(root) if files is None else files),
+            'check selection current source differs')
+    if files is None:
+        require(selection['execution_root'] == str(root), 'check selection execution root differs')
+        config = root / '.git/config'
+        require(after['git_config'] == (file_identity(config) if config.is_file() else None),
+                'check selection git configuration differs')
+    changed = sorted(name for name in set(before['files']) | set(after['files'])
+                     if before['files'].get(name) != after['files'].get(name))
+    require(changed and changed == selection['changed_paths'] and set(changed) <= CHECK_CARRY_PATHS,
+            'undeclared or behavior-affecting check carry delta')
+    module = 'crates/desktop-core/src/authority/setup_warning_domain.rs'
+    require(tuple(record['files'].get(module, {}).get('sha256') for record in (before, after))
+            == CHECK_LINT_SHA256, 'check carry is not the reviewed conditional style change')
+    if CHECK_TEST_PATH in changed:
+        require(tuple(record['files'].get(CHECK_TEST_PATH, {}).get('sha256') for record in (before, after))
+                == CHECK_TEST_LINT_SHA256, 'check carry is not the reviewed Rust test-only change')
+    original_path = bound(root, selection['original_run'])
+    original = read(original_path)
+    supplement_path = bound(root, selection['supplement'])
+    supplement = read(supplement_path)
+    require(original['schema'] == 'airs-v2/run/1' and original['subject'] == 'P11'
+            and original['kind'] == 'check' and original['status'] == 'failed'
+            and original['failure'] and original['inputs_before'] == original['inputs_after'],
+            'original failed check run missing or inputs drifted')
+    require(inventory_source(before) == original['inputs_before']['source']
+            and inventory_source(after) == runner_inputs['source'], 'check carry source fingerprint differs')
+    require(all(original['inputs_before'][key] == runner_inputs[key]
+                for key in ('dependencies', 'build_flags')), 'check carry dependencies or flags differ')
+    require(supplement['schema'] == 'airs-desktop/p11-check-supplement/1'
+            and supplement['subject'] == 'P11' and supplement['kind'] == 'check'
+            and supplement['status'] == 'passed' and supplement['failure'] is None
+            and supplement['inputs_before'] == supplement['inputs_after'] == runner_inputs,
+            'current check supplement failed or inputs drifted')
+    expected = command_plan(source or root, 'check')
+    require([row['label'] for row in selection['rows']] == [row['label'] for row in expected]
+            and [(row['label'], row['argv']) for row in original['commands']]
+            == [(row['label'], row['argv']) for row in expected], 'check selection membership/order differs')
+    fresh = [needed for needed, row in zip(expected, selection['rows']) if row['disposition'] == 'executed']
+    require([(row['label'], row['argv']) for row in supplement['commands']]
+            == [(row['label'], row['argv']) for row in fresh], 'check supplement membership/order differs')
+    selected = []
+    for needed, row in zip(expected, selection['rows']):
+        mode = row['disposition']
+        require(mode in ('executed', 'carried_unaffected'), 'unsupported check selection disposition')
+        require(mode == 'executed' or (needed['label'] in CHECK_CARRY_LABELS and row.get('reason')),
+                'affected check cannot be carried or lacks rationale')
+        raw_path, raw = ((supplement_path, supplement) if mode == 'executed' else (original_path, original))
+        commands = [item for item in raw['commands'] if item['label'] == needed['label']]
+        require(len(commands) == 1, 'selected raw check command missing/duplicated')
+        actual = commands[0]
+        require(actual['status'] == 'passed' and actual['exit_code'] == 0 and not actual['note']
+                and actual['argv'] == needed['argv'] and actual['cwd'] in ('.', selection['execution_root']),
+                'selected raw check command failed or differs')
+        log = (raw_path.parent / actual['log']).resolve()
+        require(log.is_relative_to(root.resolve()) and sha(log) == actual['output_sha256'],
+                'selected raw check log drift')
+        require(raw.get('run_id') and raw.get('started_utc') and raw.get('finished_utc'),
+                'selected raw check provenance missing')
+        selected.append({'needed': needed, 'actual': actual, 'raw': raw, 'path': raw_path,
+                         'disposition': mode, 'reason': row.get('reason')})
+    return {'selection': selection, 'selected': selected}
+
+
+def verify_plan(source, plan, check_dispositions=None):
     expected = {}
     for kind in ('check', 'test'):
         for row in command_plan(source, kind):
@@ -206,8 +340,65 @@ def verify_plan(source, plan):
     for row in rows:
         require(all(row.get(key) == value for key, value in expected[row['id']].items()),
                 'P11 approved requirement changed')
-        require(row.get('affected') is True and row.get('must_execute') is True,
+        affected = not (check_dispositions and check_dispositions.get(row['id']) == 'carried_unaffected')
+        require(row.get('affected') is affected and row.get('must_execute') is affected,
                 'changed P11 coverage cannot be silently carried')
+
+
+def verify_coverage(root, qualified, historical=None):
+    """P11 check selection plus the unchanged generic test/native consumer."""
+    if 'check_selection' not in qualified:
+        source = historical.source(qualified['source_inventory_sha256']) if historical else root
+        verify_plan(source, read(bound(root, qualified['plan'])))
+        require(all(row['disposition'] == 'executed' for row in qualified['coverage']),
+                'changed P11 coverage was not executed')
+        return coverage.verify(root, qualified, historical=historical)
+    candidate = read(bound(root, qualified['candidate']))
+    source = historical.source(qualified['source_inventory_sha256']) if historical else root
+    check_source = read(bound(root, qualified['check_source']))
+    require(digest(check_source['files']) == qualified['source_inventory_sha256'],
+            'check selection source does not bind qualified source')
+    selection = validate_check_selection(root, bound(root, qualified['check_selection']),
+        candidate['runner_inputs'], source=source,
+        files=check_source['files'] if historical else None)
+    require(qualified['check_source'] == selection['selection']['current_source'],
+            'check selection source reference differs')
+    require(selection['selection']['execution_root'] == candidate['execution_root'],
+            'check selection original execution root differs from candidate')
+    selected = {'check:' + row['needed']['label']: row for row in selection['selected']
+                if not row['needed']['label'].startswith('setup/')}
+    plan = read(bound(root, qualified['plan']))
+    verify_plan(source, plan, {cid: row['disposition'] for cid, row in selected.items()})
+    rows = qualified['coverage']
+    require(len(rows) == len(plan['requirements']) and {r['id'] for r in rows}
+            == {r['id'] for r in plan['requirements']}, 'check coverage membership differs')
+    for row in rows:
+        if row['id'] not in selected:
+            continue
+        chosen = selected[row['id']]
+        raw, actual, path = chosen['raw'], chosen['actual'], chosen['path']
+        result = read(bound(root, row['result']))
+        require(row['disposition'] == chosen['disposition'] and result == {
+            'status': 'pass', 'exit_code': 0, 'execution_id': raw['run_id'],
+            'argv': actual['argv'], 'cwd': selection['selection']['execution_root'],
+            'started_utc': raw['started_utc'], 'finished_utc': raw['finished_utc'],
+            'required_ids': [row['id']], 'log': reference(root, path.parent / actual['log']),
+            'candidate': qualified['candidate'], 'raw': reference(root, path),
+            'original_runner_inputs': raw['inputs_before'],
+            'reason': chosen['reason'], 'evidence': {}}, 'check result changed original execution binding')
+    runtime_plan = read(bound(root, qualified['runtime_plan']))
+    require(runtime_plan == dict(plan, requirements=[r for r in plan['requirements'] if r['id'] not in selected]),
+            'runtime plan does not match test/native subset')
+    runtime = dict(qualified, plan=qualified['runtime_plan'],
+                   coverage=[row for row in rows if row['id'] not in selected])
+    require(all(row['disposition'] == 'executed' for row in runtime['coverage']),
+            'changed P11 test/native coverage was not executed')
+    result = coverage.verify(root, runtime, historical=historical)
+    result['required'] += len(selected)
+    for row in selected.values():
+        mode = row['disposition']
+        result['dispositions'][mode] = result['dispositions'].get(mode, 0) + 1
+    return result
 
 
 def verify(root, path):
@@ -221,8 +412,6 @@ def verify(root, path):
     require(source_inventory(root) == seal['files'], 'P11 source changed after qualification')
     qualified = read(bound(root, record['coverage']))
     require(digest(seal['files']) == qualified['source_inventory_sha256'], 'P11 source binding')
-    plan = read(bound(root, qualified['plan']))
-    verify_plan(root, plan)
     for kind in ('check', 'test'):
         validate_run(root, bound(root, record['runs'][kind]), kind, record['runner_inputs'])
     inputs = read(bound(root, record['fingerprint']))
@@ -231,7 +420,7 @@ def verify(root, path):
     current = current_fingerprints(root)
     require(record['runner_inputs'] == {key: current[key] for key in record['runner_inputs']},
             'current dependency/toolchain/build flags differ from executed checks')
-    result = coverage.verify(root, qualified)
+    result = verify_coverage(root, qualified)
     candidate = read(bound(root, qualified['candidate']))
     from candidate import verify_candidate
     verify_candidate(root, candidate)
@@ -260,11 +449,13 @@ def verify(root, path):
     changed = [name for name, value in build['application_inputs_before'].items()
                if sha(root / name) != value]
     if changed:
-        frontend_test_carry(root, record, build_path, build, candidate, changed)
+        carry_schema = read(bound(root, record['build_input_carry']))['schema']
+        if carry_schema == 'airs-desktop/rust-test-build-carry/1':
+            rust_test_carry(root, record, build_path, build, candidate, changed)
+        else:
+            frontend_test_carry(root, record, build_path, build, candidate, changed)
     else:
         require('build_input_carry' not in record, 'unnecessary or stale build carry')
-    require(all(row['disposition'] == 'executed' for row in qualified['coverage']),
-            'P11 changed-flow results must be actual shared executions')
     baseline = read(bound(root, record['historical_baseline']))
     require(record['historical_baseline']['path'] == 'docs/planning/evidence/P10/completion-proof.json'
             and baseline['schema'] == 'airs-desktop/p10-completion-proof/1', 'missing accepted baseline')
@@ -322,19 +513,29 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
     requirements, rows = [], []
     for kind, path in [('check', check), ('test', tests)]:
         raw = runs[kind]
-        for needed, actual in zip(command_plan(root, kind), raw['commands']):
+        selected_check = kind == 'check' and 'selection' in raw
+        choices = (raw['selected'] if selected_check else
+                   [{'needed': needed, 'actual': actual, 'raw': raw, 'path': path,
+                     'disposition': 'executed', 'reason': None}
+                    for needed, actual in zip(command_plan(root, kind), raw['commands'])])
+        for choice in choices:
+            needed, actual = choice['needed'], choice['actual']
             if needed['label'].startswith('setup/'):
                 continue
             cid = kind + ':' + needed['label']
-            requirements.append(dict(id=cid, kind='command', **needed, affected=True,
-                                     must_execute=True, helper_paths=[]))
-            log = reference(root, path.parent / actual['log'])
-            result = dict(status='pass', exit_code=0, execution_id=raw['run_id'],
-                          argv=actual['argv'], cwd=str(root), started_utc=raw['started_utc'],
-                          finished_utc=raw['finished_utc'], required_ids=[cid], log=log,
-                          candidate=candidate_ref, raw=reference(root, path), evidence={})
+            affected = choice['disposition'] == 'executed'
+            requirements.append(dict(id=cid, kind='command', **needed, affected=affected,
+                                     must_execute=affected, helper_paths=[]))
+            origin, origin_path = choice['raw'], choice['path']
+            log = reference(root, origin_path.parent / actual['log'])
+            result = dict(status='pass', exit_code=0, execution_id=origin['run_id'],
+                          argv=actual['argv'], cwd=str(root), started_utc=origin['started_utc'],
+                          finished_utc=origin['finished_utc'], required_ids=[cid], log=log,
+                          candidate=candidate_ref, raw=reference(root, origin_path), evidence={})
+            if selected_check:
+                result.update(original_runner_inputs=origin['inputs_before'], reason=choice['reason'])
             result_ref = write('results/' + kind + '-' + needed['label'].replace('/', '-') + '.json', result)
-            rows.append(dict(id=cid, disposition='executed', result=result_ref))
+            rows.append(dict(id=cid, disposition=choice['disposition'], result=result_ref))
     expected = {row['id'] for chunk in CHUNKS for row in
                 read(root / 'docs/architecture/native-checks.json')['chunks'][chunk]}
     require(len(acceptance['checks']) == len(expected)
@@ -357,9 +558,16 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
         rows.append(dict(id=cid, disposition='executed', result=write('results/' + cid + '.json', result)))
     plan = write('required-coverage.json', {'schema': 'airs-desktop/required-coverage/1',
                  'subject': 'P11', 'requirements': requirements})
-    qualified = write('coverage.json', {'schema': 'airs-desktop/qualified-coverage/1',
+    qualified_record = {'schema': 'airs-desktop/qualified-coverage/1',
                       'plan': plan, 'candidate': candidate_ref,
-                      'source_inventory_sha256': digest(source), 'coverage': rows})
+                      'source_inventory_sha256': digest(source), 'coverage': rows}
+    if 'selection' in runs['check']:
+        qualified_record.update(check_selection=reference(root, check),
+            check_source=runs['check']['selection']['current_source'],
+            runtime_plan=write('runtime-required-coverage.json', {
+                'schema': 'airs-desktop/required-coverage/1', 'subject': 'P11',
+                'requirements': [r for r in requirements if not r['id'].startswith('check:')]}))
+    qualified = write('coverage.json', qualified_record)
     record = {'schema': 'airs-desktop/p11-shared-qualification/1', 'source': seal,
               'coverage': qualified, 'runs': {'check': reference(root, check), 'test': reference(root, tests)},
               'runner_inputs': runner_inputs, 'fingerprint': reference(root, fingerprint),

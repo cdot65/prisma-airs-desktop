@@ -1,0 +1,75 @@
+{
+  "schema": "airs-desktop/p11-check-supplement/1",
+  "subject": "P11",
+  "kind": "check",
+  "run_id": "check-repair-01",
+  "started_utc": "2026-11-04T13:43:57.649860+00:00",
+  "inputs_before": {
+    "source": "a06e4b69cf2892967794fc06a04a41d56b2fb095d6256cad08906b27ebb097fd",
+    "dependencies": "65ef7f60ec3361e31e255ba789bbf995746b4c0b557b2afef87201b5c2fdb9be",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "commands": [
+    {
+      "label": "C46/check/1",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 773,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "log": "C46-check-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/check/6",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_setup_reads",
+        "--test",
+        "ui_v2_onboarding",
+        "--test",
+        "ui_v2_wizard",
+        "--test",
+        "management_reads",
+        "--test",
+        "refinement_metadata",
+        "--test",
+        "setup_warning_recheck",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 101,
+      "duration_ms": 7411,
+      "output_sha256": "9a4f9fbd1a3ea3f6c16ec406ded3cceecdaae45571ea45438458586265d6cb2f",
+      "log": "C46-check-6.log",
+      "tests": null,
+      "status": "failed",
+      "note": "actual command failed"
+    }
+  ],
+  "status": "failed",
+  "failure": "C46/check/6",
+  "inputs_after": {
+    "source": "a06e4b69cf2892967794fc06a04a41d56b2fb095d6256cad08906b27ebb097fd",
+    "dependencies": "65ef7f60ec3361e31e255ba789bbf995746b4c0b557b2afef87201b5c2fdb9be",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "finished_utc": "2026-11-04T13:44:09.964759+00:00"
+}

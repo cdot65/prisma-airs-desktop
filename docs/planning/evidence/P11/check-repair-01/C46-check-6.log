@@ -1,0 +1,217 @@
+    Checking desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+error: used `unwrap()` on a `Result` value
+  --> crates/desktop-core/tests/setup_warning_recheck.rs:33:16
+   |
+33 |     let body = serde_json::to_vec(&value).unwrap();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+   = note: `-D clippy::unwrap-used` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_used)]`
+
+error: used `unwrap()` on a `Result` value
+  --> crates/desktop-core/tests/setup_warning_recheck.rs:99:15
+   |
+99 |         match self.handle.observe(ViewScope::Shell).unwrap() {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: consider using `expect()` to provide a better panic message
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on an `Option` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:105:9
+    |
+105 |         self.snap().active.unwrap().context.as_str().to_owned()
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is `None`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:108:9
+    |
+108 |         serde_json::to_value(&self.snap().tenants[0].setup_warnings[0]).unwrap()
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:161:40
+    |
+161 |         Reply::Route(Arc::new(move |s| routed.lock().unwrap().route(s))),
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:165:21
+    |
+165 |     let mut state = serde_json::to_value(PersistedState::default()).unwrap();
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:178:9
+    |
+178 |         serde_json::from_value(state).unwrap(),
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:189:5
+    |
+189 | /     core.set_transport_policy(TransportPolicy {
+190 | |         revision: 2,
+191 | |         proxy: ProxyMode::Direct,
+192 | |         extra_roots: vec![ca.pem.as_bytes().to_vec()],
+193 | |     })
+194 | |     .unwrap();
+    | |_____________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:196:19
+    |
+196 |     let session = handle.register_delivery_session().unwrap().nonce;
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:249:9
+    |
+249 | ...   serde_json::to_value(d.handles.store.saved().unwrap()).unwrap()["tenantWarnings"][0]["warnings"][0]["resolvedSecs"].as_u64()....
+    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on an `Option` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:249:30
+    |
+249 | ...   serde_json::to_value(d.handles.store.saved().unwrap()).unwrap()["tenantWarnings"][0]["warnings"][0]["resolvedSecs"].as_u64()....
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is `None`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:264:5
+    |
+264 |     d.script.lock().unwrap().model_status[1] = 403;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on an `Option` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:267:18
+    |
+267 |       let reason = d.warning()["recheck"]["reason"]
+    |  __________________^
+268 | |         .as_str()
+269 | |         .unwrap()
+    | |_________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:275:5
+    |
+275 |     d.script.lock().unwrap().model_status[1] = 200;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on an `Option` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:292:9
+    |
+292 | /         d.warning()["recheck"]["reason"]
+293 | |             .as_str()
+294 | |             .unwrap()
+    | |_____________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:305:5
+    |
+305 |     d.script.lock().unwrap().scope_slug = WS.to_owned();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:311:5
+    |
+311 |     d.script.lock().unwrap().scope_slug = "goshawks".to_owned();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:335:5
+    |
+335 |     d.script.lock().unwrap().model_status[0] = 0;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:357:5
+    |
+357 |     d.script.lock().unwrap().model_status[0] = 200;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: used `unwrap()` on an `Option` value
+   --> crates/desktop-core/tests/setup_warning_recheck.rs:407:9
+    |
+407 | /         d.warning()["recheck"]["reason"]
+408 | |             .as_str()
+409 | |             .unwrap()
+    | |_____________________^
+    |
+    = note: if this value is `None`, it will panic
+    = help: consider using `expect()` to provide a better panic message
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#unwrap_used
+
+error: could not compile `desktop-core` (test "setup_warning_recheck") due to 20 previous errors
+warning: build failed, waiting for other jobs to finish...
