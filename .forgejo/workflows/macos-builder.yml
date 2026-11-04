@@ -16,12 +16,12 @@ permissions:
 
 jobs:
   unsigned-app:
-    # P11 is deliberately disabled. After the real phase acceptance, root
-    # pins P11_ACCEPTED_SOURCE/TREE and reviews changing only this false guard.
+    # P11's exact accepted source/tree is pinned in the controller after the
+    # completed full-nine phase gate; original RC1 branch admission is unchanged.
     if: >-
       github.repository == 'cdot/prisma-airs-desktop-v2' &&
       (github.ref == 'refs/heads/infra/macos-builder-20261103' ||
-       (false && github.ref == 'refs/heads/infra/macos-candidate-p11-20261104'))
+       (true && github.ref == 'refs/heads/infra/macos-candidate-p11-20261104'))
     runs-on: airs-jadzia-arm64
     timeout-minutes: 90
     steps:

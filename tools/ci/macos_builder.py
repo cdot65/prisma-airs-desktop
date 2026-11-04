@@ -16,10 +16,10 @@ REF = "refs/heads/infra/macos-builder-20261103"
 P11_REF = "refs/heads/infra/macos-candidate-p11-20261104"
 # Ancestry evidence only; it is NOT an accepted P11 source pin.
 P11_PROVISIONAL_ANCESTOR = "62580dec9287d05b7a4aae03ca0625247f28542c"
-# Root inserts the final independently accepted commit/tree only after P11's
-# phase gate, together with enabling this branch in macos-builder.yml.
-P11_ACCEPTED_SOURCE = None
-P11_ACCEPTED_TREE = None
+# Independently accepted P11 archive after all chunk and phase reviews reached
+# full nine; only the declared CI-only delta may be built above these pins.
+P11_ACCEPTED_SOURCE = "425374fc55e2250f3da23ac0ed766a7711cb61cb"
+P11_ACCEPTED_TREE = "4946a05a64af102f767dcf93d465089315cb8959"
 ACADEMY_ORIGIN = "ssh://git@git-ssh.cdot.io/cdot.io/ai-security-academy.git"
 ACADEMY_COMMIT = "532809aa4bb2e1484e11ca9f7a414328260c7901"
 ACADEMY_TREE = "73e1c80889af89311b374808fce1f99386ced2fe95bc3a54429c40a72ce5530d"

@@ -1,6 +1,6 @@
 # Internal Apple Silicon builder
 
-The original RC1 admission and a disabled P11 draft share one unsigned
+The original RC1 admission and an accepted P11 candidate lane share one unsigned
 production-build recipe on Jadzia's repository-scoped
 `airs-jadzia-arm64:host` runner. Neither lane qualifies a release, reopens a
 chunk, runs native gates, signs or publishes. C26/P08 remains open.
@@ -15,22 +15,22 @@ only of additions of the five declared CI files. Existing-file modifications,
 application changes, lockfiles and resource changes are rejected. Published
 RC1 source, tags, assets and qualification are unchanged.
 
-## P11 candidate lane — disabled until final phase acceptance
+## P11 candidate lane — accepted source pinned
 
-The new `infra/macos-candidate-p11-20261104` branch is preparation only.
-Its workflow condition contains a literal `false` for this branch, and
-`P11_ACCEPTED_SOURCE` plus `P11_ACCEPTED_TREE` are deliberately `None`
-in the controller. Direct controller admission also stops on these missing
-pins before input materialization, dependency installs or compilation.
-No draft push or dispatch is authorized by this preparation.
+The infra/macos-candidate-p11-20261104 branch builds the accepted P11 archive
+425374fc55e2250f3da23ac0ed766a7711cb61cb, Git tree
+4946a05a64af102f767dcf93d465089315cb8959, after actual C46–C49 and P11
+phase full-nine acceptance. The workflow's P11-only guard is enabled; the
+controller independently requires those exact commit/tree pins before inputs,
+dependency installs or compilation. The original RC1 condition and constants
+remain unchanged. Only an approved normal push of this infrastructure branch
+starts the production build; signing and publication remain separate.
 
-`62580dec9287d05b7a4aae03ca0625247f28542c` is the provisional qualified
-ancestry bound only. It is never used as a default accepted source.
-After the independent P11 chunk and phase gate, root supplies the real
-accepted commit and its Git tree. The build commit must descend from that
-exact pin; that pin must descend from the provisional ancestor. A different
-resolved commit/tree, dirty checkout, wrong event/ref/repository or mismatch
-with the immutable triggering SHA stops admission.
+The commit 62580dec9287d05b7a4aae03ca0625247f28542c remains a provisional
+qualified ancestry bound only and is never a substitute accepted source. The
+build commit must descend from the exact accepted pin, which must descend from
+that ancestor. A different resolved commit/tree, dirty checkout, wrong event/
+ref/repository or mismatch with the immutable triggering SHA stops admission.
 
 Only a nonempty delta within these five paths is allowed above the final
 accepted application source:
@@ -48,7 +48,7 @@ change the original RC1 additions-only contract. Full CI delta hashes and
 both the accepted application commit/tree and actual build commit are
 recorded in provenance; no earlier qualified binary is claimed as this build.
 
-Activation is one reviewed follow-up in this isolated branch:
+Activation is recorded in this isolated branch; the required audit sequence is:
 
 1. Complete P11 reviews/phase acceptance and name the final approved commit.
 2. Insert that exact 40-hex commit and its exact 40-hex Git tree into
@@ -140,6 +140,6 @@ cleared credential/override environment cases remain covered. No app is
 compiled or opened, and no host credentials or network access are used.
 
 The first approved CI run compiles the existing adapter and production app.
-No Rust source is changed by this admission draft, so no Rust formatting/check
+No Rust source is changed by this admission activation, so no Rust formatting/check
 suite or native end-to-end rerun is needed. Original P11 and RC1 evidence
 retains its real source/artifact/execution bindings.
