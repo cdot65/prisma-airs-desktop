@@ -68,7 +68,7 @@ pub fn gate(repo: &Repo, kind: Kind) -> Result<Vec<Subject>> {
     }
 }
 
-/// P09/P10 actual independent phase proofs supplement the existing C01-C25
+/// P09/P10/P11 actual independent phase proofs supplement the existing C01-C25
 /// ledger. C26 remains open so its own release implementation is not circular.
 pub fn verify_current_release_phases(repo: &Repo) -> Result<()> {
     let output = std::process::Command::new("/usr/bin/python3")
@@ -81,6 +81,19 @@ pub fn verify_current_release_phases(repo: &Repo) -> Result<()> {
     if !output.status.success() {
         return Err(invalid(format!(
             "release requires genuine audited P09 and P10 full-9 phase proofs: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    let output = std::process::Command::new("/usr/bin/python3")
+        .args(["-I", "tools/p11/standing.py", "release-prerequisites"])
+        .current_dir(repo.root())
+        .env_clear()
+        .env("PATH", crate::git_path())
+        .output()
+        .map_err(crate::io_err(&repo.join("tools/p11/standing.py")))?;
+    if !output.status.success() {
+        return Err(invalid(format!(
+            "release requires genuine archived P11 member and phase proofs: {}",
             String::from_utf8_lossy(&output.stderr)
         )));
     }
