@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RunRecord, RunView, RunningView, SendReviewView } from '@prisma-airs/desktop-contracts'
 import { type WorkbenchCall, resultText, runFailureText, runSummary, sizeText } from '../../modules/workbench/workbench-call'
 import { clockOf } from '../copy'
@@ -7,6 +7,8 @@ import { Glyph } from '../icons'
 import { API_COPY as C } from './copy'
 import { prettyJson } from './request-rows'
 import { requestName } from './request-tree'
+import { JsonText } from './json-presentation'
+import type { DisplayedResponse } from './presentation-status'
 
 type ResponseTab = 'body' | 'headers' | 'details' | 'history'
 const TABS: ResponseTab[] = ['body', 'headers', 'details', 'history']
@@ -22,7 +24,7 @@ const BOX = {
 }
 
 /** The status pill's tone: the code's class, a failure, or a run that never completed. */
-function tone(record: RunRecord): {
+export function tone(record: RunRecord): {
     fg: string
     bg: string
     text: string
@@ -69,6 +71,7 @@ interface Props {
     historyKey: string
     onApply: () => void
     onDismiss: () => void
+    onDisplayed?: (response: DisplayedResponse | null) => void
 }
 
 /**
@@ -76,7 +79,7 @@ interface Props {
  * Headers, Details and History tabs. A run shown from History is the
  * immutable record of what happened then; nothing here sends anything.
  */
-export function ResponsePane({ run, running, review, call, historyKey, onApply, onDismiss }: Props) {
+export function ResponsePane({ run, running, review, call, historyKey, onApply, onDismiss, onDisplayed }: Props) {
     const [tab, setTab] = useState<ResponseTab>('body')
     const [pretty, setPretty] = useState(true)
     const [fromHistory, setFromHistory] = useState<RunView | null>(null)
@@ -90,7 +93,12 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
     }, [runId])
     const shown = fromHistory ?? run
     const record = shown?.record ?? null
-    const formatted = shown?.preview != null ? prettyJson(shown.preview) : null
+    const displayCallback = useRef(onDisplayed)
+    displayCallback.current = onDisplayed
+    useEffect(() => {
+        displayCallback.current?.(record ? { record, history: fromHistory !== null } : null)
+    }, [record, fromHistory])
+    const formatted = useMemo(() => shown?.preview != null ? prettyJson(shown.preview) : null, [shown?.preview])
 
     const save = async () => {
         if (!record) return
@@ -123,7 +131,7 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
     ))
     const head = record ? (
         <>
-            <span
+            {!onDisplayed ? <><span
                 className='inline-flex items-center rounded-[6px] font-bold'
                 style={{
                     gap: 4,
@@ -137,7 +145,7 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
                 {tone(record).text}
             </span>
             <span style={soft}>{elapsedText(record.elapsedMs)}</span>
-            <span style={soft}>{sizeText(record.bytes)}</span>
+            <span style={soft}>{sizeText(record.bytes)}</span></> : null}
             <span className='ml-auto truncate text-[12px]' style={faint}>
                 {fromHistory ? `${requestName(record.relative)} · ${clockOf(record.at)}` : clockOf(record.at)}
             </span>
@@ -330,12 +338,7 @@ export function ResponsePane({ run, running, review, call, historyKey, onApply, 
                                                 color: 'var(--v2-ink)',
                                             }}
                                         >
-                                            {formatted.split('\n').map((line, i) => (
-                                                <span key={i} data-line=''>
-                                                    {line}
-                                                    {'\n'}
-                                                </span>
-                                            ))}
+                                            <JsonText text={formatted} numbered />
                                         </pre>
                                     ) : (
                                         <pre
@@ -438,6 +441,18 @@ function History({ call, revision, onShow }: { call: WorkbenchCall; revision: st
     const [runs, setRuns] = useState<RunRecord[]>([])
     const [more, setMore] = useState(false)
     const [message, setMessage] = useState('')
+    const generation = useRef(0)
+    useEffect(() => {
+        generation.current += 1
+        return () => { generation.current += 1 }
+    }, [revision])
+    const show = async (id: string) => {
+        const asked = ++generation.current
+        const x = await call({ kind: 'showRun', run: id })
+        if (asked !== generation.current) return
+        if (x.kind === 'ran') onShow(x.run)
+        else setMessage(resultText(x) ?? '')
+    }
     useEffect(() => {
         let live = true
         void call({ kind: 'history', before: null }).then((r) => {
@@ -483,12 +498,7 @@ function History({ call, revision, onShow }: { call: WorkbenchCall; revision: st
                             <button
                                 type='button'
                                 aria-label={summary}
-                                onClick={() =>
-                                    void call({ kind: 'showRun', run: r.id }).then((x) => {
-                                        if (x.kind === 'ran') onShow(x.run)
-                                        else setMessage(resultText(x) ?? '')
-                                    })
-                                }
+                                onClick={() => void show(r.id)}
                                 className='flex w-full min-h-0 items-center rounded-[8px] border text-left'
                                 style={{
                                     gap: 10,

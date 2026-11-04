@@ -218,10 +218,151 @@ async function open(snapshot = board(), extra?: (request: WorkbenchRequest) => W
 const document_ = () => globalThis.document
 
 describe('C41 API Client board', () => {
+    it('colors one complete editable URL template without duplicating its base variable', async () => {
+        const url = '{{scm_base}}/profiles/{{profile_id}}?value=hello%20world'
+        const { requests, user, line } = await open(board(), (r) => r.kind === 'openRequest' ? document({ url }) : null)
+        const input = within(line()).getByRole('textbox', { name: 'URL' })
+        expect(input).toHaveValue(url)
+        const template = input.closest('[data-slot="template-input"]') as HTMLElement
+        expect(template).not.toBeNull()
+        expect(template.querySelectorAll('[data-variable]')).toHaveLength(2)
+        expect(template.textContent).toBe(url)
+        await user.click(input)
+        await user.keyboard('{Control>}a{/Control}')
+        await user.copy()
+        expect(await navigator.clipboard.readText()).toBe(url)
+        await user.keyboard('{Meta>}s{/Meta}')
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'save')).toHaveLength(1))
+        expect(requests.filter((r) => r.kind === 'save')[0]).toMatchObject({ fields: { url } })
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        expect(requests.filter((r) => r.kind === 'send').at(-1)).toMatchObject({ fields: { url } })
+    })
+
+    it('colors JSON while Save, Send, response Copy and Save Response keep the original text and run', async () => {
+        const raw = '{\r\n "integer":9007199254740993,"escaped":"\\u0061\\/"\r\n}\r\n'
+        const response = { ...ran, preview: raw, previewBytes: raw.length, record: { ...ran.record, bytes: raw.length } }
+        const { user, requests, line } = await open(board(), (r) => r.kind === 'openRequest' ? document({ bodyKind: 'json', body: raw }) : r.kind === 'send' ? { kind: 'ran', run: response } : r.kind === 'saveResponse' ? { kind: 'responseSaved', bytes: raw.length, name: 'chosen.json' } : null)
+        await user.click(within(screen.getByRole('tablist', { name: 'Request' })).getByRole('tab', { name: /^Body/ }))
+        const body = screen.getByRole('textbox', { name: 'Body' })
+        const colored = body.closest('[data-slot="json-body-editor"]') as HTMLElement
+        expect(colored.querySelector('[data-json-token*="propertyName"]')).not.toBeNull()
+        await user.click(within(line()).getByRole('button', { name: 'Save' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'save')).toHaveLength(1))
+        expect(requests.filter((r) => r.kind === 'save').at(-1)).toMatchObject({ fields: { body: raw } })
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1))
+        expect(requests.filter((r) => r.kind === 'send').at(-1)).toMatchObject({ fields: { body: raw } })
+        const pane = screen.getByRole('region', { name: 'Response pane' })
+        expect(within(pane).getByLabelText('Response body')).toHaveTextContent('9007199254740993')
+        await user.click(within(pane).getByRole('button', { name: 'Copy' }))
+        expect(await navigator.clipboard.readText()).toBe(raw)
+        await user.click(within(pane).getByRole('button', { name: 'Save response…' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'saveResponse')).toEqual([{ kind: 'saveResponse', run: response.record.id }]))
+        await user.clear(body)
+        await user.paste('{"unfinished":')
+        expect(body).toHaveValue('{"unfinished":')
+        await user.keyboard('{Meta>}s{/Meta}')
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'save')).toHaveLength(2))
+        expect(requests.filter((r) => r.kind === 'save').at(-1)).toMatchObject({ fields: { body: '{"unfinished":' } })
+    })
+
+    it('ignores an earlier history selection that resolves after the newer selected response', async () => {
+        const { user, native, requests } = await open()
+        const observe = native.observeWorkbench
+        const release = new Map<string, () => void>()
+        native.observeWorkbench = (operation) => {
+            const request = requests[Number(operation.replace('op-', '')) - 1]
+            if (request?.kind === 'showRun') return new Promise((resolve) => release.set(request.run, () => { void Promise.resolve(observe(operation)).then(resolve) }))
+            return observe(operation)
+        }
+        const pane = screen.getByRole('region', { name: 'Response pane' })
+        await user.click(within(pane).getByRole('tab', { name: 'History' }))
+        const choices = await within(pane).findAllByRole('button', { name: /^GET topics\/list/ })
+        await user.click(choices[1]!)
+        await user.click(choices[0]!)
+        await waitFor(() => expect(release.size).toBe(2))
+        await act(async () => { release.get(ran.record.id)!() })
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveAttribute('data-run', ran.record.id))
+        await act(async () => { release.get(older.record.id)!() })
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveAttribute('data-run', ran.record.id)
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).not.toHaveTextContent('17 ms')
+    })
+
+    it('cannot replace the current collection footer with a previous collection send result sharing its request id', async () => {
+        let replacement = false
+        const current = { ...ran, record: { ...ran.record, id: 'run-0000000000001234', status: 201, elapsedMs: 7 } }
+        const { user, native, requests, line } = await open(board(), (r) => r.kind === 'openRequest' && replacement ? document({ url: 'https://other.invalid/current' }) : r.kind === 'send' ? { kind: 'ran', run: current } : null)
+        const observe = native.observeWorkbench
+        let release: (() => void) | null = null
+        native.observeWorkbench = (operation) => {
+            const request = requests[Number(operation.replace('op-', '')) - 1]
+            if (request?.kind === 'send' && !replacement) return new Promise((resolve) => { release = () => resolve({ kind: 'workbench', result: { kind: 'ran', run: ran } }) })
+            return observe(operation)
+        }
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(release).not.toBeNull())
+        replacement = true
+        const next = board()
+        await native.push({ ...next, workbench: { ...next.workbench, collection: { ...next.workbench.collection!, scope: '4'.repeat(32) } } })
+        await waitFor(() => expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('https://other.invalid/current'))
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveAttribute('data-run', current.record.id))
+        await act(async () => { release!() })
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveAttribute('data-run', current.record.id)
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('7 ms')
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).not.toHaveTextContent('42 ms')
+    })
+
+    it('shows the displayed response metrics in the footer, including another request selected from history', async () => {
+        const historical = { ...older, record: { ...older.record, request: 'health', relative: 'health.request.toml', status: 204 } }
+        const { user, line } = await open(board(), (r) => r.kind === 'history' ? { kind: 'history', runs: [historical.record], more: false } : r.kind === 'showRun' ? { kind: 'ran', run: historical } : null)
+        const footer = document_().querySelector('[data-slot="api-footer"]') as HTMLElement
+        await user.click(within(line()).getByRole('button', { name: 'Send' }))
+        await waitFor(() => expect(footer).toHaveTextContent('42 ms'))
+        expect(footer).toHaveTextContent('29 B')
+        expect(footer).toHaveTextContent('2 requests')
+        expect(line()).not.toHaveTextContent('42 ms')
+        const pane = screen.getByRole('region', { name: 'Response pane' })
+        await user.click(within(pane).getByRole('tab', { name: 'History' }))
+        await user.click(await within(pane).findByRole('button', { name: /^GET health/ }))
+        await waitFor(() => expect(footer).toHaveTextContent('17 ms'))
+        expect(footer).toHaveTextContent('20 B')
+        expect(footer).toHaveTextContent('health')
+        expect(footer).toHaveTextContent('History')
+        expect(footer).not.toHaveTextContent('42 ms')
+    })
+
+    it('keeps open request tabs on one horizontally scrolling row', async () => {
+        await open()
+        const tabs = screen.getByRole('tablist', { name: 'Open requests' })
+        expect(tabs).not.toHaveClass('flex-wrap')
+        expect(tabs).toHaveClass('overflow-x-auto')
+        expect(within(tabs).getByRole('tab', { selected: true }).closest('[data-request-tab]')).toHaveClass('shrink-0')
+    })
+
+    it('offers explicit restore recovery without automatically opening SCM or creating a missing collection', async () => {
+        const base = fxApi()
+        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
+        const requests = workbench(native, answers((r) => r.kind === 'load' ? { kind: 'refused', problem: { kind: 'project', detail: 'notCollection' } } : null))
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1))
+        await native.push(closed)
+        expect(await screen.findByText(/The preferred collection could not be opened/)).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2))
+        expect(screen.getByRole('button', { name: 'Open collection…' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Open Strata Cloud Manager' })).toBeInTheDocument()
+        await native.push(closed)
+        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2)
+        expect(requests.filter((r) => ['openBuiltIn', 'createCollection', 'openFolder'].includes(r.kind))).toHaveLength(0)
+    })
+
     it('draws the title row with the chips, the tree, the tabs, the request line, the sub-tabs, the response pane and the footer (V2-T14)', async () => {
         const { tree, line } = await open()
         expect(document_().querySelector('[data-slot="api-client-v2"]')).not.toBeNull()
-        expect(document_().querySelector('[data-slot="api-lead"]')).toHaveTextContent('Collection AIRS · api · Northwind Health · requests with tenant credentials go only to known operations')
+        expect(document_().querySelector('[data-slot="api-lead"]')).toHaveTextContent('Edit requests and inspect responses. Tenant credentials go only to known operations.')
         expect(screen.getByRole('button', { name: 'Collection AIRS' })).toHaveTextContent('AIRS')
         expect(screen.getByRole('combobox', { name: 'Environment' })).toHaveValue('local')
         // The tree: the folder with its count and the requests under it, the root request after it.
@@ -244,7 +385,7 @@ describe('C41 API Client board', () => {
         expect(within(line()).getByRole('textbox', { name: 'URL' })).toHaveValue('http://127.0.0.1:8080/topics')
         expect(within(line()).getByRole('button', { name: 'Send' })).toBeInTheDocument()
         expect(within(line()).getByRole('button', { name: 'Save' })).toBeInTheDocument()
-        expect(within(line()).getByRole('status')).toHaveTextContent('Saved')
+        expect(document_().querySelector('[data-slot="api-footer"] [data-slot="workbench-save-status"]')).toHaveTextContent('Saved')
         const sub = screen.getByRole('tablist', { name: 'Request' })
         expect(
             within(sub)
@@ -260,7 +401,7 @@ describe('C41 API Client board', () => {
                 .getAllByRole('tab')
                 .map((t) => t.textContent)
         ).toEqual(['Body', 'Headers', 'Details', 'History'])
-        expect(document_().querySelector('[data-slot="api-footer"]')).toHaveTextContent('Ready2 requests2 earlier versions kept privately')
+        expect(document_().querySelector('[data-slot="api-footer"]')).toHaveTextContent('ReadySaved2 requests2 earlier versions kept privately')
     })
 
     it('searches the tree flat, says when nothing matches and clears; a collapsed folder hides its requests', async () => {
@@ -364,7 +505,8 @@ describe('C41 API Client board', () => {
         const { user, requests, line } = await open()
         await user.click(within(line()).getByRole('button', { name: 'Send' }))
         const status = document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
-        await waitFor(() => expect(status).toHaveTextContent('list · 200 · 42 ms'))
+        const metrics = () => document_().querySelector('[data-slot="workbench-response-status"]') as HTMLElement
+        await waitFor(() => expect(metrics()).toHaveTextContent('42 ms'))
         // An edit after the send: the line says the state, not the last send (the native run saw the send's word stay).
         await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '?x=1')
         expect(status).toHaveTextContent('Unsaved changes')
@@ -372,9 +514,9 @@ describe('C41 API Client board', () => {
         await user.clear(within(line()).getByRole('textbox', { name: 'URL' }))
         await user.type(within(line()).getByRole('textbox', { name: 'URL' }), 'http://127.0.0.1:8080/topics')
         const pane = screen.getByRole('region', { name: 'Response pane' })
-        expect(within(pane).getByText('200 OK')).toBeInTheDocument()
-        expect(within(pane).getByText('42 ms')).toBeInTheDocument()
-        expect(within(pane).getByText('29 B')).toBeInTheDocument()
+        expect(metrics()).toHaveTextContent('200 OK')
+        expect(metrics()).toHaveTextContent('42 ms')
+        expect(metrics()).toHaveTextContent('29 B')
         const response = within(pane).getByRole('region', { name: 'Response' })
         expect(within(response).getByLabelText('Response body')).toHaveTextContent('"custom_topics": [ "Finance" ]')
         await user.click(within(response).getByRole('button', { name: 'Raw' }))
@@ -401,7 +543,7 @@ describe('C41 API Client board', () => {
             kind: 'showRun',
             run: older.record.id,
         })
-        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+        await waitFor(() => expect(metrics()).toHaveTextContent('17 ms'))
         await user.click(within(pane).getByRole('button', { name: 'Raw' }))
         expect(within(pane).getByLabelText('Response body')).toHaveTextContent('{"custom_topics":[]}')
         // Showing history sent nothing.
@@ -421,7 +563,7 @@ describe('C41 API Client board', () => {
         const runs = await within(pane).findAllByRole('button', { name: /^GET topics\/list · HTTP 200/ })
         await user.click(runs[1]!)
         await waitFor(() => expect(within(pane).getByRole('region', { name: 'Response' })).toBeInTheDocument())
-        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('17 ms'))
         await user.click(within(line()).getByRole('button', { name: 'Send' }))
         await waitFor(() => expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1))
         const base = board()
@@ -434,12 +576,12 @@ describe('C41 API Client board', () => {
         })
         expect(running).toHaveAttribute('role', 'status')
         expect(running).toHaveTextContent('Sending GET')
-        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('17 ms')
         expect(within(line()).getByRole('button', { name: 'Send' })).toBeDisabled()
         await user.click(within(running).getByRole('button', { name: 'Cancel request' }))
         await waitFor(() => expect(requests.filter((r) => r.kind === 'cancel')).toEqual([{ kind: 'cancel', run: 'run-00000000000000bb' }]))
         expect(requests.filter((r) => r.kind === 'send')).toHaveLength(1)
-        expect(within(pane).getByText('17 ms')).toBeInTheDocument()
+        expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('17 ms')
     })
 
     it('shows every transfer in flight for the request with its own Cancel: two deferred sends across a tab round trip, each cancelled by its own id exactly once, nothing resent (attempt-04 R1)', async () => {
@@ -1224,20 +1366,21 @@ describe('C41 API Client board', () => {
         expect(chip).toHaveFocus()
     })
 
-    it('a send from an already dirty request announces its completion once; the next edit says the state again', async () => {
+    it('a send from an already dirty request announces response metrics separately from its save state', async () => {
         const { user, line } = await open()
         const status = () => document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
         await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '?x=1')
         expect(status()).toHaveTextContent('Unsaved changes')
         await user.click(within(line()).getByRole('button', { name: 'Send' }))
-        await waitFor(() => expect(status()).toHaveTextContent('list · 200 · 42 ms'))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('42 ms'))
+        expect(status()).toHaveTextContent('Unsaved changes')
         // Dirty before and after: the completion still gives way to the state on the next edit.
         await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '&y=2')
         expect(status()).toHaveTextContent('Unsaved changes')
         expect(status()).toHaveAttribute('data-state', 'unsaved')
     })
 
-    it('a send from a new request announces its completion once; the next edit says "New · not saved yet" again', async () => {
+    it('a send from a new request announces response metrics without replacing "New · not saved yet"', async () => {
         const next = board()
         const collection = next.workbench.collection!
         const draftTab = { id: 'create', relative: 'topics/create.request.toml', method: 'GET', draft: true, new: true, recovered: false, conflict: null, interrupted: false }
@@ -1259,7 +1402,8 @@ describe('C41 API Client board', () => {
         const status = () => document_().querySelector('[data-slot="workbench-save-status"]') as HTMLElement
         expect(status()).toHaveTextContent('New · not saved yet')
         await user.click(within(line()).getByRole('button', { name: 'Send' }))
-        await waitFor(() => expect(status()).toHaveTextContent('create · 200 · 42 ms'))
+        await waitFor(() => expect(document_().querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('create'))
+        expect(status()).toHaveTextContent('New · not saved yet')
         await user.type(within(line()).getByRole('textbox', { name: 'URL' }), '?x=1')
         expect(status()).toHaveTextContent('New · not saved yet')
         expect(status()).toHaveAttribute('data-state', 'new')

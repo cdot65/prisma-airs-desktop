@@ -1,8 +1,8 @@
-import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DocumentView, ImportNote, ShellSnapshot, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../../modules/tenants/dispatch'
-import { type ObserveWorkbench, type WorkbenchCall, resultText, workbenchCall } from '../../modules/workbench/workbench-call'
+import { type ObserveWorkbench, type WorkbenchCall, resultText, sizeText, workbenchCall } from '../../modules/workbench/workbench-call'
 import { Btn } from '../controls'
 import { Glyph } from '../icons'
 import { Modal } from '../modal'
@@ -10,6 +10,10 @@ import { API_COPY as C, methodColor } from './copy'
 import { type EditorHandle, RequestEditor } from './request-editor'
 import { RequestTree, requestName } from './request-tree'
 import { type Run, type Tool, ToolsSheet } from './tools-sheet'
+import { tone, elapsedText } from './response-pane'
+import { clockOf } from '../copy'
+import type { EditorStatus } from './presentation-status'
+import { PageIntro } from '../page-intro'
 
 export interface ApiClientProps {
     snapshot: ShellSnapshot
@@ -41,11 +45,10 @@ const chipStyle = {
  * Rust owns each document's revision, conflicts and the private drafts;
  * nothing in this view sends a request by itself.
  */
-export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function ApiClient({ snapshot, dispatch, observe }, ref) {
+export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
     const call = useMemo(() => workbenchCall(dispatch, observe), [dispatch, observe])
     const state = snapshot.workbench
     const collection = state.collection
-    const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
     const [message, setMessage] = useState('')
     const [offerNew, setOfferNew] = useState(false)
     const [tool, setTool] = useState<Tool | null>(null)
@@ -61,6 +64,10 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     const loadGen = useRef(0)
     // A load that failed, by request id, with its reason: shown in place of the editor with Try again (no automatic retry).
     const [loadFailure, setLoadFailure] = useState<{ id: string; relative: string; text: string } | null>(null)
+    const [editorStatus, setEditorStatus] = useState<{ owner: string; value: EditorStatus } | null>(null)
+    const statusOwner = useRef<string | null>(null)
+    const tabStrip = useRef<HTMLDivElement>(null)
+    const [startupFailure, setStartupFailure] = useState(false)
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
     // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
@@ -69,10 +76,12 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     // A refusal stays shown until the next action that succeeds (a cancelled sheet keeps it).
     const run: Run = async (request) => {
         const r = await call(request)
+        if (request.kind === 'load' && collectionRef.current !== null) return r
+        if (request.kind !== 'load' && r.kind !== 'cancelled') setStartupFailure(false)
         const text = resultText(r)
         if (text) {
             setMessage(text)
-            setOfferNew(r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
+            setOfferNew(request.kind !== 'load' && r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
         } else if (r.kind !== 'cancelled') {
             setMessage('')
             setOfferNew(false)
@@ -225,7 +234,9 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     }, [editorUp, doc])
     const loaded = state.loaded
     useEffect(() => {
-        if (!loaded) void call({ kind: 'load' })
+        if (!loaded) void call({ kind: 'load' }).then((r) => {
+            if (r.kind === 'refused' && collectionRef.current === null) { setMessage(C.start.restoreFailed); setStartupFailure(true) }
+        })
     }, [loaded, call])
     // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
     useEffect(() => {
@@ -246,6 +257,11 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
 
     const where = collection ? (collection.builtIn ? C.chips.builtIn : collection.folder) : ''
     const environment = collection?.environments.find((e) => e.name === collection.environment) ?? null
+    const editorOwner = doc && docCollection.current === collectionKey && selected === doc.id ? `${collectionKey}:${doc.id}:${docSeq}` : null
+    statusOwner.current = editorOwner
+    const displayedStatus = editorStatus?.owner === editorOwner ? editorStatus.value : null
+    const displayed = displayedStatus?.response ?? null
+    useEffect(() => { tabStrip.current?.querySelector('[role="tab"][aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }, [collectionKey, selected])
 
     const band = (
         <div
@@ -257,15 +273,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                 borderBottom: '1px solid var(--v2-rule)',
             }}
         >
-            <div className='min-w-0'>
-                <h1 ref={ref} id='workbench-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                    {C.title}
-                </h1>
-                <p className='text-[14px]' style={{ marginTop: 4, ...soft }} data-slot='api-lead'>
-                    {collection ? C.lead(collection.name, tenant ? `${where} · ${tenant.label}` : where) : C.leadNone}
-                </p>
-            </div>
-            {collection ? (
+            <PageIntro className='w-full' description={<span data-slot='api-lead'>{collection ? C.description : C.leadNone}</span>} actions={collection ? (
                 <div className='ml-auto flex min-w-0 max-w-full flex-wrap items-center' style={{ gap: 8 }} data-slot='api-chips'>
                     <span className='relative'>
                         <button
@@ -355,7 +363,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                         {environment ? <span style={faint}>{C.chips.envOrigin[environment.origin] ?? environment.origin}</span> : null}
                     </label>
                 </div>
-            ) : null}
+            ) : null} />
         </div>
     )
 
@@ -397,7 +405,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
     if (!state.available) {
         return (
             <section
-                aria-labelledby='workbench-heading'
+                aria-label={C.title}
                 data-slot='api-client-v2'
                 className='flex min-h-0 min-w-0 flex-grow flex-col'
                 style={{
@@ -414,7 +422,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
 
     return (
         <section
-            aria-labelledby='workbench-heading'
+            aria-label={C.title}
             data-slot='api-client-v2'
             className='flex min-h-0 min-w-0 flex-grow flex-col'
             style={{
@@ -426,7 +434,7 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                 <div className='flex flex-col' style={{ gap: 12, padding: '20px var(--v2-page-x)' }}>
                     {alerts}
                     {state.loaded ? (
-                        <Start state={state} run={run} message={message} offerNew={offerNew} />
+                        <Start state={state} run={run} message={message} offerNew={offerNew} retry={startupFailure ? async () => { const r = await run({ kind: 'load' }); if (collectionRef.current === null) { setStartupFailure(r.kind === 'refused'); if (r.kind === 'refused') setMessage(C.start.restoreFailed) } } : undefined} />
                     ) : (
                         <p role='status' className='text-[13px]' style={soft}>
                             {C.opening}
@@ -450,9 +458,11 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                         />
                         <div className='flex min-h-0 min-w-0 flex-grow flex-col' data-slot='api-main'>
                             <div
+                                ref={tabStrip}
                                 role='tablist'
                                 aria-label={C.openRequests}
-                                className='flex shrink-0 flex-wrap items-end'
+                                className='flex min-w-0 shrink-0 items-end overflow-x-auto'
+                                onFocusCapture={(e) => (e.target as HTMLElement).scrollIntoView({ block: 'nearest', inline: 'nearest' })}
                                 style={{
                                     minHeight: 36,
                                     gap: 2,
@@ -471,7 +481,8 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     return (
                                         <span
                                             key={t.id}
-                                            className='flex items-center rounded-t-[7px] border border-b-0'
+                                            data-request-tab=''
+                                            className='flex shrink-0 items-center rounded-t-[7px] border border-b-0'
                                             style={{
                                                 height: 30,
                                                 maxWidth: 240,
@@ -548,7 +559,10 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     notes={notes}
                                     call={call}
                                     schemas={collection.schemas}
-                                    historyKey={`${collection.id}:${state.running.length}`}
+                                    historyKey={`${collection.scope}:${state.running.length}`}
+                                    onStatusChange={(value) => {
+                                        if (statusOwner.current === editorOwner) setEditorStatus(value && editorOwner ? { owner: editorOwner, value } : null)
+                                    }}
                                     onClosed={() => setDoc(null)}
                                     register={(handle) => editors.current.set(doc.id, handle)}
                                     context={snapshot.active?.context ?? null}
@@ -561,9 +575,9 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                 </p>
                             ) : null}
                             <div
-                                className='flex shrink-0 items-center text-[12px]'
+                                className='flex shrink-0 flex-wrap items-center text-[12px]'
                                 style={{
-                                    height: 26,
+                                    minHeight: 26,
                                     gap: 14,
                                     padding: '0 14px',
                                     borderTop: '1px solid var(--v2-rule)',
@@ -584,6 +598,13 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                                     />
                                     {state.busy ? C.working : C.footer.ready}
                                 </span>
+                                {displayedStatus ? <span role='status' aria-live='polite' data-slot='workbench-save-status' data-state={displayedStatus.save.state}>{displayedStatus.save.text}</span> : null}
+                                {displayed ? <span role='status' aria-live='polite' className='flex min-w-0 flex-wrap items-center' style={{ gap: 8 }} data-slot='workbench-response-status' data-run={displayed.record.id} data-request={displayed.record.request}>
+                                    <span>{displayed.history ? 'History · ' : ''}{requestName(displayed.record.relative)} · {clockOf(displayed.record.at)}</span>
+                                    <span style={{ color: tone(displayed.record).fg }}>{tone(displayed.record).text}</span>
+                                    <span>{elapsedText(displayed.record.elapsedMs)}</span>
+                                    <span>{sizeText(displayed.record.bytes)}</span>
+                                </span> : null}
                                 <span className='ml-auto'>{C.footer.requests(collection.requests.length)}</span>
                                 {collection.archives ? <span>{C.footer.archives(collection.archives)}</span> : null}
                             </div>
@@ -634,10 +655,10 @@ export const ApiClient = forwardRef<HTMLHeadingElement, ApiClientProps>(function
                 : null}
         </section>
     )
-})
+}
 
 /** No collection open: open, create, the built-in, recents. */
-function Start({ state, run, message, offerNew }: { state: WorkbenchState; run: Run; message: string; offerNew: boolean }) {
+function Start({ state, run, message, offerNew, retry }: { state: WorkbenchState; run: Run; message: string; offerNew: boolean; retry?: () => Promise<void> }) {
     return (
         <div className='flex flex-col' style={{ gap: 14, maxWidth: 760 }} data-slot='workbench-start'>
             <p className='text-[14px]'>{C.start.none}</p>
@@ -653,6 +674,7 @@ function Start({ state, run, message, offerNew }: { state: WorkbenchState; run: 
                     data-slot='workbench-message'
                 >
                     <p>{message}</p>
+                    {retry ? <Btn tier='tertiary' className='self-start' onClick={() => void retry()}>{C.tryAgain}</Btn> : null}
                     {offerNew ? (
                         <Btn className='self-start' onClick={() => void run({ kind: 'createCollection' })}>
                             {C.start.create}

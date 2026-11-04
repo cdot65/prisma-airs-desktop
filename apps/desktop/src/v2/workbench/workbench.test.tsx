@@ -422,7 +422,7 @@ const ran: RunView = {
 }
 
 describe('v2 API Client', () => {
-    it('announces "<request> · <code> · <duration>" in a status region after Send, the body outside it (V2-T14, known gap 5)', async () => {
+    it('announces request identity and response metrics in the footer after Send, with the body outside it', async () => {
         const native = scriptedNative(fxApi())
         const requests = workbench(native, (request) =>
             request.kind === 'openRequest'
@@ -447,8 +447,10 @@ describe('v2 API Client', () => {
         const pane = screen.getByRole('region', { name: 'Response pane' })
         expect(within(pane).getByText('Send to see the response here.')).toBeInTheDocument()
         await user.click(within(line).getByRole('button', { name: 'Send' }))
-        const status = document.querySelector('[data-slot="workbench-save-status"]') as HTMLElement
-        await waitFor(() => expect(status).toHaveTextContent('list · 200 · 42 ms'))
+        await waitFor(() => expect(document.querySelector('[data-slot="workbench-response-status"]')).toHaveTextContent('42 ms'))
+        const status = document.querySelector('[data-slot="workbench-response-status"]') as HTMLElement
+        expect(status).toHaveTextContent('list')
+        expect(status).toHaveTextContent('200 OK')
         expect(status).toHaveAttribute('role', 'status')
         // The body is shown, outside the live region: pretty-printed first (C41), exactly as received under Raw.
         const response = await screen.findByRole('region', { name: 'Response' })

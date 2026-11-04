@@ -150,8 +150,8 @@ export const CALLS_COPY = {
 /** The v2 API Client (C41): R2App start=api over the C14/C15 workbench behaviour. Tests assert these exact strings. */
 export const API_COPY = {
     title: 'API Client',
-    lead: (collection: string, where: string) => `Collection ${collection} · ${where} · requests with tenant credentials go only to known operations`,
-    leadNone: 'Collections live in your folders (Git-friendly TOML). Drafts, private environments, secret values, history and cookies stay on this Mac.',
+    description: 'Edit requests and inspect responses. Tenant credentials go only to known operations.',
+    leadNone: 'Open a folder collection or start with the built-in Strata Cloud Manager requests.',
     chips: {
         collection: 'Collection',
         environment: 'Environment',
@@ -347,6 +347,7 @@ export const API_COPY = {
     },
     // The start panel (no collection open).
     start: {
+        restoreFailed: 'The preferred collection could not be opened. Restore its folder and try again, choose another collection, or open Strata Cloud Manager.',
         none: 'No collection is open.',
         open: 'Open collection…',
         create: 'New collection…',

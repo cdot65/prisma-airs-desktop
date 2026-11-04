@@ -69,10 +69,4 @@ export function splitUrl(url: string): { base: string; rest: string } {
 }
 
 /** A body's JSON, pretty-printed, or null when it is not JSON. */
-export function prettyJson(text: string): string | null {
-    try {
-        return JSON.stringify(JSON.parse(text), null, 2)
-    } catch {
-        return null
-    }
-}
+export { formatJson as prettyJson } from './json-presentation'

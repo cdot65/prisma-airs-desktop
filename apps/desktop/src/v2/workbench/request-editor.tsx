@@ -4,9 +4,11 @@ import { type WorkbenchCall, fieldText, resultText, saveRefusalText } from '../.
 import { Btn } from '../controls'
 import { Glyph } from '../icons'
 import { API_COPY as C, BODY_KINDS, METHODS, methodColor } from './copy'
-import { type Row, type RowKind, enabledCount, parseRows, serializeRows, splitUrl } from './request-rows'
+import { type Row, type RowKind, enabledCount, parseRows, serializeRows } from './request-rows'
 import { ResponsePane } from './response-pane'
 import { requestName } from './request-tree'
+import { JsonBodyEditor, UrlTemplateInput } from './json-presentation'
+import type { DisplayedResponse, EditorStatus } from './presentation-status'
 
 /** File > Save (Cmd+S) arrives from the native menu as this window event. */
 export const SAVE_DOCUMENT_EVENT = 'airs-save-document'
@@ -80,6 +82,7 @@ interface Props {
     context?: string | null
     running?: RunningView[]
     review?: SendReviewView | null
+    onStatusChange?: (status: EditorStatus | null) => void
 }
 
 /**
@@ -92,7 +95,7 @@ interface Props {
  * that moment; typing pauses protect the snapshot on this Mac; a reply
  * never overwrites newer typing.
  */
-export function RequestEditor({ initial, notes, call, schemas, historyKey, onClosed, register, context = null, running = [], review = null }: Props) {
+export function RequestEditor({ initial, notes, call, schemas, historyKey, onClosed, register, context = null, running = [], review = null, onStatusChange }: Props) {
     const ids = useId()
     const [doc, setDoc] = useState(initial)
     const [fields, setFields] = useState(initial.fields)
@@ -108,6 +111,9 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
     const [saving, setSaving] = useState(false)
     const [preview, setPreview] = useState<Preview | null>(null)
     const [run, setRun] = useState<RunView | null>(null)
+    const [displayed, setDisplayed] = useState<DisplayedResponse | null>(null)
+    const reportStatus = useRef(onStatusChange)
+    reportStatus.current = onStatusChange
     const [sending, setSending] = useState(false)
     const [sub, setSub] = useState<Sub>('params')
     const [asText, setAsText] = useState<Record<RowKind, boolean>>({
@@ -300,7 +306,9 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
         setSending(false)
         if (r.kind === 'ran') {
             setRun(r.run)
-            setStatus(completionText(r.run.record))
+            // Response metrics belong to the displayed response in the footer;
+            // the save state remains the state of the current editor text.
+            setStatus(onStatusChange ? '' : completionText(r.run.record))
             return
         }
         if (r.kind === 'reviewRequired') {
@@ -340,7 +348,10 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
     useEffect(() => {
         if (dirty) setStatus((s) => (s === C.sending || s === C.waitingReview || s === 'Saving…' ? s : ''))
     }, [dirty])
-    const url = splitUrl(fields.url)
+    useEffect(() => {
+        reportStatus.current?.({ save: { text: status || state, state: doc.new ? 'new' : dirty ? 'unsaved' : 'saved' }, response: displayed })
+    }, [status, state, dirty, doc.new, displayed])
+    useEffect(() => () => reportStatus.current?.(null), [])
 
     const rowsTable = (kind: RowKind) => {
         const text = kind === 'query' ? fields.query : fields.headers
@@ -539,14 +550,14 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
                 </div>
                 <label htmlFor={`${ids}-body`} className='flex flex-col text-[13px] font-medium' style={{ gap: 4 }}>
                     {C.body}
-                    <textarea
+                    {fields.bodyKind === 'json' ? <JsonBodyEditor id={`${ids}-body`} value={fields.body} readOnly={!doc.bodyEditable} style={{ ...TEXTAREA_STYLE, minHeight: 200 }} onChange={(text) => edit({ body: text })} /> : <textarea
                         id={`${ids}-body`}
                         value={fields.body}
                         spellCheck={false}
                         readOnly={!doc.bodyEditable}
                         style={{ ...TEXTAREA_STYLE, minHeight: 200 }}
                         onChange={(e) => edit({ body: e.target.value })}
-                    />
+                    />}
                 </label>
                 {!doc.bodyEditable ? (
                     <p className='text-[12px]' style={faint}>
@@ -797,35 +808,7 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
                         </span>
                     </span>
                     <span className='flex min-w-0 flex-grow items-center' style={{ padding: '0 12px', gap: 4 }}>
-                        {url.base ? (
-                            <span
-                                aria-hidden
-                                className='shrink-0 rounded-[4px] font-mono text-[12px]'
-                                style={{
-                                    padding: '1px 5px',
-                                    background: 'var(--v2-acc-soft)',
-                                    color: 'var(--v2-acc)',
-                                }}
-                            >
-                                {url.base}
-                            </span>
-                        ) : null}
-                        <input
-                            aria-label={C.url}
-                            value={fields.url}
-                            autoComplete='off'
-                            spellCheck={false}
-                            onChange={(e) => edit({ url: e.target.value })}
-                            className='min-h-0 min-w-0 flex-grow border-0 bg-transparent font-mono text-[12.5px]'
-                            style={{
-                                border: 0,
-                                minHeight: 0,
-                                borderRadius: 0,
-                                background: 'transparent',
-                                padding: 0,
-                                color: 'var(--v2-ink)',
-                            }}
-                        />
+                        <UrlTemplateInput label={C.url} value={fields.url} onChange={(text) => edit({ url: text })} />
                     </span>
                 </div>
                 <Btn tier='primary' className='h-[34px] px-[18px] text-[13px]' disabled={sending} onClick={() => void sendNow(null)}>
@@ -839,7 +822,7 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
                         {C.discardChanges}
                     </Btn>
                 ) : null}
-                <span
+                {!onStatusChange ? <span
                     role='status'
                     aria-live='polite'
                     className='flex min-w-0 items-center rounded-[8px] border text-[12px]'
@@ -857,7 +840,7 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
                 >
                     {status === '' || status === 'Saved' ? <Glyph name={dirty ? 'dot' : 'check'} size={12} color={dirty ? 'var(--v2-acc)' : 'var(--v2-ok)'} /> : null}
                     <span className='min-w-0'>{status || state}</span>
-                </span>
+                </span> : null}
             </div>
             <div className='flex min-h-0 flex-grow' data-slot='workbench-columns'>
                 <div className='flex min-w-0 flex-col' style={{ flex: '1 1 360px', borderRight: '1px solid var(--v2-rule)' }}>
@@ -912,6 +895,7 @@ export function RequestEditor({ initial, notes, call, schemas, historyKey, onClo
                     review={review}
                     call={call}
                     historyKey={historyKey}
+                    onDisplayed={setDisplayed}
                     onApply={() => review && void sendNow(review.review)}
                     onDismiss={() => void call({ kind: 'dismissReview' }).then(() => setStatus(''))}
                 />
