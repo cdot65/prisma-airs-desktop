@@ -91,6 +91,7 @@ const FEATURE_IDS: readonly string[] = [
     'settings',
 ]
 const THEMES: readonly string[] = ['system', 'light', 'dark']
+const COLOR_THEMES: readonly string[] = ['prismaAirs', 'gruvbox']
 const PRODUCT_IDS: readonly string[] = ['runtimeSecurity', 'gateway', 'redTeam', 'modelSkill']
 const ENVIRONMENTS: readonly string[] = ['production', 'staging', 'other']
 const SETUP_MODES: readonly string[] = ['firstRun', 'add']
@@ -350,6 +351,7 @@ function isSetupView(value: unknown): boolean {
         !isTenant(value.tenant) ||
         !isProductList(value.products) ||
         typeof value.scanRequired !== 'boolean' ||
+        typeof value.managementRequired !== 'boolean' ||
         !optional((w) => isRecord(w) && typeof w.reference === 'string' && w.reference.length > 0 && isListedWorkspace(w.workspace) && typeof w.restored === 'boolean', value.workspace) ||
         !Array.isArray(value.packs) ||
         !value.packs.every((p: unknown) => isRecord(p) && oneOf(PRODUCT_IDS, p.product) && typeof p.count === 'number' && Number.isInteger(p.count) && p.count >= 0) ||
@@ -2675,6 +2677,7 @@ export function parseShellSnapshot(value: unknown): ShellSnapshot {
         !isRecord(value) ||
         !isDecimalU64(value.revision) ||
         !THEMES.includes(value.appearance as string) ||
+        !COLOR_THEMES.includes(value.colorTheme as string) ||
         !ONBOARDING_STATES.includes(value.onboarding as string) ||
         typeof value.activeFeature !== 'string' ||
         !FEATURE_IDS.includes(value.activeFeature) ||

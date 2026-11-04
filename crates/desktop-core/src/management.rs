@@ -23,7 +23,7 @@ use scm_sdk::airs::management::{
 };
 use scm_sdk::airs::model_security::ModelSecurityClient;
 use scm_sdk::airs::red_team::RedTeamClient;
-use scm_sdk::auth::AuthContext;
+use scm_sdk::auth::{AuthContext, Authentication, OAuthProvider, TokenProvider};
 use scm_sdk::dlp::{
     DataFilteringProfileListParams, DictionaryListParams, DlpClient, SpringListParams,
 };
@@ -557,6 +557,9 @@ fn limits() -> Limits {
 /// Management, DLP, Red Team, Model Security and AgentGuard clients bound
 /// to one credential generation.
 pub struct ManagementBinding {
+    /// The same OAuth provider used by every product client. Authenticating
+    /// it proves the grant without requiring any product inventory permission.
+    oauth: Arc<OAuthProvider>,
     management: ManagementClient,
     dlp: DlpClient,
     red_team: RedTeamClient,
@@ -620,10 +623,21 @@ impl ManagementBinding {
             .map_err(|_| ManagementFailure::Configuration)?;
         let secret =
             Secret::new(secret.as_str()).map_err(|_| ManagementFailure::CredentialMissing)?;
+        let policy = Arc::new(OriginPolicy::new(all.map(Endpoint::clone)));
+        let oauth = Arc::new(
+            OAuthProvider::new(
+                context,
+                secret,
+                Arc::clone(&transport),
+                policy.clone(),
+                session.clone(),
+            )
+            .map_err(|_| ManagementFailure::Configuration)?,
+        );
         let client = Client::builder(api.clone())
-            .oauth_credentials(context, secret, false)
+            .authentication(Authentication::oauth(oauth.clone(), false))
             .transport(transport)
-            .destination_policy(Arc::new(OriginPolicy::new(all.map(Endpoint::clone))))
+            .destination_policy(policy)
             .limits(limits())
             .session(session)
             .build()
@@ -656,6 +670,7 @@ impl ManagementBinding {
         .map_err(configured)?;
         let dlp = management.dlp(dlp).map_err(configured)?;
         Ok(Self {
+            oauth,
             management,
             dlp,
             red_team,
@@ -677,16 +692,12 @@ impl ManagementBinding {
             .ok()
     }
 
-    /// The credential check (v1 `checktenant`): one profile, latest only.
+    /// Authenticate only against the admitted OAuth issuer. Product reads
+    /// report their own permissions; a profile-list denial is not a bad client.
     pub async fn verify(&self, deadline: Instant) -> Result<(), scm_sdk::Error> {
-        let mut page = PaginationOptions::default();
-        page.limit = 1;
-        page.latest = Some(true);
-        self.management
-            .profiles()
-            .list(page, Self::options(deadline).as_ref())
-            .await
-            .map(|_| ())
+        let options =
+            Self::options(deadline).ok_or_else(|| scm_sdk::Error::new(ErrorKind::Configuration))?;
+        self.oauth.token(&options).await.map(|_| ())
     }
 
     /// One page of `resource`, normalized.

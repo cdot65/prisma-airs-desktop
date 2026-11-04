@@ -173,7 +173,8 @@ pub enum Intent {
     DiscardTenantSetup {
         context: ContextRef,
     },
-    /// Create a tenant profile with no credential.
+    /// Legacy synthetic fixture setup only. Shipping builds refuse this path;
+    /// new tenants must complete authenticated setup.
     CreateTenant {
         profile: ProfileDraft,
     },
@@ -222,6 +223,12 @@ pub enum Intent {
         id: String,
     },
     /// Remove a tenant profile and clean up its credential.
+    /// Edit descriptive metadata only; identity and approved endpoints stay bound.
+    EditTenant {
+        tenant: TenantId,
+        label: String,
+        environment: features::TenantEnvironment,
+    },
     DeleteTenant {
         tenant: TenantId,
     },
@@ -773,6 +780,7 @@ intent_kinds! {
     AcknowledgeItem => "acknowledgeItem",
     SnoozeItem => "snoozeItem",
     UnsnoozeItem => "unsnoozeItem",
+    EditTenant => "editTenant",
     DeleteTenant => "deleteTenant",
     ConfigureScanCredential => "configureScanCredential",
     RemoveScanCredential => "removeScanCredential",
@@ -1309,6 +1317,10 @@ pub struct CoreConfig {
     /// Client beside the configured management endpoints (the built-in
     /// catalogue's Strata Cloud Manager host).
     pub workbench_api_origins: Vec<String>,
+    /// Test-build compatibility for preauthenticated synthetic tenant fixtures.
+    /// Shipping builds have no such capability; never controlled by IPC.
+    #[cfg(feature = "test-fixtures")]
+    pub fixture_tenant_creation: bool,
 }
 
 /// The built-in catalogue's API host (C15).
@@ -1331,6 +1343,8 @@ impl Default for CoreConfig {
             git: crate::workbench::git::locate(),
             workbench_network: crate::workbench::admission::Network::LoopbackOnly,
             workbench_api_origins: vec![SCM_API_ORIGIN.to_owned()],
+            #[cfg(feature = "test-fixtures")]
+            fixture_tenant_creation: true,
         }
     }
 }
@@ -1748,6 +1762,8 @@ struct State {
     git: Option<std::path::PathBuf>,
     workbench_network: crate::workbench::admission::Network,
     workbench_api_origins: Vec<String>,
+    /// False in every shipping build.
+    fixture_tenant_creation: bool,
     /// The active context's Gateway workspaces and choice (C16).
     gateway: gateway_domain::GatewayState,
     /// The native Harness conversation (C19).
@@ -2812,6 +2828,10 @@ impl Core {
             git: config.git.clone(),
             workbench_network: config.workbench_network,
             workbench_api_origins: config.workbench_api_origins.clone(),
+            #[cfg(feature = "test-fixtures")]
+            fixture_tenant_creation: config.fixture_tenant_creation,
+            #[cfg(not(feature = "test-fixtures"))]
+            fixture_tenant_creation: false,
             harness: None,
             harness_engine: adapters.harness.engine.is_some(),
             harness_sign_in: None,
@@ -3685,6 +3705,9 @@ fn admit(
             state.changed();
         }
         Intent::CreateTenant { profile } => {
+            if !state.fixture_tenant_creation {
+                return Err(Refusal::InvalidInput);
+            }
             state.require_storage()?;
             let profile = profile.validate().ok_or(Refusal::InvalidInput)?;
             if state.data.tenants.len() >= MAX_TENANTS {
@@ -3835,6 +3858,35 @@ fn admit(
             if let Some((operation, old_key)) = issued_by {
                 state.forget_issuance(&operation, &old_key);
             }
+            state.changed();
+        }
+        Intent::EditTenant {
+            tenant,
+            label,
+            environment,
+        } => {
+            state.require_storage()?;
+            if !state.committed_tenant(&tenant) {
+                return Err(Refusal::InvalidInput);
+            }
+            let before = state.data.clone();
+            let target = state
+                .data
+                .tenants
+                .iter_mut()
+                .find(|t| t.profile.id == tenant)
+                .ok_or(Refusal::InvalidInput)?;
+            let validated = ProfileDraft {
+                label,
+                tsg_id: target.profile.tsg_id.clone(),
+                destination: target.profile.destination.clone(),
+                environment,
+            }
+            .validate()
+            .ok_or(Refusal::InvalidInput)?;
+            target.profile.label = validated.label;
+            target.profile.environment = validated.environment;
+            state.save_with(&before)?;
             state.changed();
         }
         Intent::DeleteTenant { tenant } => {

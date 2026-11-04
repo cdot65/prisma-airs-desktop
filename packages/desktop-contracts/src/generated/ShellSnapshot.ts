@@ -4,6 +4,7 @@ import type { ActiveContext } from "./ActiveContext";
 import type { AdminInventoryView } from "./AdminInventoryView";
 import type { CallView } from "./CallView";
 import type { ChangesView } from "./ChangesView";
+import type { ColorTheme } from "./ColorTheme";
 import type { DiagnosticsView } from "./DiagnosticsView";
 import type { EndpointReviewView } from "./EndpointReviewView";
 import type { FeatureEntry } from "./FeatureEntry";
@@ -34,7 +35,7 @@ export type ShellSnapshot = {
 /**
  * Opaque, monotonically increasing revision (string-encoded u64).
  */
-revision: string, appearance: Theme, 
+revision: string, appearance: Theme, colorTheme: ColorTheme, 
 /**
  * Which shell renders (C28, D058); `features` is that shell's catalogue.
  * First-run wizard state (C28/C29).

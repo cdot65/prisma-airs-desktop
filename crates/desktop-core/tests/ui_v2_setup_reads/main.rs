@@ -352,6 +352,10 @@ struct Desk {
 }
 
 async fn desk() -> Desk {
+    desk_with_fixture_creation(true).await
+}
+
+async fn desk_with_fixture_creation(fixture_tenant_creation: bool) -> Desk {
     let ca = TestCa::new("airs-v2 c29 ca");
     let script = Arc::new(Mutex::new(default_script()));
     let routed = Arc::clone(&script);
@@ -366,6 +370,7 @@ async fn desk() -> Desk {
     let (adapters, handles) = fixtures::adapters();
     let config = CoreConfig {
         management: ManagementEndpoints::at_origin(&origin),
+        fixture_tenant_creation,
         ..CoreConfig::default()
     };
     let core = Core::new(config, adapters);
@@ -934,4 +939,158 @@ async fn a_replaced_client_authenticates_afresh_and_profile_changes_retire_the_b
             .await,
         Err(Refusal::StaleContext)
     );
+}
+
+// Owner refinement: management authentication gates every new tenant; a
+// product permission is a separate observation and scan keys remain optional.
+#[tokio::test]
+async fn refinement_oauth_authentication_does_not_require_profile_permission() {
+    let mut desk = desk().await;
+    desk.script.lock().expect("script").routes.insert(
+        format!("/aisec/v1/mgmt/profiles/tsg/{TSG}"),
+        (403, json!({"error": "profile permission denied"})),
+    );
+    desk.send(
+        json!({"kind": "beginTenantSetup", "mode": "firstRun", "profile": {
+            "label": "OAuth only", "tsgId": TSG,
+            "destination": {"kind": "region", "region": "europe"}
+        }}),
+    )
+    .await
+    .expect("draft");
+    let context = desk.draft_context();
+    desk.send(
+        json!({"kind": "configureManagementCredential", "context": context,
+            "mode": "keychain", "clientId": CLIENT_ID, "secret": CLIENT_SECRET
+        }),
+    )
+    .await
+    .expect("management credential");
+    assert!(eventually(|| desk.setup().tenant.management.state == ScanState::Ready).await);
+    let context = desk.draft_context();
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify");
+    let verify = desk.verified().await;
+    let auth = verify
+        .steps
+        .iter()
+        .find(|s| s.line == VerifyLine::ManagementClient)
+        .expect("auth line");
+    assert_eq!(
+        auth.state,
+        VerifyState::Pass,
+        "OAuth succeeds independently of Runtime profile permission: {}",
+        auth.reason
+    );
+    assert!(
+        !verify.blocking && desk.setup().completable,
+        "a missing scan key does not block authenticated first-run"
+    );
+    assert!(!desk.setup().scan_required);
+    assert!(
+        desk._server
+            .seen()
+            .iter()
+            .all(|request| !request.request_line.contains("/profiles/")),
+        "authentication must not inventory Runtime profiles"
+    );
+    desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
+        .await
+        .expect("complete");
+    let snapshot = desk.snap();
+    assert_eq!(snapshot.tenants.len(), 1);
+    assert_eq!(snapshot.tenants[0].scan.state, ScanState::Missing);
+    assert_eq!(
+        snapshot.onboarding,
+        desktop_core::features::OnboardingState::Done
+    );
+}
+
+#[tokio::test]
+async fn refinement_missing_oauth_cannot_complete_an_add_draft() {
+    let mut desk = desk().await;
+    desk.send(
+        json!({"kind": "beginTenantSetup", "mode": "add", "profile": {
+            "label": "No OAuth", "tsgId": TSG,
+            "destination": {"kind": "region", "region": "europe"}
+        }}),
+    )
+    .await
+    .expect("draft");
+    let context = desk.draft_context();
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify");
+    let verify = desk.verified().await;
+    assert!(
+        verify.blocking && !desk.setup().completable,
+        "missing management OAuth must block Add as well as first-run"
+    );
+    assert_eq!(
+        desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
+            .await,
+        Err(Refusal::InvalidInput)
+    );
+    assert!(desk.snap().tenants.is_empty());
+    assert!(
+        desk._server.seen().is_empty(),
+        "missing credentials initiate no network call"
+    );
+}
+
+#[tokio::test]
+async fn refinement_invalid_oauth_cannot_complete_an_add_draft() {
+    let mut desk = desk().await;
+    desk.script.lock().expect("script").token_status = 401;
+    desk.send(
+        json!({"kind": "beginTenantSetup", "mode": "add", "profile": {
+            "label": "Invalid OAuth", "tsgId": TSG,
+            "destination": {"kind": "region", "region": "europe"}
+        }}),
+    )
+    .await
+    .expect("draft");
+    let context = desk.draft_context();
+    desk.send(
+        json!({"kind": "configureManagementCredential", "context": context,
+            "mode": "keychain", "clientId": CLIENT_ID, "secret": CLIENT_SECRET
+        }),
+    )
+    .await
+    .expect("management credential");
+    assert!(eventually(|| desk.setup().tenant.management.state == ScanState::Ready).await);
+    let context = desk.draft_context();
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify");
+    let verify = desk.verified().await;
+    assert!(
+        verify.blocking && !desk.setup().completable,
+        "invalid OAuth is a blocking authentication failure, not an optional product warning"
+    );
+    assert_eq!(
+        desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
+            .await,
+        Err(Refusal::InvalidInput)
+    );
+    assert!(desk.snap().tenants.is_empty());
+}
+
+#[tokio::test]
+async fn refinement_production_policy_rejects_the_legacy_create_tenant_bypass() {
+    // This uses the same actor/intent path as production, with the fixture-only
+    // compatibility capability explicitly disabled as it is in shipping builds.
+    let mut desk = desk_with_fixture_creation(false).await;
+    assert_eq!(
+        desk.send(json!({"kind": "createTenant", "profile": {
+            "label": "Bypass", "tsgId": TSG,
+            "destination": {"kind": "region", "region": "europe"}
+        }}))
+        .await,
+        Err(Refusal::InvalidInput)
+    );
+    assert!(desk.snap().tenants.is_empty());
+    assert!(desk.snap().active.is_none());
+    assert!(desk._server.seen().is_empty());
 }

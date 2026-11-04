@@ -21,9 +21,13 @@ context: ContextRef,
  */
 tenant: TenantView, products: Array<ProductId>, 
 /**
- * First run requires the scan key; the add sheet does not.
+ * Scan keys are configured separately; setup never submits a scan.
  */
-scanRequired: boolean, packs: Array<PackView>, 
+scanRequired: boolean, 
+/**
+ * Every new tenant requires authenticated management OAuth.
+ */
+managementRequired: boolean, packs: Array<PackView>, 
 /**
  * The Gateway workspace chosen for the draft, with the reference its
  * inference key is configured under.

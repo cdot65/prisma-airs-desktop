@@ -90,15 +90,6 @@ pub(super) fn case_products(product: ProductId) -> &'static [CaseProduct] {
     }
 }
 
-fn product_label(product: ProductId) -> &'static str {
-    match product {
-        ProductId::RuntimeSecurity => "AI Runtime Security",
-        ProductId::Gateway => "AI Gateway",
-        ProductId::RedTeam => "AI Red Teaming",
-        ProductId::ModelSkill => "Model and skill scans",
-    }
-}
-
 fn needs_management(product: ProductId) -> bool {
     product != ProductId::RuntimeSecurity
 }
@@ -356,7 +347,6 @@ impl State {
         let setup = self.setup_for(context)?;
         let generation = setup.verify.as_ref().map_or(1, |v| v.generation + 1);
         let signature = Self::setup_signature(setup);
-        let mode = setup.mode;
         let products = setup.products.clone();
         let scan = setup.tenant.scan.clone();
         let management_ready = matches!(setup.tenant.management, ScanCapability::Ready { .. });
@@ -386,13 +376,9 @@ impl State {
             ScanCapability::Storing { .. } => {
                 (VerifyState::Fail, "The scan key is still being saved.")
             }
-            _ if mode == SetupMode::FirstRun => (
-                VerifyState::Fail,
-                "No scan key saved. Runtime Security needs one on first run.",
-            ),
             _ => (
                 VerifyState::Warning,
-                "No scan key saved; scans stay unavailable until one is added in Administration.",
+                "No scan key configured; scanning stays unavailable until one is added in Settings.",
             ),
         };
         steps.push(StepState {
@@ -404,35 +390,20 @@ impl State {
             },
             operation: None,
         });
-        // Management client: a real verify read when one is stored.
-        let needing: Vec<&str> = products
-            .iter()
-            .copied()
-            .filter(|p| needs_management(*p))
-            .map(product_label)
-            .collect();
+        // Authentication is required independently of the chosen products.
         let management = if management_ready {
             match admit(self, ManagementRequest::Verify) {
-                Some(op) => (VerifyState::Pending, "Reading…".to_owned(), Some(op)),
+                Some(op) => (VerifyState::Pending, "Authenticating…".to_owned(), Some(op)),
                 None => (
                     VerifyState::Fail,
-                    "The verify read could not be started.".to_owned(),
+                    "OAuth authentication could not be started.".to_owned(),
                     None,
                 ),
             }
-        } else if needing.is_empty() {
-            (
-                VerifyState::Skipped,
-                "No management client; Administration stays read-only.".to_owned(),
-                None,
-            )
         } else {
             (
-                VerifyState::Warning,
-                format!(
-                    "No management client: {} stay read-only until one is saved in Administration.",
-                    needing.join(", ")
-                ),
+                VerifyState::Fail,
+                "Management OAuth authentication is required before adding a tenant.".to_owned(),
                 None,
             )
         };
@@ -548,7 +519,7 @@ impl State {
             }
             (VerifyLine::ManagementClient, ManagementResult::Verified) => (
                 VerifyState::Pass,
-                "The management client can read this tenant.".to_owned(),
+                "Management OAuth authenticated successfully.".to_owned(),
             ),
             (
                 VerifyLine::Gateway,
@@ -736,12 +707,12 @@ impl State {
         let steps: Vec<VerifyStep> = run.steps.iter().map(|s| s.step.clone()).collect();
         let done = steps.iter().all(|s| s.state != VerifyState::Pending);
         let failed = steps.iter().any(|s| s.state == VerifyState::Fail);
-        // Only a required line blocks: the scan key on first run. An optional
-        // service that failed is carried as a warning the operator can
-        // continue over (and the Inbox shows).
+        // Authentication must positively pass; stored credentials and product
+        // permissions are separate facts and cannot substitute for that proof.
         let blocking = steps
             .iter()
-            .any(|s| s.state == VerifyState::Fail && s.line == VerifyLine::ScanKey);
+            .find(|s| s.line == VerifyLine::ManagementClient)
+            .is_none_or(|s| s.state != VerifyState::Pass);
         let warnings = steps
             .iter()
             .filter_map(|s| {
@@ -751,10 +722,12 @@ impl State {
                         product,
                         reason: s.reason.clone(),
                     }),
-                    VerifyState::Fail if s.line != VerifyLine::ScanKey => Some(VerifyWarning {
-                        product,
-                        reason: format!("Failed: {}", s.reason),
-                    }),
+                    VerifyState::Fail if s.line != VerifyLine::ManagementClient => {
+                        Some(VerifyWarning {
+                            product,
+                            reason: format!("Failed: {}", s.reason),
+                        })
+                    }
                     _ => None,
                 }
             })
@@ -798,7 +771,8 @@ impl State {
             context: setup.context.clone(),
             tenant: super::tenant_view(&setup.tenant),
             products: setup.products.clone(),
-            scan_required: setup.mode == SetupMode::FirstRun,
+            scan_required: false,
+            management_required: true,
             packs,
             workspace: self.setup_workspace(&setup.context),
             verify,
@@ -823,8 +797,13 @@ impl State {
         if !view.done || view.blocking || view.stale {
             return Err(Refusal::InvalidInput);
         }
-        if setup.mode == SetupMode::FirstRun
-            && !matches!(setup.tenant.scan, ScanCapability::Ready { .. })
+        if !setup
+            .tenant
+            .profile
+            .tsg_id
+            .as_deref()
+            .is_some_and(crate::management::tsg_is_valid)
+            || !matches!(setup.tenant.management, ScanCapability::Ready { .. })
         {
             return Err(Refusal::InvalidInput);
         }

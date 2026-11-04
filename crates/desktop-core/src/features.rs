@@ -109,7 +109,7 @@ pub struct VerifyView {
     pub done: bool,
     /// Some line failed.
     pub failed: bool,
-    /// A required line failed (the scan key on first run): completion is
+    /// The required OAuth authentication failed: completion is
     /// refused. An optional line's failure is carried as a warning instead.
     pub blocking: bool,
     /// The inputs changed since this run started: it no longer counts.
@@ -138,8 +138,10 @@ pub struct SetupView {
     /// The draft's profile and credential states (no secret material).
     pub tenant: crate::TenantView,
     pub products: Vec<ProductId>,
-    /// First run requires the scan key; the add sheet does not.
+    /// Scan keys are configured separately; setup never submits a scan.
     pub scan_required: bool,
+    /// Every new tenant requires authenticated management OAuth.
+    pub management_required: bool,
     pub packs: Vec<PackView>,
     /// The Gateway workspace chosen for the draft, with the reference its
     /// inference key is configured under.

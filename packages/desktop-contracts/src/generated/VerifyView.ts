@@ -19,7 +19,7 @@ done: boolean,
  */
 failed: boolean, 
 /**
- * A required line failed (the scan key on first run): completion is
+ * The required OAuth authentication failed: completion is
  * refused. An optional line's failure is carried as a warning instead.
  */
 blocking: boolean, 
