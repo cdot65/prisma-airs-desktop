@@ -213,7 +213,8 @@ impl ManagementResource {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ManagementRequest {
-    /// The credential check: a token and a one-item profile read.
+    /// Authenticate the management client against its admitted OAuth issuer.
+    /// Product permissions are checked by separate capability reads.
     Verify,
     /// One page of an inventory.
     Page {
@@ -472,8 +473,8 @@ pub fn outcome_of(error: &scm_sdk::Error) -> Outcome {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ManagementResult {
-    /// The credential check passed: a token was granted and one profile
-    /// read succeeded. It proves neither the scan key nor write access.
+    /// Management OAuth authenticated. It proves neither product inventory
+    /// permission, scan-key validity nor write access.
     Verified,
     Page {
         page: ManagementPage,

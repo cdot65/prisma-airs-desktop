@@ -544,6 +544,10 @@ async fn a_scan_only_tenant_scans_and_management_never_uses_or_replaces_the_scan
     );
     let grants = desk.requests("/oauth2/access_token");
     assert_eq!(grants.len(), 1);
+    assert!(
+        desk.requests("/aisec/v1/mgmt/profiles/").is_empty(),
+        "authentication must not require a Runtime inventory permission"
+    );
     assert_eq!(
         grants[0].header("authorization"),
         Some(basic(CLIENT_ID, CLIENT_SECRET).as_str())
