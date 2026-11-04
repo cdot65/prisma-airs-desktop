@@ -2075,6 +2075,7 @@ impl State {
     }
 
     fn changed(&mut self) {
+        self.prune_warning_rechecks();
         // Every published snapshot reflects settled scans' outcomes.
         self.sync_scans();
         self.sync_academy_calls();
@@ -2107,6 +2108,7 @@ impl State {
             .active
             .as_ref()
             .map(|_| ContextRef::issue(&self.salt, self.epoch));
+        self.prune_warning_rechecks();
         if self
             .endpoint_review
             .as_ref()

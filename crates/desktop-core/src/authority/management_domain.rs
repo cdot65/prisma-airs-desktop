@@ -417,7 +417,7 @@ impl State {
                 listings.push((record.context.clone(), list.clone()));
             }
             if for_setup {
-                // Consumed by the setup; nothing observes it.
+                // Consumed by setup or a warning recheck; nothing observes it.
                 record.observed = true;
                 setup_results.push((record.operation.clone(), result.clone()));
             }
@@ -468,6 +468,16 @@ impl State {
             index += 1;
             keep[index - 1]
         });
+    }
+
+    /// Internal warning checks have no presentation result observation, even
+    /// if their lease was retired before a management completion arrived.
+    pub(super) fn retire_warning_check_records(&mut self, operations: &[OperationId]) {
+        for record in &mut self.management_calls {
+            if operations.contains(&record.operation) {
+                record.observed = true;
+            }
+        }
     }
 
     /// The single observation of a management read's result.

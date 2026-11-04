@@ -59,27 +59,51 @@ pub(super) fn binding_for(
 
 /// Reconstruct only known historical formatters. Never infer scope from an
 /// arbitrary substring or treat an unrelated healthy overview as evidence.
+fn missing_workspace(reason: &str) -> bool {
+    reason == "No Gateway workspace in this tenant yet." || reason
+        .strip_suffix(" Gateway workspace(s) readable; none chosen, so its prerequisites were not checked.")
+        .and_then(|count| count.parse::<u32>().ok()).is_some_and(|count| count > 0)
+}
+
 fn basis(warning: &SetupWarning, current: &SetupWarningBinding) -> SetupWarningBasis {
+    let reason = warning
+        .reason
+        .strip_prefix("Failed: ")
+        .unwrap_or(&warning.reason);
     if let Some(original) = &warning.check {
         let same = original.version == 1
             && original.line == current.line
             && original.tsg_id == current.tsg_id
             && original.origin == current.origin;
-        let workspace = original
+        // A recorded scope is exact. The one explicit predicate exception is
+        // the known no-selection check: selecting a workspace and passing its
+        // full prerequisites supersedes that specific missing-selection fact.
+        let selected_now = current
             .workspace
             .as_ref()
-            .is_none_or(|w| current.workspace.as_ref() == Some(w));
+            .is_some_and(|w| !w.slug.is_empty() && !w.scope_name.is_empty());
+        let was_missing_selection = original.line == VerifyLine::Gateway
+            && original.workspace.is_none()
+            && selected_now
+            && missing_workspace(reason);
+        let workspace = original.workspace == current.workspace || was_missing_selection;
         return if same && workspace {
             SetupWarningBasis::RecordedScope
         } else {
             SetupWarningBasis::Unknown
         };
     }
-    let reason = warning
-        .reason
-        .strip_prefix("Failed: ")
-        .unwrap_or(&warning.reason);
     match warning.product {
+        ProductId::RuntimeSecurity
+            if matches!(
+                reason,
+                "No scan key saved; scans stay unavailable until one is added in Administration."
+                    | "No scan key saved. Runtime Security needs one on first run."
+                    | "No scan key configured; scanning stays unavailable until one is added in Settings."
+            ) =>
+        {
+            SetupWarningBasis::LegacyTenantSources
+        }
         ProductId::ModelSkill
             if matches!(
                 reason,
@@ -95,6 +119,9 @@ fn basis(warning: &SetupWarning, current: &SetupWarningBinding) -> SetupWarningB
             };
             if workspace.slug.is_empty() || workspace.scope_name.is_empty() {
                 return SetupWarningBasis::Unknown;
+            }
+            if missing_workspace(reason) {
+                return SetupWarningBasis::LegacyTenantSources;
             }
             let prefix = format!("Workspace {}: ", workspace.id);
             let Some(detail) = reason.strip_prefix(&prefix) else {
@@ -159,6 +186,7 @@ impl State {
         session: Arc<SessionVault>,
     ) -> Result<(Option<OperationId>, Vec<Start>), Refusal> {
         self.require_storage()?;
+        self.prune_warning_rechecks();
         let id = self.check_context(context)?;
         if self.is_setup_context(context) {
             return Err(Refusal::InvalidInput);
@@ -234,6 +262,34 @@ impl State {
         Ok((Some(operation), starts))
     }
 
+    fn warning_recheck_current(&self, run: &Recheck) -> bool {
+        if self.active_ref.as_ref() != Some(&run.context)
+            || self.data.active.as_ref() != Some(&run.tenant)
+        {
+            return false;
+        }
+        let Some(tenant) = self.tenant(&run.tenant) else {
+            return false;
+        };
+        let current = binding_for(tenant, run.binding.line, self.chosen_scope(&run.context));
+        current == run.binding
+            && self.warning_signature(&run.context, tenant, &current) == run.signature
+    }
+
+    /// Lease invalidation cannot depend on a service ever replying. Keep
+    /// only checks still bound to the current context/credential/workspace.
+    pub(super) fn prune_warning_rechecks(&mut self) {
+        let retired = self
+            .warning_rechecks
+            .iter()
+            .filter(|r| !self.warning_recheck_current(r))
+            .map(|r| r.operation.clone())
+            .collect::<Vec<_>>();
+        self.warning_rechecks
+            .retain(|r| !retired.contains(&r.operation));
+        self.retire_warning_check_records(&retired);
+    }
+
     pub(super) fn warning_recheck_operations(&self) -> Vec<OperationId> {
         self.warning_rechecks
             .iter()
@@ -301,14 +357,17 @@ impl State {
             return;
         };
         let basis = basis(warning, binding);
-        let equivalent = basis != SetupWarningBasis::Unknown && !binding.tsg_id.is_empty();
+        // A stored scan-key configuration is a tenant-local fact, including
+        // old scan-only profiles without a TSG. Remote checks still require it.
+        let equivalent = basis != SetupWarningBasis::Unknown
+            && (binding.line == VerifyLine::ScanKey || !binding.tsg_id.is_empty());
         let passed = state == VerifyState::Pass
             || (binding.line == VerifyLine::ScanKey && state == VerifyState::Stored);
         if passed && !equivalent {
             reason.push_str(" The current check passed, but the original check scope cannot be established; its warning remains active.");
         }
         if basis == SetupWarningBasis::LegacyTenantSources {
-            reason.push_str(" Reconstructed from the known legacy three-source setup check for this tenant; the original diagnostic is unchanged.");
+            reason.push_str(" Reconstructed from the known legacy setup check for this tenant; the original diagnostic is unchanged.");
         }
         if basis == SetupWarningBasis::LegacyWorkspaceScope {
             reason.push_str(" Reconstructed from the legacy workspace UUID and scope name. The current listed slug was checked against IAM; the original slug was not recorded.");
@@ -320,6 +379,19 @@ impl State {
             equivalent,
             basis,
         });
+        if passed
+            && equivalent
+            && binding.line == VerifyLine::Gateway
+            && warning
+                .check
+                .as_ref()
+                .is_some_and(|b| b.workspace.is_none())
+            && missing_workspace(&warning.reason)
+        {
+            if let Some(check) = &mut warning.recheck {
+                check.reason.push_str(" The original check found no selected workspace; the current selection's full setup prerequisites were checked.");
+            }
+        }
         if passed && equivalent {
             warning.resolved_secs = Some(at);
         }
@@ -354,5 +426,55 @@ impl State {
             }
         }
         view
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn context_retirement_prunes_checks_without_waiting_for_a_management_reply() {
+        let (adapters, _) = crate::fixtures::adapters();
+        let core = crate::Core::new(crate::CoreConfig::default(), adapters);
+        let mut state = super::super::lock(&core.inner).unwrap();
+        let tenant = crate::tenants::TenantId::issue().unwrap();
+        state
+            .data
+            .tenants
+            .push(Tenant::new(crate::tenants::TenantProfile {
+                id: tenant.clone(),
+                label: "Fixture".to_owned(),
+                tsg_id: Some("1234567890".to_owned()),
+                destination: crate::tenants::Destination::Custom {
+                    origin: "https://localhost:9".to_owned(),
+                },
+                environment: crate::features::TenantEnvironment::Production,
+            }));
+        state.data.active = Some(tenant.clone());
+        state.reissue_context();
+        let context = state.active_ref.clone().unwrap();
+        let binding = binding_for(state.tenant(&tenant).unwrap(), VerifyLine::ModelSkill, None);
+        let signature = state.warning_signature(&context, state.tenant(&tenant).unwrap(), &binding);
+        state.warning_rechecks.push(Recheck {
+            operation: serde_json::from_str("\"op-1\"").unwrap(),
+            context,
+            tenant,
+            warning: "vw-1".to_owned(),
+            binding,
+            signature,
+            started_secs: 1,
+        });
+        state.changed();
+        assert_eq!(
+            state.warning_rechecks.len(),
+            1,
+            "a current unanswered check stays pending"
+        );
+        state.reissue_context();
+        assert!(
+            state.warning_rechecks.is_empty(),
+            "no completion can be required to release this bookkeeping"
+        );
     }
 }

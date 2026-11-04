@@ -142,6 +142,14 @@ impl Desk {
     }
 }
 async fn desk(product: &str, reason: &str, check: Option<Value>) -> Desk {
+    desk_with_tsg(product, reason, check, Some(TSG)).await
+}
+async fn desk_with_tsg(
+    product: &str,
+    reason: &str,
+    check: Option<Value>,
+    tsg: Option<&str>,
+) -> Desk {
     let ca = TestCa::new("warning-recheck fixture");
     let script = Arc::new(Mutex::new(Script {
         model_status: [200; 3],
@@ -155,10 +163,10 @@ async fn desk(product: &str, reason: &str, check: Option<Value>) -> Desk {
     .await;
     let origin = format!("https://localhost:{}", server.port);
     let mut state = serde_json::to_value(PersistedState::default()).unwrap();
-    state["tenants"] = json!([{"id":TENANT,"label":"Fixture","tsgId":TSG,"destination":{"kind":"custom","origin":origin},"environment":"production"}]);
+    state["tenants"] = json!([{"id":TENANT,"label":"Fixture","tsgId":tsg,"destination":{"kind":"custom","origin":origin},"environment":"production"}]);
     state["activeTenant"] = json!(TENANT);
     state["onboarding"] = json!("done");
-    state["tenantProducts"] = json!([{"tenant":TENANT,"products":["runtimeSecurity",product]}]);
+    state["tenantProducts"] = json!([{"tenant":TENANT,"products":if product == "runtimeSecurity" { vec![product] } else { vec!["runtimeSecurity", product] }}]);
     let mut warning =
         json!({"id":"vw-1","product":product,"reason":reason,"recordedSecs":1761480000});
     if let Some(mut binding) = check {
@@ -195,12 +203,14 @@ async fn desk(product: &str, reason: &str, check: Option<Value>) -> Desk {
         script,
         server,
     };
-    let context = desk.context();
-    desk.send(json!({"kind":"configureManagementCredential","context":context,"mode":"keychain","clientId":"synthetic-client@1234567890.iam.panserviceaccount.com","secret":"synthetic-warning-secret"})).await;
-    assert!(
+    if product != "runtimeSecurity" {
+        let context = desk.context();
+        desk.send(json!({"kind":"configureManagementCredential","context":context,"mode":"keychain","clientId":"synthetic-client@1234567890.iam.panserviceaccount.com","secret":"synthetic-warning-secret"})).await;
+        assert!(
         eventually(|| desk.snap().tenants[0].management.state == desktop_core::ScanState::Ready)
             .await
     );
+    }
     desk
 }
 fn known(product: &str) -> Value {
@@ -212,10 +222,17 @@ async fn legacy_model_warning_requires_dedicated_check_and_preserves_dated_histo
     let mut d = desk("modelSkill", LEGACY_MODEL, None).await;
     let context = d.context();
     d.send(json!({"kind":"readTenant","context":context})).await;
-    assert!(eventually(|| {
+    assert!(
+        eventually(|| {
             let read = d.snap().inbox.read;
-            read.state != desktop_core::ReadState::Reading && read.products.iter().any(|p| p.product == desktop_core::features::ProductId::ModelSkill && p.state == desktop_core::ProductReadState::Ok)
-        }).await);
+            read.state != desktop_core::ReadState::Reading
+                && read.products.iter().any(|p| {
+                    p.product == desktop_core::features::ProductId::ModelSkill
+                        && p.state == desktop_core::ProductReadState::Ok
+                })
+        })
+        .await
+    );
     assert!(
         d.warning().get("resolvedSecs").is_none(),
         "ordinary healthy read is not a setup recheck"
@@ -317,15 +334,79 @@ async fn replaced_credential_generation_retires_pending_warning_check() {
     let mut d = desk("modelSkill", LEGACY_MODEL, Some(known("modelSkill"))).await;
     d.script.lock().unwrap().model_status[0] = 0;
     let old_context = d.context();
-    d.send(json!({"kind":"recheckSetupWarning","context":old_context,"warning":"vw-1"})).await;
-    assert!(eventually(|| d.server.seen().iter().any(|s| s.request_line.starts_with("GET /aims/data/v1/scans"))).await);
+    d.send(json!({"kind":"recheckSetupWarning","context":old_context,"warning":"vw-1"}))
+        .await;
+    assert!(
+        eventually(|| d
+            .server
+            .seen()
+            .iter()
+            .any(|s| s.request_line.starts_with("GET /aims/data/v1/scans")))
+        .await
+    );
     assert_eq!(d.warning()["recheck"]["state"], "pending");
     d.send(json!({"kind":"configureManagementCredential","context":old_context,"mode":"keychain","clientId":"synthetic-client@1234567890.iam.panserviceaccount.com","secret":"synthetic-replaced-warning-secret"})).await;
-    assert!(eventually(|| d.context() != old_context && d.snap().tenants[0].management.state == desktop_core::ScanState::Ready).await);
+    assert!(
+        eventually(|| d.context() != old_context
+            && d.snap().tenants[0].management.state == desktop_core::ScanState::Ready)
+        .await
+    );
     assert!(eventually(|| d.server.closed_by_client() > 0).await);
     assert!(d.warning().get("resolvedSecs").is_none());
     assert_ne!(d.warning()["recheck"]["state"], "pending");
     d.script.lock().unwrap().model_status[0] = 200;
     d.recheck().await;
     assert!(d.warning()["resolvedSecs"].as_u64().is_some());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn absent_original_gateway_workspace_does_not_mean_any_workspace_matches() {
+    let reason =
+        format!("Workspace {WS}: partial; scope ws_goshawks_io_2mwlan does not list the workspace");
+    let mut d = desk("gateway", &reason, Some(known("gateway"))).await;
+    d.workspace().await;
+    d.recheck().await;
+    assert_eq!(d.warning()["recheck"]["equivalent"], false);
+    assert!(d.warning().get("resolvedSecs").is_none());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn known_legacy_scan_configuration_is_rechecked_locally_without_claiming_service_validity() {
+    let reason = "No scan key saved; scans stay unavailable until one is added in Administration.";
+    let mut d = desk_with_tsg("runtimeSecurity", reason, None, None).await;
+    assert!(d.snap().tenants[0].tsg_id.is_none());
+    let context = d.context();
+    d.send(json!({"kind":"configureScanCredential","context":context,"mode":"keychain","key":"synthetic-scan-key"})).await;
+    assert!(eventually(|| d.snap().tenants[0].scan.state == desktop_core::ScanState::Ready).await);
+    d.recheck().await;
+    assert_eq!(d.warning()["reason"], reason);
+    assert_eq!(d.warning()["recheck"]["state"], "stored");
+    assert_eq!(d.warning()["recheck"]["basis"], "legacyTenantSources");
+    assert!(d.warning()["resolvedSecs"].as_u64().is_some());
+    assert!(
+        d.server.seen().is_empty(),
+        "configuration proof never calls a product or OAuth endpoint"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn known_missing_selection_check_is_superseded_only_by_full_selected_prerequisites() {
+    let reason =
+        "1 Gateway workspace(s) readable; none chosen, so its prerequisites were not checked.";
+    let mut d = desk("gateway", reason, Some(known("gateway"))).await;
+    d.recheck().await;
+    assert!(
+        d.warning().get("resolvedSecs").is_none(),
+        "a listing is not selected-workspace prerequisites"
+    );
+    d.workspace().await;
+    d.recheck().await;
+    assert_eq!(d.warning()["recheck"]["basis"], "recordedScope");
+    assert!(d.warning()["resolvedSecs"].as_u64().is_some());
+    assert!(
+        d.warning()["recheck"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("original check found no selected workspace")
+    );
 }
