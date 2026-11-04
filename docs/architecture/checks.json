@@ -3615,6 +3615,28 @@
           "refinement_metadata",
           "--test",
           "setup_warning_recheck"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--lib",
+          "context_retirement_prunes_checks_without_waiting_for_a_management_reply"
+        ],
+        [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "desktop-core",
+          "--features",
+          "test-fixtures",
+          "--lib",
+          "models_scope_bindings_and_inference_keys"
         ]
       ],
       "frontend_commands": [
@@ -4023,7 +4045,8 @@
           "src/v2/settings/refinement-settings.test.tsx",
           "src/modules/tenants/credential-entry.test.tsx",
           "src/modules/tenants/reset.test.tsx",
-          "src/modules/academy/academy-account.test.tsx"
+          "src/modules/academy/academy-account.test.tsx",
+          "src/shell/academy-theme-boundary.test.ts"
         ],
         [
           "pnpm",

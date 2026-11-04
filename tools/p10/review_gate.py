@@ -52,7 +52,8 @@ def transport(root, out, request):
 def actual_review(root, subject, attempt, source_root=None, evidence=True):
     out=root/"docs/planning/reviews"/subject/attempt
     request=read(out/"request.json"); verdict=read(out/"verdict-returned.json")
-    schema_path=root/request.get("schema_archive", "docs/architecture/review-verdict.schema.json")
+    schema_path=(root/request["schema_archive"] if request.get("schema_archive")
+                 else (source_root or root)/"docs/architecture/review-verdict.schema.json")
     # Historical P09 schema is preserved independently of future descriptions.
     if subject == "P09":schema_path=root/"docs/planning/evidence/C45/activation-20261102-g11/p09-source/docs/architecture/review-verdict.schema.json"
     validate(verdict,read(schema_path))
@@ -60,6 +61,10 @@ def actual_review(root, subject, attempt, source_root=None, evidence=True):
     full_gate(verdict)
     # Preserve request bytes: the archive path is verification context, never an edit.
     transport_request=dict(request)
+    # A later schema description must not change an archived review's input.
+    # Supply verification context only; request/invocation bytes stay immutable.
+    if source_root is not None:
+        transport_request["schema_archive"]=str(schema_path.relative_to(root))
     if subject == "P09":
         transport_request["schema_archive"]=str(schema_path.relative_to(root))
         transport_request["execution_root"]=read(root/"docs/planning/evidence/C45/activation-20261102-g11/p09-proof.json")["source_checkout"]

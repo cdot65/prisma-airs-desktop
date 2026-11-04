@@ -6,6 +6,13 @@ import review_gate
 
 
 class ReleaseProofTests(unittest.TestCase):
+    def test_historical_p10_uses_its_frozen_schema_after_future_schema_changes(self):
+        import json
+        root=Path(__file__).resolve().parents[2]
+        standing=json.loads((root/'docs/planning/evidence/P10/completion-proof.json').read_text())
+        result=review_gate.actual_review(root,'P10',standing['attempt'],root/standing['source_archive'],evidence=False)
+        self.assertTrue(all(value>=9 for value in result['scores'].values()))
+
     def test_isolated_release_interpreter_can_load_qualification_siblings(self):
         import subprocess
         root=Path(__file__).resolve().parents[2]
