@@ -1,145 +1,148 @@
 # Refinement qualification checkpoint — 2026-11-04
 
-Checkpoint: 2026-11-04 21:50 UTC. The current fixture build05 and its affected
-recovery-native slice have passed. Recovery02 exited 0 with all ten facts true;
-all three captures were individually accepted. Qualification02 remains the
-original qualified 099/eb9 artifact. This evidence-before-seal checkpoint supplies the dated remediation consumer;
-its resulting bound qualification is authoritative for review admission. No
-unreturned review score or final P11 standing is claimed.
+Checkpoint: 2026-11-04 22:45 UTC. The final build08 and affected recovery04 have passed;
+all three current capture references were individually accepted. This frozen,
+evidence-before-seal document supplies qualification04. The resulting bound
+consumer record controls review admission. No unreturned C48/phase score,
+final P11 standing, stable acceptance or production publication is claimed.
 
-The owner-approved 17-item scope and decisions are in [plan.md](plan.md).
-All development, local checks/builds and native UI run inside `admin@worf-vm`,
-branch `refinement/20261104-vm`; Kirk's old native launcher is retired. The
-integration base remains Forgejo main `f1e58da5cdeb1c67eed650b186081661cefc2fa2`.
+All development, checks/builds and native UI run inside `admin@worf-vm`, branch
+`refinement/20261104-vm`. Kirk's old native launcher is retired. The owner-approved
+17-item scope remains [plan.md](plan.md), integration base Forgejo main
+`f1e58da5cdeb1c67eed650b186081661cefc2fa2`.
 
-## Actual first reviews and focused remediations
+## Actual review standing
 
-These are the real attempt-01 scores, in architecture / behavior /
-authority_security / validation / overall order. Raw verdicts, audited receipts,
-findings and limitations remain unchanged. No scores were overridden.
+Scores below are architecture / behavior / authority_security / validation /
+overall. Every original request, verdict, transport, audit and score remains
+unchanged. No score was overridden.
 
-| Stream | Actual scores | Finding and focused follow-up |
+| Subject | Actual reviewed standing | Current treatment |
 | --- | --- | --- |
-| C46 | 9 / 9 / 9 / 8 / 8 | Older Harness/Inbox integration fixtures completed unauthenticated OAuth drafts and were omitted from affected coverage. Only the two test fixture files changed: authenticate synthetic credentials, reacquire context and assert completable. The nine named consumers passed (3 Harness + 6 Inbox); both targets' scoped Clippy passed. Production authentication gates are unchanged. |
-| C47 | 9 / 9 / 9 / 8 / 8 | Independent Explain scrolling lacked a native observation. A focused supplement on the exact original 099/eb9 app passed in 14 seconds: 11 fixture calls overflowed, lower call index4 was reached, drawer content moved and the underlying page anchor stayed fixed. Both images were individually accepted; fixture state, modes and trust roots stayed unchanged. |
-| C48 | 9 / 8 / 9 / 8 / 8 | A failed preferred-collection restore lost its warning/Retry after Home and back. Recovery now lives in scoped transient store state, observed before App snapshots render, with generation/action guards and explicit successful-choice retirement. Four production-path recovery tests and final typecheck passed. Actual earlier API 42, shell 29/Test Cases 16 and Save/Send 20 retain their exact earlier source bindings; bounded later recovery/message deltas are separately captured and tested. |
-| C49 | 9 / 9 / 9 / 9 / 9 | Full gate passed with no findings on qualification02. This historical verdict is not a new review of build05. |
+| C46 attempt-02 | 9 / 9 / 9 / 9 / 9, qualification03 | Retain the original full-nine review through explicit unchanged-impact carry; do not reopen it. |
+| C47 attempt-02 | 9 / 9 / 9 / 9 / 9, qualification03 | Retain the original full-nine review through the same bounded carry. |
+| C49 attempt-02 | 9 / 9 / 9 / 9 / 9, qualification03 | Retain the original full-nine review through the same bounded carry. |
+| C48 attempt-02 | 9 / 8 / 9 / 8 / 8, qualification03 | Required P2: undelivered Load outcomes lost recovery/Retry, and initial delivery failure could remain at Opening. Accepted at eight under D034; fix and fresh attempt-03 remain the push to nine. |
+| P11 phase | Not yet run | Fresh full-source/integration/carry review after current C48 passes its full-nine gate. |
 
-C46, C47 and C48 are accepted at eight under D034, with their actual full gates
-still false and the push to nine open. Their acceptance records retain all open
-findings. Every attempt-01 source/transport/qualification audit passed; the source
-stayed frozen throughout those reviews. The P11 phase review has not run.
+The prior attempt-01 scores remain C46 9/9/9/8/8, C47 9/9/9/8/8,
+C48 9/8/9/8/8 and C49 all 9. Their findings and D034 acceptance records are
+preserved, not replaced by the later scores.
 
-Durable focused records:
+The dated member-carry proof binds exactly C46/C47/C49 attempt-02, original
+qualification03, the exact [S4 source archive](../../evidence/P11/review-carry-baseline-01/source-preservation.json)
+and [old f558 app](../../evidence/P11/review-carry-baseline-01/application-preservation.json),
+current qualification04/source and the hash-pinned three-file C48 retry-only
+delta. It includes per-subject rationale and unchanged dependency identities,
+including all resources. C48 and P11 cannot be carried. The phase explicitly
+consumes mixed original/current member qualifications and reviews all current
+source, integration and the carry logic. Final archival context retains S4 and
+the old app alongside the accepted current source/app; no review is retagged.
 
-- [C46 nine consumers and original red failures](../../evidence/P11/c46-consumer-remediation-01/manifest.json), plus [scoped target Clippy](../../evidence/P11/c46-consumer-remediation-01/clippy-supplement.json).
-- [C47 independent-scroll supplement](../../evidence/P11/c47-scroll-supplement-01/supplement.json), with original process/source and exact old-artifact bindings.
-- [C48 final and retained source selectors](../../evidence/P11/retained-qa/c48-recovery-02/supplement.json), including original failures, exact input snapshots and honest missing per-command UTC timing limitations.
-- [Versioned build helper Clippy/preflight](../../evidence/P11/native-candidate-adapter-01/manifest.json), [affected Rust formatting](../../evidence/P11/remediation-format-01/record.json), and [combined helper QA 81/81](../../evidence/P11/helper-qa-remediation-01/record.json).
+## Focused fixes and source evidence
 
-The 81-test helper record retains its original consumer-source bindings. A
-[one-test parser follow-up](../../evidence/P11/helper-parser-followup-01/record.json)
-then passed: extra actual recovery observations are retained, while every
-mandatory fact and every recorded value must pass. Missing/false facts, foreign
-artifacts/VM/helpers, unreviewed captures and reversed times still reject. The
-81 tests are not relabelled as a new execution after that narrow parser change.
+C46's older Harness/Inbox fixtures completed unauthenticated drafts and were
+omitted from affected coverage. Only their two test files changed: authenticate
+synthetic management credentials, reacquire context and assert completable.
+The nine named consumers passed (3 Harness + 6 Inbox), both integration targets'
+scoped Clippy passed, and production authentication remains unchanged.
+[Raw red/green records](../../evidence/P11/c46-consumer-remediation-01/manifest.json)
+and [Clippy](../../evidence/P11/c46-consumer-remediation-01/clippy-supplement.json)
+retain exact sources and outcomes.
 
-## Current candidate and remaining native slice
+C47's independent-scroll gap was closed on the exact original 099/eb9 app:
+11 fixture calls overflowed, PageDown reached lower call index 4, drawer content
+moved and the Home anchor stayed fixed. Both images were accepted; fixture state,
+modes and roots stayed unchanged. The [14-second supplement](../../evidence/P11/c47-scroll-supplement-01/supplement.json)
+is a separate actual execution, not an original capture rewritten.
 
-The one actual [VM build05](../../evidence/P11/native-build-05-vm/receipt.json)
-completed in 1 minute44 seconds. It used source commit
-`685e645366069b505e47e375693689ac3db573fa` plus the separately frozen evidence
-consumer work. All 660 application input identities stayed fixed through the
-build. The executable SHA256 is
-`ba72d82de279be8d311c02125597ae0d5d6f7f5f0f2bdcbc2d951dc3d1e42914`;
+C48's first fix preserved failed preferred-collection recovery across navigation.
+Its original API 42, shell 29/Test Cases 16, Save/Send 20 and later focused 4/typecheck
+checks keep their own exact source/timing bindings. A subsequent real
+App/DesktopClient/native-adapter regression exposed initial/retry busy admission
+and rejected observation. The minimal API/store/test fix keeps every nonpositive
+Load unresolved, stores only sanitized delivery messages in the existing scoped
+recovery state, offers Start/Retry while loaded=false, and prevents automatic
+remount retries. Eight focused cases and typecheck passed. The malformed original
+busy fixture produced a genuine generic failed-delivery result; its red 4 and
+first green 2-fail/6-pass outputs stay unchanged with that interpretation.
+
+Native03's PNG inspection then found a newly surfaced, misleading generic
+core-refused folder detail. A final two-line message classification now displays
+shared text only for undelivered outcomes, preserves prior text on cancellation,
+and uses the accurate generic restore warning for core refusal. Failed/generation
+behavior did not change. Four affected cases plus typecheck passed; the eight
+prior cases retain their actual earlier inputs instead of being rerun or called
+same-source. The [final source selector chain](../../evidence/P11/retained-qa/c48-undelivered-02/supplement.json)
+retains all raw failures, exact diffs, snapshots and old broader source outcomes.
+
+The source change is pinned to API Client, its tests and scoped store; App,
+Rust, contracts, Save/Send controllers, JSON/URL/footer/tabs and styling remain
+unchanged by this last retry correction. The current evidence consumers and
+standing/carry guards passed [20 affected pure Python tests](../../evidence/P11/review-carry-qa-01/record.json).
+Earlier 81 and the one parser follow-up retain original bindings; no broad
+application/Rust/native/helper suite was relabelled current.
+
+## Final current fixture and native slice
+
+[Build08](../../evidence/P11/native-build-08-vm/receipt.json) passed on the final
+three product files from commit `a4708d29fee5af327509e78895d741c668b45d1e`.
+All 660 application inputs and the sealed old canonical prepare stayed unchanged.
+The executable SHA256 is
+`db9a1d0af38d677c4d7c9ffa76c0e5fa4a1bd3d2abb06706e9000e71f11eb304`;
 the complete bundle SHA256 is
-`f558aa269e359e9617191ecd47b8eb63016350086e618c36c4fdfc79d45bd535`.
-Its [versioned preparation](../../evidence/P11/native-build-05-vm/native-prepare.json)
-uses the same fixed ARM64 fixture recipe. The sealed canonical old prepare was
-not overwritten. The exact old 099 app survives as a verified CoW snapshot and
-[public tar payload](../../evidence/P11/remediation-baseline-01/receipt.json).
+`dd4657c2bc71631568f8783aad51a6700e4c05f2248ac0452b1d06d1cf3dd04f`.
+Its [versioned preparation](../../evidence/P11/native-build-08-vm/native-prepare.json)
+uses the same fixed ARM64 fixture recipe. Original builds/qualified apps remain
+bound to their original sources; old099 and qualification03's ba72/f558 app are
+preserved independently of the current target tree.
 
-Recovery01 stopped **before assertions** because the new ad-hoc-signed app could
-not read its existing synthetic fixture encryption key. Metadata showed that
-item trusted only the older code signature. That failed attempt remains failed.
-The exact-item fixture repair appended only the new code requirement, retaining
-the old trusted application, item value, attributes and other ACLs. The GUI
-helper's persistent SetAccess succeeded, then its CoreFoundation object-equality
-postcheck failed; its exit1 is preserved. An independent, read-only exact
-metadata validator proves the append and every other before/after byte unchanged.
-The [transition receipt](../../evidence/P11/fixture-code-access-verification-01/receipt.json)
-and [validator receipt](../../evidence/P11/fixture-code-access-verification-01/validator-receipt.json)
-record this distinction. Owner GO authorized the exact synthetic dialog and
-screen-access renewal; only the public fixture password was entered. No owner
-password or credential value was read, and no default/login Keychain was touched.
-No application rebuild followed this admission repair.
+Build07 failed with ENOSPC while archiving desktop-host, before changing app
+inputs or canonical preparation. Its raw output and reserved empty prepare remain.
+Only this P11 target's debug/incremental/rcgu scratch was removed; source,
+evidence, preserved applications, rlibs and test binaries were retained. Build08
+uses the same final product source, not another code change.
 
-[Recovery02](../../evidence/P11/recovery-native-02/supplement.json) actually ran
-21:46:00–21:46:43 UTC and exited 0. All ten facts passed: missing and replaced
-root warnings survive Home/back; Retry is explicit and recovers once the root
-or identity is restored; intentional close survives restart; the original owned
-collection is reopened; no request is replayed. All 660 application inputs and
-the full native helper closure stayed unchanged. The fixture state JSON stayed
-byte-identical and no endpoint requests were sent. Root individually inspected
-all three capture references; the two generic missing/replaced-warning PNGs are
-byte-identical captures from separate actual states.
+[Recovery04](../../evidence/P11/recovery-native-04/supplement.json) actually ran
+22:40:54–22:41:39 UTC and exited 0 with all ten facts true. Missing/replaced
+warnings survive Home/back, Retry stays explicit and recovers restored roots or
+identity, intentional close survives restart, the original owned collection is
+reopened, and no request replays. Root individually accepted all three captures,
+including accurate generic warnings without the misleading folder detail.
+The full native helper closure, application inputs and core fixture state stayed
+unchanged; no endpoint requests were sent. Exact picker input bytes were restored
+separately, preserving the raw helper's false newline-comparison flag.
 
-The raw picker-override-restored flag remains false because its helper comparison
-included an extra trailing newline. The separate
-[picker cleanup receipt](../../evidence/P11/recovery-native-02/picker-cleanup.json)
-proves the original override bytes were restored exactly afterward. No raw
-observation or failure flag was rewritten. These are affected native observations,
-not a replay of the other eleven assertions or of the entire original N03 flow.
+Native03's all-ten AX result remains an actual passing process but its two
+warning PNGs were visually rejected and are not selected for qualification04.
+Recovery01's fixture-Keychain denial, old helper postcheck failures, and all
+original raw results remain untouched. The dedicated fixture ACL only appends
+the exact new code requirement while preserving prior trusted apps, item value
+and other metadata. Current access06 completed with actual exit 0 and semantic
+before/after verification. No owner/default Keychain or credential value was
+read or modified; no owner password was used.
 
-## Explicit reuse and original qualification
+## Qualification and next actions
 
-The dated remediation proof pins the exact old/new source hashes for four
-frontend files and two Rust fixture files. It accounts for **35 unaffected
-requirements** with per-ID rationale and conservative unchanged dependency
-identities, including all resources and relevant native helpers. It retains
-original result/candidate/process references; changed executable bytes are not
-called byte-identical. Affected source selectors, formatting and recovery are
-separate actual executions. The six new adversarial consumer tests are included
-in the 81/81 combined Python checks; no app/Rust/Node/native suite was executed by
-that helper QA.
+Qualification04 retains the original 35 unaffected requirements through explicit
+impact proofs and six actual affected selector goals. Original native/source
+results keep their own application, source, host, command and process bindings.
+No changed app is called byte-identical to its predecessor. The eight-test then
+four-test source chain and current native slice are distinct actual executions.
 
-The original [qualification02](../../evidence/P11/qualification-final-02/qualification.json)
-accounts for all 41 registered requirements on its original 099/eb9 context.
-Its seven actual native origins, attempts06–12, supply all 12 positive assertions.
-Failed contributing process exits remain failed; attempt10's false keyboard
-fact remains explicitly excluded, replaced by attempt11's two genuine 56-Tab
-traces and retained sixteen-layout matrix. Original source/evidence seals stay
-unchanged. D2, S2 and the exact [S3 archive](../../evidence/P11/remediation-baseline-01/source-S3-archive.json)
-make those old source bindings independently reconstructible.
+Original qualification02 accounts for 41 registered requirements on 099/eb9 and
+all 12 positive native assertions from attempts06–12. Failed process exits stay
+failed; attempt10's false keyboard fact remains excluded in favor of the genuine
+attempt11 traces plus retained layout matrix. Qualification03 and its three
+full-nine member reviews stay at their original source/app bindings. D2/S2/S3/S4
+archives and every original source/evidence seal remain immutable. The earlier
+Kirk 439 source executions, unchanged Rust 8 commands/62 executions, VM 379 frontend
+executions and old captures are not new build08 executions.
 
-Original VM source verification had 379 passing frontend tests. The original
-complete Kirk source Test run had 439 passing executions; its eight unchanged
-Rust commands (62 executions) retain their original host/source/tool bindings.
-The later build04 099/eb9 included the real Modal composition/focus fix and the
-Administration test correction. Those results were not relabelled as new VM or
-build05 executions.
-
-The old warning-history visibility supplement, original dated reason, latest
-Passed/resolved timestamps and capture-specific reviews remain retained. Academy
-captures prove the stated palette/focus/portal scope, not new responsiveness of
-its unchanged guest reader layout. No complete native/Rust suite is repeated
-merely for commits, review attempts, helper/test edits or new source fingerprints.
-
-## Next and separate lanes
-
-Seal fresh qualification03 from the completed, bound observations and focused
-source selectors. Run fresh independent member reviews and then the P11 phase
-review against that one updated qualified candidate. Preserve all earlier
-scores and outcomes. No final P11 standing or production publication is claimed
-yet; `controller_complete` remains false.
-
-The Linux branch's focused typecheck and 77/77 DOM tests retain their recorded
-source/platform scope. They are macOS-hosted integration checks, not Linux native,
-AppImage or installed acceptance. Linux qualification remains independent.
-Stable installed/live C26 acceptance remains deferred by the owner. After P11
-acceptance, use the reviewed source pin for the approved builder and a new
-immutable production candidate; preserve RC1. Signing readiness on Jadzia is
-unverified.
-
-No real tenant API calls, remote IAM changes, owner credential-value reads,
-historical seal edits or RC1 asset changes are claimed for these refinements.
+After the bound qualification04 consumer passes, run only fresh C48 attempt-03;
+then run fresh P11 phase with the explicit member-review carry. Preserve every
+actual score/finding. `controller_complete` remains false; no final P11 acceptance
+or production publication is claimed at this evidence-before-seal checkpoint.
+Linux qualification and stable installed/live C26 acceptance remain separate.
+No real tenant API calls, remote IAM changes, historical seal edits or RC1 asset
+changes are claimed for these refinements.

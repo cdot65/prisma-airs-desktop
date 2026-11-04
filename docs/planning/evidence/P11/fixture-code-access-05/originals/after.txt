@@ -1,0 +1,42 @@
+keychain: "/Users/admin/Library/Application Support/io.cdot.airs-desktop.fixture/fixture-credentials.keychain-db"
+version: 256
+class: "genp"
+attributes:
+    0x00000007 <blob>="io.cdot.airs-desktop.fixture.scan"
+    0x00000008 <blob>=<NULL>
+    "acct"<blob>="cr-bf6eae1f4e49ee61"
+    "cdat"<timedate>=0x32303236313130343135323330375A00  "20261104152307Z\000"
+    "crtr"<uint32>="aapl"
+    "cusi"<sint32>=<NULL>
+    "desc"<blob>=<NULL>
+    "gena"<blob>=<NULL>
+    "icmt"<blob>=<NULL>
+    "invi"<sint32>=<NULL>
+    "mdat"<timedate>=0x32303236313130343135323330375A00  "20261104152307Z\000"
+    "nega"<sint32>=<NULL>
+    "prot"<blob>=<NULL>
+    "scrp"<sint32>=<NULL>
+    "svce"<blob>="io.cdot.airs-desktop.fixture.scan"
+    "type"<uint32>=<NULL>
+access: 3 entries
+    entry 0:
+        authorizations (1): encrypt
+        don't-require-password
+        description: io.cdot.airs-desktop.fixture.scan
+        applications: <null>
+    entry 1:
+        authorizations (6): decrypt derive export_clear export_wrapped mac sign
+        don't-require-password
+        description: io.cdot.airs-desktop.fixture.scan
+        applications (3):
+            0: /Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app (status -2147415734)
+                requirement: cdhash H"3950c3d4b7e787d94930e3aac9bcd191cf70dd02"
+            1: /Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app (status -2147415734)
+                requirement: cdhash H"a579105e69b36d05fc8e5f66760688e60b8bb4c2"
+            2: /Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app (status -2147415734)
+                requirement: cdhash H"779bee61614329414dea277c78d41e4937dae8c2"
+    entry 2:
+        authorizations (1): change_acl
+        don't-require-password
+        description: io.cdot.airs-desktop.fixture.scan
+        applications (0):

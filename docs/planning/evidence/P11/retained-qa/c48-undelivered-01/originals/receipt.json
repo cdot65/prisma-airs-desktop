@@ -1,0 +1,78 @@
+{
+  "schema": "airs-desktop/c48-undelivered-remediation/1",
+  "recorded_utc": "2026-11-04T22:22:24.302387+00:00",
+  "baseline_commit": "5bd213e5a6fd7e94401b6cfcc0ee43aae6090bdc",
+  "source_files": {
+    "apps/desktop/src/v2/workbench/api-client.tsx": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3",
+    "apps/desktop/src/v2/store.ts": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+  },
+  "original_source": {
+    "path": ".evidence-private/c48-undelivered-01/before.json",
+    "sha256": "90cd8727868889e5ed0c4ffcb2b7777c2c1848a67cdf6be35453c93a3d3eb16b"
+  },
+  "command_records": {
+    "red": {
+      "path": ".evidence-private/c48-undelivered-01/red-run.json",
+      "sha256": "a33f2d65228b0555ab36ffbfbb3aa465211c278c4de59b1190bd12a2436377b1"
+    },
+    "green": {
+      "path": ".evidence-private/c48-undelivered-01/green-run.json",
+      "sha256": "b18bc7855c8e211f7db40ce838f2e5c96cc4ed45e65481ac478e59ab2dda76bd"
+    },
+    "typecheck": {
+      "path": ".evidence-private/c48-undelivered-01/typecheck-run.json",
+      "sha256": "d5d3cc4ce4aeb00ec7d252c466efbcf8c9977e0af1a25955884d3d28fdd6e550"
+    },
+    "green-02": {
+      "path": ".evidence-private/c48-undelivered-01/green-02-run.json",
+      "sha256": "c541cf331dbb20f6bc06326256af204ef96bb54e7a741c9b21762af5b23c642f"
+    },
+    "typecheck-02": {
+      "path": ".evidence-private/c48-undelivered-01/typecheck-02-run.json",
+      "sha256": "0e7a0a68de54aa9e09b4ca112973ea928501b8a66ea7bed20bcdd5bebea88a96"
+    }
+  },
+  "actual_outcomes": {
+    "red": {
+      "exit_code": 1,
+      "passed": 0,
+      "failed": 4,
+      "skipped": 42
+    },
+    "green": {
+      "exit_code": 1,
+      "passed": 6,
+      "failed": 2,
+      "skipped": 38
+    },
+    "typecheck": {
+      "exit_code": 0
+    },
+    "green-02": {
+      "exit_code": 0,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 38
+    },
+    "typecheck-02": {
+      "exit_code": 0
+    }
+  },
+  "coverage": "Four new production App/DesktopClient/workbenchCall/store cases: initial or explicit-retry admission busy and rejected observation, sanitized outcome and Retry persist Home/back with no automatic load and no fallback; explicit opened result resolves. Four retained recovery cases exercise missing/replaced folder, canceled retry, both snapshot/result orders, intentional close, pending remount and context retirement.",
+  "failure_interpretation": "Original busy-labeled raw fixture used an invalid receipt/refused envelope. Real parser returned failed delivery, reproducing the same undelivered classification bug; first green correctly retained its generic failed-delivery message and failed2 busy-specific expected-text assertions. Corrected fixture to actual outer outcome:refusal/refusal:busy. All original outputs/source inputs remain unedited; final8 exercise real busy admission and lost observations. No failed outcome relabeled passing.",
+  "production_change": "Only opened/done may resolve owned restore. All undelivered/refused/canceled outcomes remain unresolved; sanitized text resides in existing context/collection/generation-scoped recovery. Failed loaded=false renders explicit Start/Retry and remount does not retry automatically.",
+  "unchanged_scope": "No App, adapter/contracts, Save/Send controls, JSON/URL/footer/tabs, Rust or native helper edits. Other38 API tests and prior Save/Send results are unaffected carry candidates, not newly executed here.",
+  "source_inputs": {
+    "before": "before",
+    "red": "red-inputs",
+    "first_green": "green-inputs",
+    "final": "final-inputs"
+  },
+  "diff": {
+    "path": ".evidence-private/c48-undelivered-01/production-and-tests.diff",
+    "sha256": "dea9451ebbc1b4ca95cb7d3930d07be415c13b3bc9b5b4a10836d3eecba85809"
+  },
+  "no_build_native_rust_full_suite": true,
+  "staged_or_committed": false
+}

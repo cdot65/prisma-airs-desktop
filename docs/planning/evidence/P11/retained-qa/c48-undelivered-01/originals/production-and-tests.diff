@@ -1,0 +1,161 @@
+diff --git a/apps/desktop/src/v2/store.ts b/apps/desktop/src/v2/store.ts
+index 405d567d..5a928692 100644
+--- a/apps/desktop/src/v2/store.ts
++++ b/apps/desktop/src/v2/store.ts
+@@ -102,8 +102,10 @@ interface WorkbenchRecovery {
+     generation: number
+     pending: boolean
+     failed: boolean
++    /** Sanitized delivery/refusal outcome; survives page remount with this recovery. */
++    message: string
+ }
+-const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false })
++const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false, message: '' })
+ 
+ interface ShellStore {
+     /** The scope the shell shows now (set from each snapshot before it renders): what a notification must belong to. */
+@@ -112,7 +114,7 @@ interface ShellStore {
+     workbenchRecovery: WorkbenchRecovery
+     observeWorkbench(tenant: string | null, context: string | null, collection: string | null): void
+     beginWorkbenchRestore(tenant: string | null, context: string | null): number | null
+-    finishWorkbenchRestore(tenant: string | null, context: string | null, generation: number, failed: boolean): void
++    finishWorkbenchRestore(tenant: string | null, context: string | null, generation: number, failed: boolean, message?: string): void
+     resolveWorkbenchRestore(tenant: string | null, context: string | null, generation: number): void
+     paletteOpen: boolean
+     switcherOpen: boolean
+@@ -190,7 +192,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+     observeWorkbench: (tenant, context, collection) => set((s) => {
+         const old = s.workbenchRecovery
+         if (old.tenant === tenant && old.context === context && old.collection === collection) return s
+-        return { workbenchRecovery: { tenant, context, collection, generation: old.generation + 1, pending: false, failed: false } }
++        return { workbenchRecovery: { tenant, context, collection, generation: old.generation + 1, pending: false, failed: false, message: '' } }
+     }),
+     beginWorkbenchRestore: (tenant, context) => {
+         const old = get().workbenchRecovery
+@@ -199,15 +201,15 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+         set({ workbenchRecovery: { ...old, generation, pending: true } })
+         return generation
+     },
+-    finishWorkbenchRestore: (tenant, context, generation, failed) => set((s) => {
++    finishWorkbenchRestore: (tenant, context, generation, failed, message = '') => set((s) => {
+         const old = s.workbenchRecovery
+         if (old.tenant !== tenant || old.context !== context || old.generation !== generation || !old.pending) return s
+-        return { workbenchRecovery: { ...old, pending: false, failed } }
++        return { workbenchRecovery: { ...old, pending: false, failed, message } }
+     }),
+     resolveWorkbenchRestore: (tenant, context, generation) => set((s) => {
+         const old = s.workbenchRecovery
+         if (old.tenant !== tenant || old.context !== context || old.generation !== generation) return s
+-        return { workbenchRecovery: { ...old, generation: old.generation + 1, pending: false, failed: false } }
++        return { workbenchRecovery: { ...old, generation: old.generation + 1, pending: false, failed: false, message: '' } }
+     }),
+     paletteOpen: false,
+     switcherOpen: false,
+diff --git a/apps/desktop/src/v2/workbench/api-client.test.tsx b/apps/desktop/src/v2/workbench/api-client.test.tsx
+index f1ff1f57..2e0b5a4c 100644
+--- a/apps/desktop/src/v2/workbench/api-client.test.tsx
++++ b/apps/desktop/src/v2/workbench/api-client.test.tsx
+@@ -435,6 +435,59 @@ describe('C41 API Client board', () => {
+         expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1)
+     })
+ 
++    it.each([['initial', 'busy'], ['initial', 'lost'], ['retry', 'busy'], ['retry', 'lost']] as const)('keeps %s restore delivery recovery actionable after %s across Home and back', async (stage, failure) => {
++        const base = fxApi()
++        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
++        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
++        let mode: 'missing' | 'busy' | 'lost' | 'opened' = stage === 'initial' ? failure : 'missing'
++        const requests = workbench(native, answers((r) => r.kind === 'load'
++            ? mode === 'opened' ? { kind: 'opened', name: 'AIRS' } : { kind: 'refused', problem: { kind: 'project', detail: 'missing' } }
++            : null))
++        const respond = native.respond
++        native.respond = (intent) => intent.kind === 'workbench' && intent.request.kind === 'load' && mode === 'busy'
++            ? { outcome: 'refusal', refusal: 'busy' } : respond(intent)
++        const observe = native.observeWorkbench
++        native.observeWorkbench = (operation) => {
++            const request = requests.find((_, i) => `op-${i + 1}` === operation)
++            return request?.kind === 'load' && mode === 'lost' ? Promise.reject(new Error('private observation detail must not surface')) : observe(operation)
++        }
++        const loads = () => native.dispatched.filter((intent) => intent.kind === 'workbench' && intent.request.kind === 'load').length
++        const user = userEvent.setup()
++        render(<App client={new DesktopClient(native.transport)} />)
++        await waitFor(() => expect(loads()).toBe(1))
++        if (stage === 'retry') {
++            await native.push(closed)
++            await screen.findByRole('button', { name: 'Try again' })
++            mode = failure
++            await user.click(screen.getByRole('button', { name: 'Try again' }))
++        }
++        const count = stage === 'initial' ? 1 : 2
++        const outcome = failure === 'busy' ? 'The desktop is busy with a previous request. Try again in a moment.' : 'The desktop did not report how the request ended. Check the request before trying again.'
++        const warning = () => document_().querySelector('[data-slot=workbench-message]') as HTMLElement
++        await waitFor(() => expect(warning()).toHaveTextContent(outcome))
++        expect(warning()).toHaveTextContent('The preferred collection could not be opened.')
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        expect(screen.getByText('No collection is open.')).toBeInTheDocument()
++        expect(loads()).toBe(count)
++        // The initial failure deliberately leaves Rust's loaded=false snapshot unchanged.
++        for (const [feature, label] of [['home', 'Home'], ['apiClient', 'API Client']] as const) {
++            await user.click(within(screen.getByRole('navigation', { name: 'Destinations' })).getByRole('button', { name: new RegExp(label) }))
++            await native.push({ ...native.current, activeFeature: feature })
++            await screen.findByRole('heading', { level: 1, name: label })
++        }
++        expect(warning()).toHaveTextContent(outcome)
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        expect(loads()).toBe(count)
++        expect(screen.queryByText(/private observation detail/)).not.toBeInTheDocument()
++        mode = 'opened'
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(loads()).toBe(count + 1))
++        await native.push(base)
++        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
++        expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
++        expect(native.dispatched.filter((intent) => intent.kind === 'workbench' && ['openBuiltIn', 'createCollection', 'openFolder'].includes(intent.request.kind))).toHaveLength(0)
++    })
++
+     it('settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement', async () => {
+         const base = fxApi()
+         const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+diff --git a/apps/desktop/src/v2/workbench/api-client.tsx b/apps/desktop/src/v2/workbench/api-client.tsx
+index fc16341e..cabe281a 100644
+--- a/apps/desktop/src/v2/workbench/api-client.tsx
++++ b/apps/desktop/src/v2/workbench/api-client.tsx
+@@ -72,6 +72,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+     const tenant = snapshot.active?.tenant ?? null
+     const context = snapshot.active?.context ?? null
+     const startupFailure = useShellStore((s) => s.workbenchRecovery.tenant === tenant && s.workbenchRecovery.context === context && s.workbenchRecovery.failed)
++    const startupMessage = useShellStore((s) => s.workbenchRecovery.tenant === tenant && s.workbenchRecovery.context === context ? s.workbenchRecovery.message : '')
+     const restorePreferred = useCallback(async () => {
+         const recovery = useShellStore.getState()
+         const generation = recovery.beginWorkbenchRestore(tenant, context)
+@@ -86,7 +87,10 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+             setMessage('')
+             setOfferNew(false)
+         }
+-        recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused' || (result.kind === 'cancelled' && recovery.workbenchRecovery.failed))
++        // Admission/delivery/observation failure is still unresolved, including on the first load.
++        // Only a positive owned result may retire recovery; keep sanitized text with its scope.
++        const resolved = result.kind === 'opened' || result.kind === 'done'
++        recovery.finishWorkbenchRestore(tenant, context, generation, !resolved, resolved ? '' : resultText(result) ?? recovery.workbenchRecovery.message)
+         return result
+     }, [call, tenant, context])
+     const editors = useRef(new Map<string, EditorHandle>())
+@@ -259,7 +263,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+     }, [editorUp, doc])
+     const loaded = state.loaded
+     useEffect(() => {
+-        if (!loaded) void restorePreferred()
++        if (!loaded && !useShellStore.getState().workbenchRecovery.failed) void restorePreferred()
+     }, [loaded, restorePreferred])
+     // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
+     useEffect(() => {
+@@ -456,8 +460,8 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+             {!collection ? (
+                 <div className='flex flex-col' style={{ gap: 12, padding: '20px var(--v2-page-x)' }}>
+                     {alerts}
+-                    {state.loaded ? (
+-                        <Start state={state} run={run} message={startupFailure ? `${C.start.restoreFailed}${message ? ` ${message}` : ''}` : message} offerNew={offerNew} retry={startupFailure ? async () => { await restorePreferred() } : undefined} />
++                    {state.loaded || startupFailure ? (
++                        <Start state={state} run={run} message={startupFailure ? `${C.start.restoreFailed}${startupMessage ? ` ${startupMessage}` : ''}${message ? ` ${message}` : ''}` : message} offerNew={offerNew} retry={startupFailure ? async () => { await restorePreferred() } : undefined} />
+                     ) : (
+                         <p role='status' className='text-[13px]' style={soft}>
+                             {C.opening}

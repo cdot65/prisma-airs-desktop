@@ -26,7 +26,12 @@ COMPLETION = BASE / 'completion-proof.json'
 D2_SOURCE = BASE / 'source-history/D2'
 S2_SOURCE = BASE / 'source-history/S2'
 S3_SOURCE = BASE / 'source-history/S3'
-LFS_PATHS = (str(S3_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+S4_SOURCE = BASE / 'source-history/S4'
+S4_APPLICATION = BASE / 'review-carry-baseline-01/application'
+LFS_PATHS = (str(S4_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+             str(S4_APPLICATION / 'Contents/MacOS/prisma-airs-desktop'),
+             str(S4_APPLICATION / 'Contents/Resources/harness/airs-harness'),
+             str(S3_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
              str(S2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
              str(D2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
              str(ACCEPTED / 'application/Contents/MacOS/prisma-airs-desktop'),
@@ -39,7 +44,8 @@ class ArchivedP11(Historical):
     def archive_path(self, name):
         path = self.root / name
         require(path.resolve().is_relative_to((self.root / ACCEPTED).resolve())
-                or path.resolve() in ((self.root / D2_SOURCE).resolve(), (self.root / S2_SOURCE).resolve(), (self.root / S3_SOURCE).resolve()),
+                or path.resolve() in ((self.root / D2_SOURCE).resolve(), (self.root / S2_SOURCE).resolve(), (self.root / S3_SOURCE).resolve(),
+                (self.root / S4_SOURCE).resolve(), (self.root / S4_APPLICATION).resolve()),
                 'historical archive escapes accepted P11 evidence')
         return path
 
@@ -84,21 +90,36 @@ def require_archive_lfs(root):
 def audited_reviews(root, attempts, qualified, source):
     root = Path(root).resolve()
     require(set(attempts) == set(SUBJECTS), 'P11 requires exactly four member reviews and its phase review')
+    phase = read(root / 'docs/planning/reviews/P11' / attempts['P11'] / 'request.json')
+    carry = None
+    if 'review_carry' in phase:
+        import review_carry
+        carry = review_carry.validate(root, bound(root, phase['review_carry']), qualified, source_root=source)
     reviews = {}
     for subject in SUBJECTS:
         attempt = attempts[subject]
         require(attempt == latest_attempt(root, subject), 'newer review attempt exists: ' + subject)
         request = read(root / 'docs/planning/reviews' / subject / attempt / 'request.json')
-        require(request['qualification'] == qualified,
-                'P11 reviews do not bind one shared qualification: ' + subject)
-        reviews[subject] = actual_review(root, subject, attempt, source_root=source)
+        if carry and subject in carry['members']:
+            reviews[subject] = carry['members'][subject]
+            require(attempt == reviews[subject]['attempt'], 'carried original member attempt changed')
+        else:
+            require(request['qualification'] == qualified,
+                    ('current C48/phase qualification differs: ' if carry else
+                     'P11 reviews do not bind one shared qualification: ') + subject)
+            reviews[subject] = actual_review(root, subject, attempt, source_root=source)
         require(all(value >= 9 for value in reviews[subject]['scores'].values()),
                 'P11 promotion requires full-9 reviewed standing: ' + subject)
-    phase = read(root / 'docs/planning/reviews/P11' / attempts['P11'] / 'request.json')
     require(phase['predecessors']['members'] == {name: reviews[name] for name in CHUNKS},
             'phase review did not consume these exact four audited member reviews')
-    require(all(row['fingerprints']['source'] == qualified['verified']['source_inventory_sha256']
-                for row in reviews.values()), 'reviews bind a foreign qualified source')
+    if carry:
+        require(phase['predecessors']['member_review_carry'] == carry['proof']
+                and phase['predecessors']['member_dispositions'] == {
+                    name: 'carried_unaffected' if name in carry['members'] else 'executed' for name in CHUNKS},
+                'phase lost explicit mixed-member qualification proof')
+    else:
+        require(all(row['fingerprints']['source'] == qualified['verified']['source_inventory_sha256']
+                    for row in reviews.values()), 'reviews bind a foreign qualified source')
     return reviews
 
 
@@ -217,19 +238,30 @@ def finalize(root, qualification_path, attempts):
             require(fingerprint not in sources or sources[fingerprint] == value,
                     'remediation historical source conflicts with accepted source')
             sources[fingerprint] = value
+    applications = {candidate['bundle_sha256']: {
+        'path': str(application.relative_to(root)), 'executable_sha256': candidate['executable_sha256']}}
+    phase = read(root / 'docs/planning/reviews/P11' / attempts['P11'] / 'request.json')
+    if 'review_carry' in phase:
+        carry = read(bound(root, phase['review_carry']))
+        old_source = read(bound(root, carry['original_source']))
+        sources[digest(old_source['files'])] = {'path': str(S4_SOURCE), 'seal': carry['original_source']}
+        old_q = read(bound(root, {'path': carry['original_qualification']['record'],
+                                 'sha256': carry['original_qualification']['sha256']}))
+        old_coverage = read(bound(root, old_q['coverage']))
+        old_candidate = read(bound(root, old_coverage['candidate']))
+        applications[old_candidate['bundle_sha256']] = {
+            'path': str(S4_APPLICATION), 'executable_sha256': old_candidate['executable_sha256']}
     context = write('historical-context.json', {
         'schema': 'airs-desktop/historical-qualification-context/1',
         'sources': sources,
-        'applications': {candidate['bundle_sha256']: {
-            'path': str(application.relative_to(root)),
-            'executable_sha256': candidate['executable_sha256']}}})
+        'applications': applications})
     evidence_ref = write('evidence-inventory.json', {'files': evidence})
     record = {'schema': 'airs-desktop/p11-completion-proof/1',
               'qualification': qualified, 'attempts': attempts, 'reviews': reviews,
               'context': context, 'evidence': evidence_ref,
               'historical_standing': original['historical_standing'],
               'controller_complete': False,
-              'meaning': 'Actual audited full-9 C46-C49/P11 reviews of one shared qualification. Historical source, candidate and raw outcomes remain bound; no controller ledger or current release artifact acceptance is claimed.'}
+              'meaning': ('Actual full-nine C48/current phase plus explicitly carried original qualification03 C46/C47/C49 full-nine reviews. No old review is relabelled current. ' if 'review_carry' in phase else 'Actual audited full-nine members and phase on one qualification. ') + 'Historical sources, candidates, artifacts and raw outcomes remain bound; no controller ledger or production acceptance is claimed.'}
     with completion.open('x') as stream:
         json.dump(record, stream, indent=2)
         stream.write('\n')

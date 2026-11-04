@@ -1,0 +1,87 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+stderr | src/v2/workbench/api-client.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+ ❯ src/v2/workbench/api-client.test.tsx (47 tests | 1 failed | 46 skipped) 92ms
+   ↓ C41 API Client board > colors one complete editable URL template without duplicating its base variable
+   ↓ C41 API Client board > colors JSON while Save, Send, response Copy and Save Response keep the original text and run
+   ↓ C41 API Client board > ignores an earlier history selection that resolves after the newer selected response
+   ↓ C41 API Client board > cannot replace the current collection footer with a previous collection send result sharing its request id
+   ↓ C41 API Client board > shows the displayed response metrics in the footer, including another request selected from history
+   ↓ C41 API Client board > keeps open request tabs on one horizontally scrolling row
+   ↓ C41 API Client board > offers explicit restore recovery without automatically opening SCM or creating a missing collection
+   ↓ C41 API Client board > keeps missing preferred-folder recovery across Home and back until an explicit retry succeeds
+   ↓ C41 API Client board > keeps notCollection preferred-folder recovery across Home and back until an explicit retry succeeds
+   ↓ C41 API Client board > keeps initial restore delivery recovery actionable after busy across Home and back
+   ↓ C41 API Client board > keeps initial restore delivery recovery actionable after lost across Home and back
+   ↓ C41 API Client board > keeps retry restore delivery recovery actionable after busy across Home and back
+   ↓ C41 API Client board > keeps retry restore delivery recovery actionable after lost across Home and back
+   × C41 API Client board > uses only the restore warning for a core refusal after an undelivered load 92ms
+     → [2mexpect([22m[31melement[39m[2m).not.toHaveTextContent()[22m
+
+Expected element not to have text content:
+[32m  That folder isn't empty[39m
+Received:
+[31m  The preferred collection could not be opened. Restore its folder and try again, choose another collection, or open Strata Cloud Manager. That folder isn't empty and has no API Client collection (collection.toml). Choose an empty folder or a collection folder.Try again[39m
+   ↓ C41 API Client board > settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement
+   ↓ C41 API Client board > draws the title row with the chips, the tree, the tabs, the request line, the sub-tabs, the response pane and the footer (V2-T14)
+   ↓ C41 API Client board > searches the tree flat, says when nothing matches and clears; a collapsed folder hides its requests
+   ↓ C41 API Client board > edits Params as rows that are written back as the file’s name=value lines, protected after the typing pause, and shown as text on request
+   ↓ C41 API Client board > keeps a value as typed, word by word, in Params and Headers, and leaves a padded query value verbatim when another row is edited: Save and Send carry the exact lines (attempt-02 R1)
+   ↓ C41 API Client board > shows the response under Body (pretty, then Raw), Headers, Details and History, where an older run is shown as recorded (I5)
+   ↓ C41 API Client board > keeps a transfer in flight, with Cancel request, in view while an older run from History is being inspected; Cancel dispatches the active run once, history stays as recorded, nothing is resent (attempt-03 R1)
+   ↓ C41 API Client board > shows every transfer in flight for the request with its own Cancel: two deferred sends across a tab round trip, each cancelled by its own id exactly once, nothing resent (attempt-04 R1)
+   ↓ C41 API Client board > an obsolete document result never replaces the current selection: two selections in flight resolve out of order and the later selection stays usable (attempt-05 R1)
+   ↓ C41 API Client board > a selected request whose load fails says why and offers Try again, which reopens it once; a lost delivery is said too (attempt-05 R2)
+   ↓ C41 API Client board > a tool's failure is said inside its sheet, with the entered work and focus kept (attempt-05 R3)
+   ↓ C41 API Client board > a tree click's late reply never replaces the current selection: the selection moves on while the reply is held, and its release changes nothing (attempt-06 R1)
+   ↓ C41 API Client board > closing and re-opening a collection while its selected request's first load is held loads it afresh, and the old reply is ignored (attempt-06 R2)
+   ↓ C41 API Client board > a refused or undelivered creation is said inside the New request dialog, for a request and for a folder, with the path and focus kept (attempt-06 R3)
+   ↓ C41 API Client board > a cURL import's late reply never replaces the current selection: held past the draft's selection, the sheet closing and another selection, it is ignored (attempt-07 R1)
+   ↓ C41 API Client board > a cURL import's reply held across a collection close and re-open is ignored; the re-opened selection loads afresh (attempt-07 R1)
+   ↓ C41 API Client board > an unselected tree entry whose load is refused, then lost, says so above the current editor, which stays; Try again reopens it once each time (attempt-07 R2)
+   ↓ C41 API Client board > a cURL import's conversion report shows with its draft whether the result or the selecting snapshot arrives first; later selections stay protected (attempt-08 R2)
+   ↓ C41 API Client board > a cURL import's conversion report shows when the result arrives before the selecting snapshot (attempt-08 R2)
+   ↓ C41 API Client board > typing while an environment or schema save is pending is kept: the reply brings the revision, the next Save sends the newer text (attempt-08 R1)
+   ↓ C41 API Client board > returning to an edited request after its editor unmounted reloads it from the core: the protected fields come back, never the old snapshot (attempt-09 R1)
+   ↓ C41 API Client board > a superseded environment or schema open cannot replace the current editor or its typing: a newer selection, a new resource or Close retires it (attempt-09 R2)
+   ↓ C41 API Client board > reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection
+   ↓ C41 API Client board > creates a request draft from + and shows it new; a tab with edits the core could not protect closes only after the operator chooses to discard them
+   ↓ C41 API Client board > re-opens the selected request when the same collection is closed and opened again: following its selection is scoped to the open collection
+   ↓ C41 API Client board > replacing one collection directly with another collection id that selects the same request id loads the new collection’s document, never shows the old fields under it, and ignores the old collection’s late reply (attempt-03 R1)
+   ↓ C41 API Client board > replacing one collection directly with the same collection id in a differently named folder that selects the same request id loads the new collection’s document, never shows the old fields under it, and ignores the old collection’s late reply (attempt-03 R1)
+   ↓ C41 API Client board > replacing one collection directly with the same collection id and basename as Rust actually exposes for another parent folder that selects the same request id loads the new collection’s document, never shows the old fields under it, and ignores the old collection’s late reply (attempt-03 R1)
+   ↓ C41 API Client board > draws nested folders as a hierarchy: a collapsed folder hides its whole subtree, a folder counts every request under it, and search still finds them
+   ↓ C41 API Client board > opens a collection tool from the keyboard; closing the sheet by Escape or its close control returns focus to the Collection chip, as the menu does on Escape (I8, T09)
+   ↓ C41 API Client board > a send from an already dirty request announces response metrics separately from its save state
+   ↓ C41 API Client board > a send from a new request announces response metrics without replacing "New · not saved yet"
+   ↓ C41 API Client board > shows the start panel with recents and no profile import when no collection is open, and the built-in collection opens from it
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v2/workbench/api-client.test.tsx > C41 API Client board > uses only the restore warning for a core refusal after an undelivered load
+Error: [2mexpect([22m[31melement[39m[2m).not.toHaveTextContent()[22m
+
+Expected element not to have text content:
+[32m  That folder isn't empty[39m
+Received:
+[31m  The preferred collection could not be opened. Restore its folder and try again, choose another collection, or open Strata Cloud Manager. That folder isn't empty and has no API Client collection (collection.toml). Choose an empty folder or a collection folder.Try again[39m
+ ❯ src/v2/workbench/api-client.test.tsx:514:31
+    512|         await waitFor(() => expect(loads()).toBe(3))
+    513|         expect(warning()).toHaveTextContent('The preferred collection …
+    514|         expect(warning()).not.toHaveTextContent("That folder isn't emp…
+       |                               ^
+    515|         expect(warning()).not.toHaveTextContent('The desktop is busy')
+    516|         expect(screen.getByRole('button', { name: 'Try again' })).toBe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 46 skipped (47)
+   Start at  22:30:56
+   Duration  1.70s (transform 856ms, setup 52ms, collect 1.30s, tests 92ms, environment 119ms, prepare 39ms)
+

@@ -1,0 +1,71 @@
+diff --git a/apps/desktop/src/v2/store.ts b/apps/desktop/src/v2/store.ts
+index 5a928692..fe4f30f6 100644
+--- a/apps/desktop/src/v2/store.ts
++++ b/apps/desktop/src/v2/store.ts
+@@ -102,7 +102,7 @@ interface WorkbenchRecovery {
+     generation: number
+     pending: boolean
+     failed: boolean
+-    /** Sanitized delivery/refusal outcome; survives page remount with this recovery. */
++    /** Sanitized delivery outcome; survives page remount with this recovery. */
+     message: string
+ }
+ const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false, message: '' })
+diff --git a/apps/desktop/src/v2/workbench/api-client.test.tsx b/apps/desktop/src/v2/workbench/api-client.test.tsx
+index 2e0b5a4c..7be949da 100644
+--- a/apps/desktop/src/v2/workbench/api-client.test.tsx
++++ b/apps/desktop/src/v2/workbench/api-client.test.tsx
+@@ -488,6 +488,39 @@ describe('C41 API Client board', () => {
+         expect(native.dispatched.filter((intent) => intent.kind === 'workbench' && ['openBuiltIn', 'createCollection', 'openFolder'].includes(intent.request.kind))).toHaveLength(0)
+     })
+ 
++    it('uses only the restore warning for a core refusal after an undelivered load', async () => {
++        const base = fxApi()
++        const native = scriptedNative({ ...base, workbench: { ...base.workbench, loaded: false, collection: null } })
++        let mode: 'busy' | 'cancelled' | 'refused' | 'opened' = 'busy'
++        workbench(native, answers((r) => r.kind === 'load'
++            ? mode === 'opened' ? { kind: 'opened', name: 'AIRS' } : mode === 'cancelled' ? { kind: 'cancelled' } : { kind: 'refused', problem: { kind: 'project', detail: 'notCollection' } }
++            : null))
++        const respond = native.respond
++        native.respond = (intent) => intent.kind === 'workbench' && intent.request.kind === 'load' && mode === 'busy'
++            ? { outcome: 'refusal', refusal: 'busy' } : respond(intent)
++        const loads = () => native.dispatched.filter((intent) => intent.kind === 'workbench' && intent.request.kind === 'load').length
++        const warning = () => document_().querySelector('[data-slot=workbench-message]') as HTMLElement
++        const user = userEvent.setup()
++        render(<App client={new DesktopClient(native.transport)} />)
++        await waitFor(() => expect(warning()).toHaveTextContent('The desktop is busy with a previous request.'))
++        mode = 'cancelled'
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(loads()).toBe(2))
++        expect(warning()).toHaveTextContent('The desktop is busy with a previous request.')
++        mode = 'refused'
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(loads()).toBe(3))
++        expect(warning()).toHaveTextContent('The preferred collection could not be opened.')
++        expect(warning()).not.toHaveTextContent("That folder isn't empty")
++        expect(warning()).not.toHaveTextContent('The desktop is busy')
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        mode = 'opened'
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(loads()).toBe(4))
++        await native.push(base)
++        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
++    })
++
+     it('settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement', async () => {
+         const base = fxApi()
+         const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+diff --git a/apps/desktop/src/v2/workbench/api-client.tsx b/apps/desktop/src/v2/workbench/api-client.tsx
+index cabe281a..23924d7d 100644
+--- a/apps/desktop/src/v2/workbench/api-client.tsx
++++ b/apps/desktop/src/v2/workbench/api-client.tsx
+@@ -90,7 +90,8 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+         // Admission/delivery/observation failure is still unresolved, including on the first load.
+         // Only a positive owned result may retire recovery; keep sanitized text with its scope.
+         const resolved = result.kind === 'opened' || result.kind === 'done'
+-        recovery.finishWorkbenchRestore(tenant, context, generation, !resolved, resolved ? '' : resultText(result) ?? recovery.workbenchRecovery.message)
++        const deliveryMessage = result.kind === 'undelivered' ? resultText(result) ?? '' : result.kind === 'cancelled' ? recovery.workbenchRecovery.message : ''
++        recovery.finishWorkbenchRestore(tenant, context, generation, !resolved, deliveryMessage)
+         return result
+     }, [call, tenant, context])
+     const editors = useRef(new Map<string, EditorHandle>())

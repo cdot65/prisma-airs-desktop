@@ -1,0 +1,825 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+stderr | src/v2/workbench/api-client.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+ ❯ src/v2/workbench/api-client.test.tsx (46 tests | 4 failed | 42 skipped) 4375ms
+   ↓ C41 API Client board > colors one complete editable URL template without duplicating its base variable
+   ↓ C41 API Client board > colors JSON while Save, Send, response Copy and Save Response keep the original text and run
+   ↓ C41 API Client board > ignores an earlier history selection that resolves after the newer selected response
+   ↓ C41 API Client board > cannot replace the current collection footer with a previous collection send result sharing its request id
+   ↓ C41 API Client board > shows the displayed response metrics in the footer, including another request selected from history
+   ↓ C41 API Client board > keeps open request tabs on one horizontally scrolling row
+   ↓ C41 API Client board > offers explicit restore recovery without automatically opening SCM or creating a missing collection
+   ↓ C41 API Client board > keeps missing preferred-folder recovery across Home and back until an explicit retry succeeds
+   ↓ C41 API Client board > keeps notCollection preferred-folder recovery across Home and back until an explicit retry succeeds
+   × C41 API Client board > keeps initial restore delivery recovery actionable after busy across Home and back 1085ms
+     → [2mexpect([22m[31mreceived[39m[2m).toHaveTextContent()[22m
+
+[31mreceived[39m value must be a Node.
+Received has type:  Null
+Received has value: [31mnull[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+   × C41 API Client board > keeps initial restore delivery recovery actionable after lost across Home and back 1072ms
+     → [2mexpect([22m[31mreceived[39m[2m).toHaveTextContent()[22m
+
+[31mreceived[39m value must be a Node.
+Received has type:  Null
+Received has value: [31mnull[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+   × C41 API Client board > keeps retry restore delivery recovery actionable after busy across Home and back 1116ms
+     → [2mexpect([22m[31mreceived[39m[2m).toHaveTextContent()[22m
+
+[31mreceived[39m value must be a Node.
+Received has type:  Null
+Received has value: [31mnull[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+   × C41 API Client board > keeps retry restore delivery recovery actionable after lost across Home and back 1100ms
+     → [2mexpect([22m[31mreceived[39m[2m).toHaveTextContent()[22m
+
+[31mreceived[39m value must be a Node.
+Received has type:  Null
+Received has value: [31mnull[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+   ↓ C41 API Client board > settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement
+   ↓ C41 API Client board > draws the title row with the chips, the tree, the tabs, the request line, the sub-tabs, the response pane and the footer (V2-T14)
+   ↓ C41 API Client board > searches the tree flat, says when nothing matches and clears; a collapsed folder hides its requests
+   ↓ C41 API Client board > edits Params as rows that are written back as the file’s name=value lines, protected after the typing pause, and shown as text on request
+   ↓ C41 API Client board > keeps a value as typed, word by word, in Params and Headers, and leaves a padded query value verbatim when another row is edited: Save and Send carry the exact lines (attempt-02 R1)
+   ↓ C41 API Client board > shows the response under Body (pretty, then Raw), Headers, Details and History, where an older run is shown as recorded (I5)
+   ↓ C41 API Client board > keeps a transfer in flight, with Cancel request, in view while an older run from History is being inspected; Cancel dispatches the active run once, history stays as recorded, nothing is resent (attempt-03 R1)
+   ↓ C41 API Client board > shows every transfer in flight for the request with its own Cancel: two deferred sends across a tab round trip, each cancelled by its own id exactly once, nothing resent (attempt-04 R1)
+   ↓ C41 API Client board > an obsolete document result never replaces the current selection: two selections in flight resolve out of order and the later selection stays usable (attempt-05 R1)
+   ↓ C41 API Client board > a selected request whose load fails says why and offers Try again, which reopens it once; a lost delivery is said too (attempt-05 R2)
+   ↓ C41 API Client board > a tool's failure is said inside its sheet, with the entered work and focus kept (attempt-05 R3)
+   ↓ C41 API Client board > a tree click's late reply never replaces the current selection: the selection moves on while the reply is held, and its release changes nothing (attempt-06 R1)
+   ↓ C41 API Client board > closing and re-opening a collection while its selected request's first load is held loads it afresh, and the old reply is ignored (attempt-06 R2)
+   ↓ C41 API Client board > a refused or undelivered creation is said inside the New request dialog, for a request and for a folder, with the path and focus kept (attempt-06 R3)
+   ↓ C41 API Client board > a cURL import's late reply never replaces the current selection: held past the draft's selection, the sheet closing and another selection, it is ignored (attempt-07 R1)
+   ↓ C41 API Client board > a cURL import's reply held across a collection close and re-open is ignored; the re-opened selection loads afresh (attempt-07 R1)
+   ↓ C41 API Client board > an unselected tree entry whose load is refused, then lost, says so above the current editor, which stays; Try again reopens it once each time (attempt-07 R2)
+   ↓ C41 API Client board > a cURL import's conversion report shows with its draft whether the result or the selecting snapshot arrives first; later selections stay protected (attempt-08 R2)
+   ↓ C41 API Client board > a cURL import's conversion report shows when the result arrives before the selecting snapshot (attempt-08 R2)
+   ↓ C41 API Client board > typing while an environment or schema save is pending is kept: the reply brings the revision, the next Save sends the newer text (attempt-08 R1)
+   ↓ C41 API Client board > returning to an edited request after its editor unmounted reloads it from the core: the protected fields come back, never the old snapshot (attempt-09 R1)
+   ↓ C41 API Client board > a superseded environment or schema open cannot replace the current editor or its typing: a newer selection, a new resource or Close retires it (attempt-09 R2)
+   ↓ C41 API Client board > reads the preview for Variables and Preview, and the Collection chip’s menu opens the tools sheet, refreshes and closes the collection
+   ↓ C41 API Client board > creates a request draft from + and shows it new; a tab with edits the core could not protect closes only after the operator chooses to discard them
+   ↓ C41 API Client board > re-opens the selected request when the same collection is closed and opened again: following its selection is scoped to the open collection
+   ↓ C41 API Client board > replacing one collection directly with another collection id that selects the same request id loads the new collection’s document, never shows the old fields under it, and ignores the old collection’s late reply (attempt-03 R1)
+   ↓ C41 API Client board > replacing one collection directly with the same collection id in a differently named folder that selects the same request id loads the new collection’s document, never shows the old fields under it, and ignores the old collection’s late reply (attempt-03 R1)
+   ↓ C41 API Client board > replacing one collection directly with the same collection id and basename as Rust actually exposes for another parent folder that selects the same request id loads the new collection’s document, never shows the old fields under it, and ignores the old collection’s late reply (attempt-03 R1)
+   ↓ C41 API Client board > draws nested folders as a hierarchy: a collapsed folder hides its whole subtree, a folder counts every request under it, and search still finds them
+   ↓ C41 API Client board > opens a collection tool from the keyboard; closing the sheet by Escape or its close control returns focus to the Collection chip, as the menu does on Escape (I8, T09)
+   ↓ C41 API Client board > a send from an already dirty request announces response metrics separately from its save state
+   ↓ C41 API Client board > a send from a new request announces response metrics without replacing "New · not saved yet"
+   ↓ C41 API Client board > shows the start panel with recents and no profile import when no collection is open, and the built-in collection opens from it
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v2/workbench/api-client.test.tsx > C41 API Client board > keeps initial restore delivery recovery actionable after busy across Home and back
+ FAIL  src/v2/workbench/api-client.test.tsx > C41 API Client board > keeps initial restore delivery recovery actionable after lost across Home and back
+ FAIL  src/v2/workbench/api-client.test.tsx > C41 API Client board > keeps retry restore delivery recovery actionable after busy across Home and back
+ FAIL  src/v2/workbench/api-client.test.tsx > C41 API Client board > keeps retry restore delivery recovery actionable after lost across Home and back
+Error: [2mexpect([22m[31mreceived[39m[2m).toHaveTextContent()[22m
+
+[31mreceived[39m value must be a Node.
+Received has type:  Null
+Received has value: [31mnull[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+ ❯ src/v2/workbench/api-client.test.tsx:467:47
+
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 42 skipped (46)
+   Start at  22:18:35
+   Duration  6.49s (transform 956ms, setup 127ms, collect 1.57s, tests 4.38s, environment 268ms, prepare 51ms)
+

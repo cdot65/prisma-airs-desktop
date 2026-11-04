@@ -1,0 +1,41 @@
+{
+  "schema": "airs-desktop/p11-helper-qa/1",
+  "argv": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "-m",
+    "unittest",
+    "test_review_carry",
+    "test_remediation",
+    "test_standing",
+    "-v"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/tools/p11",
+  "started_utc": "2026-11-04T22:36:28.049508+00:00",
+  "finished_utc": "2026-11-04T22:36:28.340473+00:00",
+  "exit_code": 0,
+  "tests": {
+    "passed": 20,
+    "failed": 0
+  },
+  "skipped": 0,
+  "log": {
+    "path": "docs/planning/evidence/P11/review-carry-qa-01/command.log",
+    "sha256": "3704a6ca5cda1cd6748c259401f2e9821c1fb2328dc1c0ba38f8dae5c5801559"
+  },
+  "helper_files": {
+    "tools/p11/review_carry.py": "f1d45dbb6b0c7e57e2e6e18755e658ba1004164988dc70a7d3af761cd3d7a4ab",
+    "tools/p11/test_proof.py": "439893815bd75b61130b52c3c77d582a5e3486203467d881664ac8177a7d6bbe",
+    "tools/p11/native.py": "4ef7cd89f6e64b300809946da03bfa8f9f7a63cc43a00f31a99fc916284eb1f2",
+    "tools/p11/review.py": "82083687b3c25dd2a46632495fd58f617f1f5eb14f75a5451cebd168cbd15a03",
+    "tools/p11/test_remediation.py": "20a791d080b46f21d2313c3640ccde3580cf03fec5500f37301972883866e197",
+    "tools/p11/test_standing.py": "b59a5a0d7879a53d0f5b552d84b41aa8be9f5e0d105469fa35784b8c2fb4e650",
+    "tools/p11/proof.py": "3908f0e1878d6269307bb6c12b6e599eb6063b6396365f64ca5eb810697c415a",
+    "tools/p11/remediation.py": "48a9aede73e85e6bcacd7808578e258a268249a62eb0b34a518e310bb4f55fa2",
+    "tools/p11/test_review_carry.py": "b77826085a84ce71578b2f03302ca72a2d780b50fde486a0609bd20ab7264abd",
+    "tools/p11/test_native.py": "4f48e0a0af6757e9918fcbb132a698d9775755de745eb1b552bffe8fd0f4cc1a",
+    "tools/p11/standing.py": "461bc7258b76e6a670923552b8fe5e00d24d44f34a309dc09877ed0cf5191d94"
+  },
+  "source_before": "8730f14d17e779970355f092f42fa8413c20d809e499179ed1243f62d0d40e70",
+  "source_after": "8730f14d17e779970355f092f42fa8413c20d809e499179ed1243f62d0d40e70",
+  "meaning": "Actual affected pure consumer, member-carry and standing tests only. No application/Rust/native/frontend suite or new review executed. Original exploratory fixture failures are described with preserved before inputs."
+}
