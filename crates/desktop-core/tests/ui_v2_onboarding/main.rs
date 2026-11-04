@@ -4,6 +4,15 @@
 //! draft as a tenant in one step, and a discard or relaunch leaves nothing
 //! behind but a cleanup of its credentials.
 
+#[allow(dead_code)]
+#[path = "../context_credentials/support.rs"]
+mod support;
+
+use desktop_core::management::ManagementEndpoints;
+use desktop_core::transport::{ProxyMode, TransportPolicy};
+use std::sync::Arc;
+use support::{Reply, TestCa, TlsServer, eventually};
+
 use desktop_core::features::{OnboardingState, ProductId, VerifyLine, VerifyState};
 use desktop_core::fixtures::{self, Handles, ScriptedStore};
 use desktop_core::store::PersistedState;
@@ -14,6 +23,10 @@ use desktop_core::{
 use serde_json::json;
 
 const KEY: &str = "synthetic-scan-key-aaaa";
+const CLIENT_ID: &str = "synthetic-onboarding-client";
+const CLIENT_SECRET: &str = "synthetic-onboarding-secret";
+const TOKEN_BASIC: &str =
+    "Basic c3ludGhldGljLW9uYm9hcmRpbmctY2xpZW50OnN5bnRoZXRpYy1vbmJvYXJkaW5nLXNlY3JldA==";
 
 struct Desk {
     _core: Core,
@@ -21,16 +34,45 @@ struct Desk {
     session: String,
     sequence: u64,
     adapters: Handles,
+    _server: TlsServer,
 }
 
 impl Desk {
-    fn new() -> Self {
-        Self::from_state(PersistedState::default())
+    async fn new() -> Self {
+        Self::from_state(PersistedState::default()).await
     }
 
-    fn from_state(state: PersistedState) -> Self {
+    async fn from_state(state: PersistedState) -> Self {
+        let ca = TestCa::new("onboarding synthetic OAuth CA");
+        let server = TlsServer::start(ca.leaf(&["localhost"]), Reply::Route(Arc::new(|seen| {
+            let target = seen.request_line.split_whitespace().nth(1).unwrap_or("");
+            let granted = target == "/oauth2/access_token"
+                && seen.header("authorization") == Some(TOKEN_BASIC)
+                && String::from_utf8_lossy(&seen.body).contains("grant_type=client_credentials")
+                && String::from_utf8_lossy(&seen.body).contains("scope=tsg_id%3A1234567890");
+            let (status, body) = if granted {
+                (200, json!({"access_token": "synthetic-onboarding-access", "token_type": "Bearer", "expires_in": 3600}))
+            } else {
+                (403, json!({"error": "fixture permission denied"}))
+            };
+            let body = serde_json::to_vec(&body).expect("JSON");
+            Reply::Raw { head: format!("HTTP/1.1 {status} Status\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close", body.len()), body }
+        }))).await;
+        let origin = format!("https://localhost:{}", server.port);
         let (adapters, handles) = fixtures::adapters_with(ScriptedStore::with_state(state));
-        let core = Core::new(CoreConfig::default(), adapters);
+        let core = Core::new(
+            CoreConfig {
+                management: ManagementEndpoints::at_origin(&origin),
+                ..CoreConfig::default()
+            },
+            adapters,
+        );
+        core.set_transport_policy(TransportPolicy {
+            revision: 2,
+            proxy: ProxyMode::Direct,
+            extra_roots: vec![ca.pem.into_bytes()],
+        })
+        .expect("synthetic TLS policy");
         core.start();
         let handle = core.operator();
         let session = handle.register_delivery_session().expect("session").nonce;
@@ -40,13 +82,14 @@ impl Desk {
             session,
             sequence: 0,
             adapters: handles,
+            _server: server,
         }
     }
 
-    fn restart(self) -> Self {
+    async fn restart(self) -> Self {
         let state = self.adapters.store.saved().unwrap_or_default();
         drop(self._core);
-        Self::from_state(state)
+        Self::from_state(state).await
     }
 
     async fn send(&mut self, intent: serde_json::Value) -> Result<Receipt, Refusal> {
@@ -108,6 +151,21 @@ impl Desk {
         panic!("the scan key write did not settle");
     }
 
+    async fn management(&mut self, mode: &str) -> String {
+        let context = self.context();
+        self.send(
+            json!({"kind": "configureManagementCredential", "context": context,
+            "mode": mode, "clientId": CLIENT_ID, "secret": CLIENT_SECRET}),
+        )
+        .await
+        .expect("management credential");
+        assert!(
+            eventually(|| self.setup().tenant.management.state == desktop_core::ScanState::Ready)
+                .await
+        );
+        self.context()
+    }
+
     async fn verified(&self) -> desktop_core::features::VerifyView {
         for _ in 0..200 {
             if let Some(v) = self.setup().verify
@@ -122,8 +180,8 @@ impl Desk {
 }
 
 #[tokio::test]
-async fn a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify() {
-    let mut desk = Desk::new();
+async fn a_draft_is_not_a_tenant_and_first_run_requires_oauth_not_a_scan_key() {
+    let mut desk = Desk::new().await;
 
     let context = desk.begin("firstRun", "Northwind Health").await;
     let snap = desk.snap();
@@ -136,7 +194,8 @@ async fn a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify() {
         setup.tenant.environment,
         desktop_core::features::TenantEnvironment::Staging
     );
-    assert!(setup.scan_required);
+    assert!(!setup.scan_required);
+    assert!(setup.management_required);
     assert_eq!(setup.products, vec![ProductId::RuntimeSecurity]);
     assert!(setup.verify.is_none() && !setup.completable);
     // A second draft is refused while one is open.
@@ -146,7 +205,7 @@ async fn a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify() {
             .await,
         Err(Refusal::Busy)
     );
-    // Without a scan key the verify run fails on first run, so completion is refused.
+    // A missing Scan Key is optional; missing OAuth blocks completion in either mode.
     desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
         .await
         .expect("verify started");
@@ -156,7 +215,7 @@ async fn a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify() {
         .iter()
         .find(|s| s.line == VerifyLine::ScanKey)
         .expect("scan line");
-    assert_eq!(scan.state, VerifyState::Fail);
+    assert_eq!(scan.state, VerifyState::Warning);
     assert!(v.failed && !desk.setup().completable);
     assert_eq!(
         desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
@@ -167,7 +226,7 @@ async fn a_draft_is_not_a_tenant_and_first_run_needs_the_scan_key_to_verify() {
 
 #[tokio::test]
 async fn credentials_attach_to_the_draft_and_a_stored_key_is_never_a_pass() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
     let context = desk.begin("firstRun", "Northwind Health").await;
     desk.send(json!({"kind": "configureScanCredential", "context": context, "mode": "session", "key": KEY}))
         .await
@@ -188,24 +247,27 @@ async fn credentials_attach_to_the_draft_and_a_stored_key_is_never_a_pass() {
     );
     assert!(scan.reason.contains("first scan proves it"));
     let management = by_line(VerifyLine::ManagementClient).expect("management");
-    assert_eq!(management.state, VerifyState::Skipped);
+    assert_eq!(management.state, VerifyState::Fail);
     assert!(
         by_line(VerifyLine::Gateway).is_none(),
         "unselected products have no line"
     );
-    assert!(v.done && !v.failed && !v.stale && v.warnings.is_empty());
-    assert!(desk.setup().completable);
+    assert!(v.done && v.failed && v.blocking && !v.stale && v.warnings.is_empty());
+    assert!(
+        !desk.setup().completable,
+        "a stored Scan Key is not OAuth authentication"
+    );
 }
 
 #[tokio::test]
-async fn changing_inputs_makes_results_stale_and_products_needing_a_client_warn() {
-    let mut desk = Desk::new();
+async fn changing_inputs_makes_authentication_stale_and_product_permissions_warn() {
+    let mut desk = Desk::new().await;
     let context = desk.begin("firstRun", "Northwind Health").await;
     desk.send(json!({"kind": "configureScanCredential", "context": context, "mode": "session", "key": KEY}))
         .await
         .expect("key");
     desk.settled(true).await;
-    let context = desk.context();
+    let context = desk.management("session").await;
     desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
         .await
         .expect("verify");
@@ -242,15 +304,15 @@ async fn changing_inputs_makes_results_stale_and_products_needing_a_client_warn(
         lines,
         vec![
             (VerifyLine::ScanKey, VerifyState::Stored),
-            (VerifyLine::ManagementClient, VerifyState::Warning),
-            (VerifyLine::Gateway, VerifyState::Warning),
-            (VerifyLine::RedTeam, VerifyState::Warning),
+            (VerifyLine::ManagementClient, VerifyState::Pass),
+            (VerifyLine::Gateway, VerifyState::Fail),
+            (VerifyLine::RedTeam, VerifyState::Fail),
             (VerifyLine::Ais, VerifyState::Unavailable),
             (VerifyLine::Aes, VerifyState::Unavailable),
         ]
     );
-    assert_eq!(second.warnings.len(), 3);
-    assert_eq!(second.warnings[1].product, ProductId::Gateway);
+    assert_eq!(second.warnings.len(), 2);
+    assert_eq!(second.warnings[0].product, ProductId::Gateway);
     assert!(desk.setup().completable, "warnings do not block completion");
     // A profile change (new destination) retires the key and goes stale.
     desk.send(
@@ -284,7 +346,7 @@ async fn changing_inputs_makes_results_stale_and_products_needing_a_client_warn(
 
 #[tokio::test]
 async fn completion_commits_the_draft_once_with_products_warnings_and_onboarding() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
 
     desk.send(json!({"kind": "setOnboarding", "state": "inProgress"}))
         .await
@@ -294,7 +356,7 @@ async fn completion_commits_the_draft_once_with_products_warnings_and_onboarding
         .await
         .expect("key");
     desk.settled(true).await;
-    let context = desk.context();
+    let context = desk.management("session").await;
     desk.send(json!({"kind": "chooseSetupProducts", "context": context, "products": ["gateway"]}))
         .await
         .expect("products");
@@ -329,11 +391,11 @@ async fn completion_commits_the_draft_once_with_products_warnings_and_onboarding
     );
     assert_eq!(
         tenant.setup_warnings.len(),
-        2,
-        "management + gateway warnings"
+        1,
+        "product permission warning only"
     );
     assert_eq!(tenant.setup_warnings[0].id, "vw-1");
-    assert_eq!(tenant.setup_warnings[1].product, ProductId::Gateway);
+    assert_eq!(tenant.setup_warnings[0].product, ProductId::Gateway);
     assert!(tenant.setup_warnings[0].recorded_secs > 1_700_000_000);
     assert_eq!(
         snap.active.as_ref().map(|a| &a.tenant),
@@ -356,15 +418,25 @@ async fn completion_commits_the_draft_once_with_products_warnings_and_onboarding
     let saved = desk.adapters.store.saved().expect("saved");
     assert!(saved.tenant_draft.is_none());
     assert_eq!(saved.tenant_warnings.len(), 1);
-    let desk = desk.restart();
+    let desk = desk.restart().await;
     let snap = desk.snap();
     assert_eq!(snap.onboarding, OnboardingState::Done);
-    assert_eq!(snap.tenants[0].setup_warnings.len(), 2, "restored");
+    assert_eq!(snap.tenants[0].setup_warnings.len(), 1, "restored");
+    assert_eq!(
+        snap.tenants[0].management.state,
+        desktop_core::ScanState::Missing,
+        "session-only OAuth is not resurrected"
+    );
+    assert_eq!(
+        snap.onboarding,
+        OnboardingState::Done,
+        "existing tenants do not reenter onboarding when session credentials disappear"
+    );
 }
 
 #[tokio::test]
 async fn add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_up() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
     desk.send(json!({"kind": "createTenant", "profile": {
         "label": "First", "tsgId": "1111111111", "destination": {"kind": "region", "region": "europe"}}}))
         .await
@@ -390,9 +462,18 @@ async fn add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_
         .await
         .expect("key in the Keychain");
     desk.settled(true).await;
-    let context = desk.context();
+    let context = desk.management("keychain").await;
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify draft");
+    let verify = desk.verified().await;
+    assert!(!verify.blocking && desk.setup().completable);
     let records = desk.adapters.vault.records();
-    assert_eq!(records.len(), 1, "one Keychain record for the draft");
+    assert_eq!(
+        records.len(),
+        2,
+        "scan and OAuth records belong only to the draft"
+    );
     let during = desk.snap();
     assert_eq!(during.tenants.len(), 1, "the shell still lists one tenant");
     assert_eq!(
@@ -420,11 +501,13 @@ async fn add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_
             .iter()
             .all(|c| c.tenant == before.tenants[0].id)
     );
-    assert!(
-        saved.pending_cleanup.contains(&records[0])
-            || !desk.adapters.vault.records().contains(&records[0]),
-        "the draft's Keychain record is being removed"
-    );
+    for record in &records {
+        assert!(
+            saved.pending_cleanup.contains(record)
+                || !desk.adapters.vault.records().contains(record),
+            "every abandoned draft credential is being removed"
+        );
+    }
     assert_eq!(
         desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
             .await,
@@ -434,12 +517,13 @@ async fn add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_
 
 #[tokio::test]
 async fn add_mode_without_a_key_verifies_with_a_warning_and_completes_switching_once() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
     desk.send(json!({"kind": "createTenant", "profile": {
         "label": "First", "tsgId": "1111111111", "destination": {"kind": "region", "region": "europe"}}}))
         .await
         .expect("first tenant");
-    let context = desk.begin("add", "Second").await;
+    desk.begin("add", "Second").await;
+    let context = desk.management("session").await;
     desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
         .await
         .expect("verify");
@@ -467,21 +551,26 @@ async fn add_mode_without_a_key_verifies_with_a_warning_and_completes_switching_
 
 #[tokio::test]
 async fn a_relaunch_drops_the_draft_and_queues_its_credentials_for_cleanup() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
     let context = desk.begin("firstRun", "Northwind Health").await;
     desk.send(json!({"kind": "configureScanCredential", "context": context, "mode": "keychain", "key": KEY}))
         .await
         .expect("key");
     desk.settled(true).await;
+    let context = desk.management("keychain").await;
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("authenticate before relaunch");
+    assert!(!desk.verified().await.blocking);
     let saved = desk.adapters.store.saved().expect("saved");
     assert!(
         saved.tenant_draft.is_some(),
         "the draft is written so its records are known"
     );
-    assert_eq!(saved.credentials.len(), 1);
+    assert_eq!(saved.credentials.len(), 2);
     assert!(saved.tenants.is_empty());
-    let record = saved.credentials[0].record.clone();
-    let mut desk = desk.restart();
+    let records: Vec<_> = saved.credentials.iter().map(|c| c.record.clone()).collect();
+    let mut desk = desk.restart().await;
     let snap = desk.snap();
     assert!(snap.setup.is_none() && snap.tenants.is_empty());
     assert_eq!(snap.onboarding, OnboardingState::Needed);
@@ -493,21 +582,23 @@ async fn a_relaunch_drops_the_draft_and_queues_its_credentials_for_cleanup() {
     let saved = desk.adapters.store.saved().expect("saved");
     assert!(saved.tenant_draft.is_none());
     assert!(saved.credentials.is_empty());
-    let deleted = desk
-        .adapters
-        .vault
-        .calls()
-        .into_iter()
-        .any(|c| matches!(c, fixtures::VaultCall::Delete(r) if r == record));
-    assert!(
-        deleted || saved.pending_cleanup.contains(&record),
-        "cleanup reached the vault"
-    );
+    for record in records {
+        let deleted = desk
+            .adapters
+            .vault
+            .calls()
+            .into_iter()
+            .any(|c| matches!(c, fixtures::VaultCall::Delete(r) if r == record));
+        assert!(
+            deleted || saved.pending_cleanup.contains(&record),
+            "cleanup covers both Scan Key and OAuth record"
+        );
+    }
 }
 
 #[tokio::test]
 async fn a_desktop_with_a_tenant_is_never_sent_through_the_wizard() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
     assert_eq!(desk.snap().onboarding, OnboardingState::Needed);
     desk.send(json!({"kind": "createTenant", "profile": {
         "label": "Northwind Health", "tsgId": "1234567890",
@@ -526,7 +617,7 @@ async fn a_desktop_with_a_tenant_is_never_sent_through_the_wizard() {
 
 #[tokio::test]
 async fn a_draft_id_is_never_selectable_or_deletable_as_a_tenant() {
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
     desk.send(json!({"kind": "createTenant", "profile": {
         "label": "First", "tsgId": "1111111111", "destination": {"kind": "region", "region": "europe"}}}))
         .await
@@ -559,7 +650,7 @@ async fn a_draft_id_is_never_selectable_or_deletable_as_a_tenant() {
 #[tokio::test]
 async fn a_tenant_created_outside_the_wizard_ends_a_first_run_draft_and_the_shell_takes_over() {
     // The v1 import during first run commits tenants through the same path.
-    let mut desk = Desk::new();
+    let mut desk = Desk::new().await;
 
     desk.send(json!({"kind": "setOnboarding", "state": "inProgress"}))
         .await
@@ -599,7 +690,7 @@ async fn a_tenant_created_outside_the_wizard_ends_a_first_run_draft_and_the_shel
         deleted || saved.pending_cleanup.contains(&record),
         "its Keychain record is cleaned up"
     );
-    let desk = desk.restart();
+    let desk = desk.restart().await;
     assert_eq!(
         desk.snap().onboarding,
         OnboardingState::Done,

@@ -97,8 +97,9 @@ async fn the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_se
     assert_eq!(s["tenant"]["tsgId"], "1762204418");
     assert_eq!(s["tenant"]["environment"], "staging");
     assert_eq!(s["tenant"]["destination"]["region"], "europe");
-    // First run: the scan key card is Required, the management card Optional (the core says which).
-    assert_eq!(s["scanRequired"], true);
+    // Every setup requires OAuth authentication; the Scan Key card is optional.
+    assert_eq!(s["scanRequired"], false);
+    assert_eq!(s["managementRequired"], true);
     assert_eq!(s["tenant"]["scan"]["state"], "missing");
     assert_eq!(s["tenant"]["management"]["state"], "missing");
     // The product cards: Runtime always on; the packs rows with their counts.
@@ -144,7 +145,7 @@ async fn the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_se
             .filter(|s| matches!(s.line, VerifyLine::Ais | VerifyLine::Aes))
             .all(|s| s.state == VerifyState::Unavailable)
     );
-    // Without a scan key on first run the run fails and the footer's primary stays closed.
+    // Missing management authentication blocks the footer; the Scan Key is not required.
     assert!(v.failed && v.blocking);
     assert!(!desk.setup().completable);
 }
@@ -167,6 +168,7 @@ async fn add_mode_has_no_required_scan_key_and_the_sheet_discards_its_draft_on_c
     assert_eq!(s["mode"], "add");
     // The add sheet's scan card is Optional.
     assert_eq!(s["scanRequired"], false);
+    assert_eq!(s["managementRequired"], true);
     assert!(desk.snap().tenants.is_empty(), "a draft is not a tenant");
     // Cancel discards the draft in the core; the shell is untouched.
     let context = desk.setup().context.as_str().to_owned();

@@ -651,9 +651,10 @@ async fn a_draft_reads_beside_the_active_tenant_without_touching_its_gateway_cho
 }
 
 #[tokio::test]
-async fn an_optional_service_failure_is_a_warning_the_operator_may_continue_over() {
+async fn oauth_failure_blocks_commit_without_mutating_the_active_tenant() {
     let mut desk = desk().await;
     desk.tenant_a().await;
+    let before = desk.snap();
     let origin = desk.origin.clone();
     desk.send(json!({"kind": "beginTenantSetup", "mode": "add", "profile": {"label": "Tenant B", "tsgId": TSG,
         "destination": {"kind": "custom", "origin": origin}}}))
@@ -671,6 +672,7 @@ async fn an_optional_service_failure_is_a_warning_the_operator_may_continue_over
     desk.send(json!({"kind": "chooseSetupProducts", "context": context, "products": ["redTeam"]}))
         .await
         .expect("products");
+    let vault_before = desk.adapters.vault.records();
     // The management plane refuses this client: the verify read fails.
     desk.script.lock().expect("script").token_status = 401;
     desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
@@ -685,40 +687,24 @@ async fn an_optional_service_failure_is_a_warning_the_operator_may_continue_over
         .find(|s| s.line == VerifyLine::ManagementClient)
         .expect("line");
     assert_eq!(management.state, VerifyState::Fail, "{}", management.reason);
-    assert!(
-        v.failed && !v.blocking,
-        "an optional service's failure does not block"
+    assert!(v.failed && v.blocking && !desk.setup().completable);
+    assert_eq!(
+        desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
+            .await,
+        Err(Refusal::InvalidInput)
     );
-    assert!(
-        v.warnings
-            .iter()
-            .any(|w| w.product == ProductId::RuntimeSecurity && w.reason.starts_with("Failed: "))
+    let after = desk.snap();
+    assert_eq!(after.tenants, before.tenants);
+    assert_eq!(after.active, before.active);
+    assert!(after.setup.is_some(), "failed authentication stays a draft");
+    assert_eq!(
+        desk.adapters.vault.records(),
+        vault_before,
+        "verification does not mutate either credential generation"
     );
-    assert!(
-        desk.setup().completable,
-        "Continue with warnings is admitted"
-    );
-    desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
-        .await
-        .expect("completed over the warning");
-    let snap = desk.snap();
-    let b = snap
-        .tenants
-        .iter()
-        .find(|t| t.label == "Tenant B")
-        .expect("B");
-    assert!(
-        b.setup_warnings
-            .iter()
-            .any(|w| w.reason.starts_with("Failed: ")),
-        "the failure is recorded, not converted to a pass"
-    );
-    assert_eq!(snap.active.as_ref().map(|a| &a.tenant), Some(&b.id));
-    let _ = &desk.adapters;
 }
 
-#[tokio::test]
-async fn a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant() {
+async fn product_source_failure_remains_a_warning(status: u16) {
     let mut desk = desk().await;
     desk.tenant_a().await;
     let origin = desk.origin.clone();
@@ -738,11 +724,24 @@ async fn a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant(
     desk.send(json!({"kind": "chooseSetupProducts", "context": context, "products": ["redTeam"]}))
         .await
         .expect("products");
-    // Red Team scans list, but the statistics source answers 503: partial, never Pass.
+    // OAuth succeeds; only the product's statistics source denies or fails.
+    desk.script.lock().expect("script").routes.insert(
+        "/ai-red-teaming/data-plane/v1/dashboard/scan-statistics".to_owned(),
+        (status, json!({"error": "fixture product source failure"})),
+    );
     desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
         .await
         .expect("verify");
     let v = desk.verified().await;
+    assert_eq!(
+        v.steps
+            .iter()
+            .find(|s| s.line == VerifyLine::ManagementClient)
+            .expect("OAuth line")
+            .state,
+        VerifyState::Pass
+    );
+    assert!(!v.blocking && desk.setup().completable);
     let red_team = v
         .steps
         .iter()
@@ -769,6 +768,16 @@ async fn a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant(
             .iter()
             .any(|w| w.product == ProductId::RedTeam && w.reason.contains("statistics did not"))
     );
+}
+
+#[tokio::test]
+async fn a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant() {
+    product_source_failure_remains_a_warning(503).await;
+}
+
+#[tokio::test]
+async fn a_product_permission_denial_is_a_warning_after_successful_oauth() {
+    product_source_failure_remains_a_warning(403).await;
 }
 
 #[tokio::test]
@@ -898,8 +907,13 @@ async fn a_replaced_client_authenticates_afresh_and_profile_changes_retire_the_b
         v.steps[1].reason
     );
     assert!(
-        !v.blocking && desk.setup().completable,
-        "an optional failure"
+        v.blocking && !desk.setup().completable,
+        "a replacement secret must authenticate before completion"
+    );
+    assert_eq!(
+        desk.send(json!({"kind": "completeTenantSetup", "context": wrong_context, "packs": []}))
+            .await,
+        Err(Refusal::InvalidInput)
     );
     // Remove the client, add the right one back: it authenticates afresh.
     desk.send(json!({"kind": "removeManagementCredential", "context": wrong_context}))
@@ -920,6 +934,19 @@ async fn a_replaced_client_authenticates_afresh_and_profile_changes_retire_the_b
     let v = desk.verified().await;
     assert_eq!(v.steps[1].state, VerifyState::Pass, "{}", v.steps[1].reason);
     // A TSG change retires the management credential (it was bound to the TSG) and the context.
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify restored generation");
+    let restored = desk.verified().await;
+    assert_eq!(
+        restored
+            .steps
+            .iter()
+            .find(|s| s.line == VerifyLine::ManagementClient)
+            .expect("OAuth")
+            .state,
+        VerifyState::Pass
+    );
     let origin = desk.origin.clone();
     desk.send(json!({"kind": "updateTenantSetup", "context": context, "profile": {"label": "Tenant B", "tsgId": "9876543210",
         "destination": {"kind": "custom", "origin": origin}}}))
