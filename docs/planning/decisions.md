@@ -2516,3 +2516,29 @@ Owner-approved2026-11-01 brief, activated after actual P09attempt02 all9/audit o
 ## D062 — Risk-based future verification and explicit evidence reuse
 
 Owner2026-11-02 policy in verification-policy.md applies toC45/P10/future tasks, never retroactively to sealed P09. Select checks from behavior/dependencies/boundary risk. One broad C45 identity/isolation/cleanup baseline is justified after focused/cross-consumer preflight; later fixes/merges andP10 execute affected checks and retain valid original evidence with exact-artifact proof or an honest unaffected-impact rationale. Every assertion/check is accounted; raw outcomes/artifact bindings remain immutable. New commits/worktrees/scores/fingerprints alone do not trigger full native/Rust repetition. Actual independent reviews and separate live/release gates remain.
+
+## D063 — Owner refinement plan, 2026-11-04
+
+The owner confirmed all 17 items and the completed Q1–Q13 interview with
+“confirmed. proceed.” [The accepted plan](refinements/2026-11-04/plan.md)
+records the scope. P11 allocates C46 connection/setup diagnostics, C47 shell,
+C48 API Client and C49 Settings/themes; these four bounded streams may be
+implemented in parallel and reviewed against one integrated candidate.
+
+Every new tenant requires actual management OAuth authentication before commit;
+Scan Key setup may follow later. Product permission warnings remain distinct.
+Existing tenants continue to load. Recheck setup resolves only a matching fresh
+passing finding and retains the original dated diagnostic. Explain overlays an
+interactive page. One header H1, compact page actions, improved API editing and
+footer ownership, compact Settings cards and independent Prisma AIRS/Gruvbox
+themes follow the accepted plan. Prisma AIRS is the default; existing Appearance
+and Academy-owned cosmetic authority remain intact. Tenant Edit is label and
+environment only; replacement handles a different TSG identity.
+
+D062 applies explicitly: P11 selects affected checks/native flows, retains
+unaffected baseline evidence honestly and does not replay the full P09/P10
+matrix on each commit or review. A later release candidate still needs its
+explicit qualification. Actual independent chunk/phase review rules remain.
+No additional live calls, remote IAM changes or stable promotion are implied.
+The published RC1 assets stay immutable. Craft-keymap and the separate shortcut
+cleanup remain deferred.

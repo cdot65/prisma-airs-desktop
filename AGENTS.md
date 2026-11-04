@@ -1,13 +1,26 @@
-# Prisma AIRS Desktop v2 agent guidance
+# Prisma AIRS Desktop agent guidance
 
-## Current stage
+## Current work
+
+The owner confirmed the 2026-11-04 refinement plan: see
+[the accepted scope](docs/planning/refinements/2026-11-04/plan.md),
+[verification plan](docs/planning/refinements/2026-11-04/verification.md) and
+[execution status](docs/planning/refinements/2026-11-04/execution.md).
+P11 comprises C46 connection/diagnostics, C47 shell, C48 API Client and C49
+Settings/themes. Use focused checks and the affected native flows. Historical
+P09/P10 outcomes, sealed evidence and the published v1.0.0-rc.1 stay unchanged.
+The RC remains a prerelease; full installed live acceptance is deferred by the
+owner. No new live API calls are authorized by this refinement task.
+
+## Historical baseline
 
 P09 attempt-02 passed actual independent9/9/9/9/9 and its audit on2026-11-02.
 C31attempt07 andC32attempt23 passed normally at all9; C30/C41 retain explicit owner
 standing with raw historical scores unchanged. C45/P10 is the approved current
 implementation: one presentation, Prisma AIRS Desktop1.0.0, new io.cdot.airs-desktop
 identities and fresh setup without alpha/v2 data or credential reads/migration.
-C26/P08 remains open; no signing/publication/installation is authorized here.
+C26/P08 remains open. Later owner authorization produced the signed/notarized
+v1.0.0-rc.1 prerelease; do not interpret that as stable acceptance.
 
 ## Verification policy for C45/P10 and future work
 

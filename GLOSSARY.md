@@ -6,8 +6,11 @@ Mechanisms, wire formats and transition rules belong in the selected design.
 ## Language
 
 **Tenant profile**: An application-owned configuration for a Prisma AIRS tenant,
-including its label, endpoints, and protected credential references. A scan-only
-profile does not require management OAuth credentials. A profile is not an
+including its label, endpoints, and protected credential references. New profiles
+require successful management OAuth authentication before commitment; a Scan Key
+can be added later. Existing profiles continue to load without being forced back
+through onboarding when credentials expire or a session-only secret is lost.
+A profile is not an
 Academy learner account or a Gateway workspace.
 
 **Credential capability**: The specific operations a credential can authorize,
