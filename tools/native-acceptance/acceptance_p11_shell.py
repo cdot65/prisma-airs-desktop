@@ -30,8 +30,23 @@ def focus_visible(ctx, label):
         tree = ctx.app.tree()
         focused = ctx.app.focused(tree)
         if focused and any((focused.get('label') or '').startswith(name) for name in ACTIONS[label]):
-            return c29.inside(c29.window_frame(ctx.app.pid), focused), focused
+            return c29.inside(ctx.frame(), focused), focused
     return False, ctx.app.focused(ctx.app.tree())
+
+
+def size_window(ctx, width, height):
+    # Preserve C41's viewport-height adjustment, using the candidate-owned
+    # AX window instead of System Events' sometimes-empty window list.
+    requested = [width, height+c41.TITLE_BAR]
+    for _ in range(3):
+        ctx.resize(*requested, position=(0, 0))
+        time.sleep(.8)
+        measured = c41.geometry(ctx.app.tree())
+        viewport = measured['viewport'] or measured['web']
+        if not viewport or viewport[1] == height:
+            break
+        requested[1] += height-viewport[1]
+    return ctx.frame()
 
 
 def run(ctx):
@@ -43,7 +58,7 @@ def run(ctx):
     for theme, width, height, zoom in (('Light', 1440, 820, 0), ('Dark', 900, 600, 10)):
         ctx.app.menu('View', 'Actual Size')
         ctx.app.front()
-        c41.size_window(ctx.app, ctx.app.pid, width, height)
+        size_window(ctx, width, height)
         c29.appearance(ctx.app, theme)
         if zoom:
             c29.zoom(ctx.app, zoom)
@@ -60,7 +75,7 @@ def run(ctx):
             layouts.append({'page': page, 'theme': theme, 'zoom': 200 if zoom else 100,
                             'requested': [width, height], 'geometry': c41.geometry(current),
                             'one_named_header_h1': len(headers) == 1, 'navigation_focus': focused,
-                            'main': main, 'main_inside_window': c29.inside(c29.window_frame(ctx.app.pid), main),
+                            'main': main, 'main_inside_window': c29.inside(ctx.frame(), main),
                             'named_action_keyboard_visible': reachable, 'focused_action': control,
                             'academy_location': page != 'Academy' or ctx.app.has_text(current, 'Academy location')})
     matrix = ctx.save('shell-layout-measurements', layouts)
@@ -70,7 +85,7 @@ def run(ctx):
                           'named_actions_keyboard_reachable': all(r['named_action_keyboard_visible'] for r in layouts),
                           'academy_hierarchy_retained': all(r['academy_location'] for r in layouts)}, [matrix, *artifacts], pictures)
     ctx.app.menu('View', 'Actual Size')
-    c29.set_window_size(ctx.app.pid, 1440, 900)
+    ctx.resize(1440, 900)
     ctx.navigate('Home')
     before = main_region(ctx.app.tree())
     ctx.press_any('Show the calls')

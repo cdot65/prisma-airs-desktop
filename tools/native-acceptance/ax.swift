@@ -8,6 +8,8 @@
 //   ax press <pid> <role> <label> [nth]     AXPress the nth matching element
 //   ax focus <pid> <role> <label> [nth]     set AXFocused on the nth match
 //   ax raise <pid>                          raise the main window
+//   ax frame <pid>                          JSON [x,y,width,height] of owned window
+//   ax resize <pid> <width> <height> [x y]   resize/reposition that owned window
 //   ax type-file <pid> <file> [units]       type the file's text into the focused
 //                                           field as key events posted to <pid>,
 //                                           [units] UTF-16 units per event
@@ -89,6 +91,53 @@ func appWindows(
 }
 // END owned-window source selection.
 
+// BEGIN owned-window geometry policy (compiled by the isolated policy probe).
+func ownedWindow(
+    _ windows: [AXUIElement], _ pid: pid_t,
+    read: (AXUIElement, String) -> AnyObject? = attr,
+    owner: (AXUIElement) -> pid_t? = owningPid
+) -> AXUIElement? {
+    guard pid > 0 else { return nil }
+    return windows.first { owner($0) == pid && read($0, kAXRoleAttribute) as? String == kAXWindowRole }
+}
+
+func validFrame(_ values: [Double]) -> Bool {
+    values.count == 4 && values.allSatisfy { $0.isFinite } && values[2] > 0 && values[3] > 0
+}
+
+func resizeValues(_ values: [String]) -> [Double]? {
+    guard values.count == 2 || values.count == 4 else { return nil }
+    let numbers = values.compactMap(Double.init)
+    guard numbers.count == values.count, numbers.allSatisfy({ $0.isFinite }),
+          numbers[0] > 0, numbers[1] > 0 else { return nil }
+    return numbers
+}
+// END owned-window geometry policy.
+
+func windowFrame(_ window: AXUIElement) -> [Double]? {
+    guard let rawPosition = attr(window, kAXPositionAttribute),
+          let rawSize = attr(window, kAXSizeAttribute),
+          CFGetTypeID(rawPosition) == AXValueGetTypeID(),
+          CFGetTypeID(rawSize) == AXValueGetTypeID() else { return nil }
+    let positionValue = rawPosition as! AXValue
+    let sizeValue = rawSize as! AXValue
+    var position = CGPoint.zero
+    var dimensions = CGSize.zero
+    guard AXValueGetType(positionValue) == .cgPoint, AXValueGetType(sizeValue) == .cgSize,
+          AXValueGetValue(positionValue, .cgPoint, &position),
+          AXValueGetValue(sizeValue, .cgSize, &dimensions) else { return nil }
+    let result = [Double(position.x), Double(position.y), Double(dimensions.width), Double(dimensions.height)]
+    return validFrame(result) ? result : nil
+}
+
+func setWindowAttribute(_ window: AXUIElement, _ name: String, _ value: AXValue) {
+    var settable = DarwinBoolean(false)
+    guard AXUIElementIsAttributeSettable(window, name as CFString, &settable) == .success,
+          settable.boolValue else { fail("owned window attribute is not settable: \(name)") }
+    let status = AXUIElementSetAttributeValue(window, name as CFString, value)
+    guard status == .success else { fail("owned window attribute failed: \(name) (\(status.rawValue))") }
+}
+
 func walk(_ pid: pid_t) -> [Node] {
     let app = AXUIElementCreateApplication(pid)
     // WebKit builds a web page's accessibility tree only for an AX client
@@ -155,6 +204,24 @@ case "tree":
     let nodes = walk(pid).map(describe)
     let data = try! JSONSerialization.data(withJSONObject: nodes, options: [])
     FileHandle.standardOutput.write(data)
+case "frame", "resize":
+    guard args[1] != "frame" || args.count == 3 else { fail("frame needs only <pid>") }
+    let values = args[1] == "resize" ? resizeValues(Array(args.dropFirst(3))) : nil
+    guard args[1] != "resize" || values != nil else { fail("resize needs positive finite <width> <height> [finite x y]") }
+    let app = AXUIElementCreateApplication(pid)
+    guard let window = ownedWindow(appWindows(app, pid), pid) else { fail("no AXWindow owned by requested PID") }
+    if let values = values {
+        if values.count == 4 {
+            var position = CGPoint(x: values[2], y: values[3])
+            guard let encoded = AXValueCreate(.cgPoint, &position) else { fail("cannot encode owned window position") }
+            setWindowAttribute(window, kAXPositionAttribute, encoded)
+        }
+        var dimensions = CGSize(width: values[0], height: values[1])
+        guard let encoded = AXValueCreate(.cgSize, &dimensions) else { fail("cannot encode owned window size") }
+        setWindowAttribute(window, kAXSizeAttribute, encoded)
+    }
+    guard let frame = windowFrame(window) else { fail("owned window has no finite positive frame") }
+    FileHandle.standardOutput.write(try! JSONSerialization.data(withJSONObject: frame, options: []))
 case "press", "focus":
     guard args.count >= 5 else { fail("\(args[1]) needs <role> <label>") }
     let nth = args.count >= 6 ? Int(args[5]) ?? 0 : 0

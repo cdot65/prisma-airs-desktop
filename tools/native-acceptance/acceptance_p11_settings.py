@@ -9,8 +9,6 @@ This module has no standalone execution path and never reads a real vault.
 
 import time
 
-import fixture_app as fx
-
 
 SOURCE_REQUIREMENTS = {
     "frontend": [
@@ -77,12 +75,7 @@ def _radio(ctx, label, nth=0):
 
 
 def _resize(ctx, width, height):
-    ctx.app.front()  # Verifies candidate-owned PID before targeted System Events.
-    pid = int(ctx.app.pid)
-    result = fx.sh(["osascript", "-e",
-        f'tell application "System Events" to tell (first application process whose unix id is {pid}) '
-        f'to set size of window 1 to {{{int(width)}, {int(height)}}}'])
-    ctx.require(result.returncode == 0, "could not resize owned C49 window")
+    ctx.resize(width, height)
     time.sleep(.6)
 
 

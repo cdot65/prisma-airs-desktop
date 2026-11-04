@@ -10,6 +10,7 @@ import ast
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -108,6 +109,36 @@ class Context:
         self.require(path, 'fixture window did not produce a capture')
         self.artifacts[path] = sha(ROOT/path)
         return path
+
+    def frame(self):
+        # App.ax revalidates this prepared candidate's executable/PID before
+        # each request; Swift also checks the selected AXWindow's PID and role.
+        frame = json.loads(self.app.ax('frame'))
+        self.require(isinstance(frame, list) and len(frame) == 4 and
+                     all(type(n) in (int, float) and math.isfinite(n) for n in frame) and
+                     frame[2] > 0 and frame[3] > 0, 'owned window returned an invalid frame')
+        return frame
+
+    def resize(self, width, height, position=None):
+        values = [width, height] + ([] if position is None else list(position))
+        self.require(len(values) in (2, 4) and
+                     all(type(n) in (int, float) and math.isfinite(n) for n in values) and
+                     width > 0 and height > 0, 'invalid owned window resize request')
+        self.app.front()
+        self.app.ax('resize', *values)
+        deadline = time.monotonic() + 3
+        while True:
+            frame = self.frame()
+            sized = abs(frame[2]-width) <= 2 and abs(frame[3]-height) <= 2
+            # macOS may clamp the requested position below its menu bar.
+            # Retain measured placement; only size is the requested invariant.
+            if sized:
+                self.log.append({'action': 'owned-window-resize', 'pid': self.app.pid,
+                                 'requested': values, 'measured': frame,
+                                 'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})
+                return frame
+            self.require(time.monotonic() < deadline, f'owned window resize did not reach requested geometry: {values} != {frame}')
+            time.sleep(.1)
 
     def press(self, role, label, timeout=12):
         tree, ready = self.app.wait_for(lambda t: self.app.node(t, role, label) is not None, timeout)
