@@ -1,0 +1,414 @@
+{
+  "learner": [
+    {
+      "procedure": "admin.feedback.submit",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "caches.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "caches.open",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "certificate.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "certificate.mine",
+      "kind": "query"
+    },
+    {
+      "procedure": "certifications.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "certifications.lockedTiers",
+      "kind": "query"
+    },
+    {
+      "procedure": "courses.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "dashboard.summary",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.access",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.attempt.checkStep",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.attempt.critique",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.attempt.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.attempt.hint",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.attempt.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.attempt.start",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.attempt.submit",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.bundle",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.draft.resolve",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.draft.save",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.handbook",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.manifest",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.me",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.organization.select",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "desktop.organizations",
+      "kind": "query"
+    },
+    {
+      "procedure": "desktop.unitBundle",
+      "kind": "query"
+    },
+    {
+      "procedure": "enrollment.affectedByCourseRemoval",
+      "kind": "query"
+    },
+    {
+      "procedure": "enrollment.removeByCourse",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "exam.acknowledgeAward",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "exam.answer",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "exam.eligibility",
+      "kind": "query"
+    },
+    {
+      "procedure": "exam.execTerminalItem",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "exam.getActive",
+      "kind": "query"
+    },
+    {
+      "procedure": "exam.result",
+      "kind": "query"
+    },
+    {
+      "procedure": "exam.start",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "exam.submissionState",
+      "kind": "query"
+    },
+    {
+      "procedure": "exam.submit",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "gamification.dossier",
+      "kind": "query"
+    },
+    {
+      "procedure": "gamification.leaderboard",
+      "kind": "query"
+    },
+    {
+      "procedure": "gamification.setDailyGoal",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "gamification.setTimezone",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "gamification.summary",
+      "kind": "query"
+    },
+    {
+      "procedure": "identityPractical.assign",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "identityPractical.claimCertificate",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "identityPractical.status",
+      "kind": "query"
+    },
+    {
+      "procedure": "identityPractical.submit",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "labs.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "labs.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "labs.unitFor",
+      "kind": "query"
+    },
+    {
+      "procedure": "library.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "meta.contentVersion",
+      "kind": "query"
+    },
+    {
+      "procedure": "notifications.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "notifications.markAllRead",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "notifications.markRead",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "notifications.unreadCount",
+      "kind": "query"
+    },
+    {
+      "procedure": "onboarding.complete",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "onboarding.status",
+      "kind": "query"
+    },
+    {
+      "procedure": "orientation.complete",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "orientation.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "orientation.markHintSeen",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "paths.forCourse",
+      "kind": "query"
+    },
+    {
+      "procedure": "paths.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "paths.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "progress.checkInline",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "progress.courseSummary",
+      "kind": "query"
+    },
+    {
+      "procedure": "progress.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "progress.resetCourse",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "seasons.current",
+      "kind": "query"
+    },
+    {
+      "procedure": "settings.avatarUploadUrl",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "settings.confirmAvatar",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "settings.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "settings.removeAvatar",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "settings.update",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shift.answer",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shift.briefing",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.daily",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.dailyBoard",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.dailyGhost",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.debrief",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.decide",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shift.eligibility",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.getActive",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.history",
+      "kind": "query"
+    },
+    {
+      "procedure": "shift.serve",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shift.start",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shift.yesterday",
+      "kind": "query"
+    },
+    {
+      "procedure": "shop.buy",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shop.equip",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "shop.list",
+      "kind": "query"
+    },
+    {
+      "procedure": "tutor.critique",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "units.certOverview",
+      "kind": "query"
+    },
+    {
+      "procedure": "units.checkKcAnswer",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "units.complete",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "units.get",
+      "kind": "query"
+    },
+    {
+      "procedure": "units.listByModule",
+      "kind": "query"
+    },
+    {
+      "procedure": "units.listByPath",
+      "kind": "query"
+    },
+    {
+      "procedure": "units.moduleMeta",
+      "kind": "query"
+    },
+    {
+      "procedure": "units.startKnowledgeCheck",
+      "kind": "mutation"
+    },
+    {
+      "procedure": "units.submitKnowledgeCheck",
+      "kind": "mutation"
+    }
+  ],
+  "public": [
+    "courses.list",
+    "library.list",
+    "modules.diagramVideo",
+    "modules.intro",
+    "modules.listByCourse",
+    "paths.forCourse",
+    "paths.get",
+    "paths.list",
+    "units.get",
+    "units.listByModule",
+    "units.listByPath",
+    "units.moduleMeta"
+  ]
+}

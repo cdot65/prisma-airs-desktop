@@ -1,0 +1,16 @@
+{
+  "product": "Prisma AIRS Harness",
+  "version": "0.1.7-desktop.2",
+  "source_commit": "9331a5839bc6a763d94dee7584746f58bbbe1181",
+  "source_repository": "https://git.cdot.io/cdot/prisma-airs-harness",
+  "upstream_commit": "3d2ee51ca2d5db578f328aa75e20aa22c0197c9a",
+  "target": "aarch64-apple-darwin",
+  "profile": "release",
+  "binary_processing": "strip -S; codesign --force --sign -",
+  "binary_sha256": "f8e49cee8b0905818c9271e91b2ca8f39b67075e602e5db7db683f9d37aee50c",
+  "cargo_lock_sha256": "a008ab0f0066a50a5d16d3e9a876619566be320baa03eb372bbc7169770f45e1",
+  "rust": "rustc 1.95.0 (59807616e 2026-04-14)",
+  "build_command": "CARGO_PROFILE_RELEASE_DEBUG=0 CARGO_PROFILE_RELEASE_LTO=false CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 cargo --config profile.release.package.codex-cli.opt-level=1 build --locked --release -p codex-cli --bin airs-harness",
+  "release_status": "unsigned-unvalidated-candidate",
+  "publishable": false
+}

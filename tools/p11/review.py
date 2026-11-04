@@ -1,4 +1,4 @@
-"""Fresh actual reviews of one shared P11 qualification. No ledger fabrication."""
+"""Fresh P11 reviews and explicit unchanged-member carry. No ledger fabrication."""
 from pathlib import Path
 import json
 import subprocess
@@ -20,24 +20,35 @@ def latest(root, subject):
     return actual_review(root, subject, path.name)
 
 
-def predecessors(root, subject, qualification):
+def predecessors(root, subject, qualification, review_carry=None):
     standing = {'accepted_baseline': release_prerequisites(root)}
+    require(review_carry is None or subject == 'P11', 'only the current phase may consume member carry')
     if subject == 'P11':
-        standing['members'] = {chunk: latest(root, chunk) for chunk in proof.CHUNKS}
-        for chunk, member in standing['members'].items():
-            request = read(root / 'docs/planning/reviews' / chunk / member['attempt'] / 'request.json')
-            require(request['qualification'] == qualification,
-                    'phase member reviewed a different shared qualification: ' + chunk)
+        if review_carry is not None:
+            import review_carry as member_carry
+            retained = member_carry.validate(root, review_carry, qualification)
+            standing['members'] = dict(retained['members'], C48=latest(root, 'C48'))
+            request = read(root / 'docs/planning/reviews/C48' / standing['members']['C48']['attempt'] / 'request.json')
+            require(request['qualification'] == qualification, 'affected C48 must review the current qualification')
+            standing['member_review_carry'] = retained['proof']
+            standing['member_dispositions'] = {name: 'carried_unaffected' if name in member_carry.CARRIED
+                                               else 'executed' for name in proof.CHUNKS}
+        else:
+            standing['members'] = {chunk: latest(root, chunk) for chunk in proof.CHUNKS}
+            for chunk, member in standing['members'].items():
+                request = read(root / 'docs/planning/reviews' / chunk / member['attempt'] / 'request.json')
+                require(request['qualification'] == qualification,
+                        'phase member reviewed a different shared qualification: ' + chunk)
     return standing
 
 
-def make(root, subject, attempt, qualification):
+def make(root, subject, attempt, qualification, review_carry=None):
     require(subject in (*proof.CHUNKS, 'P11') and attempt.startswith('attempt-')
             and attempt.removeprefix('attempt-').isdigit(), 'P11 review subject/attempt')
     out = root / 'docs/planning/reviews' / subject / attempt
     require(not out.exists(), 'preserve previous review attempt')
     qualified = proof.verify(root, qualification)
-    standing = predecessors(root, subject, qualified)
+    standing = predecessors(root, subject, qualified, review_carry=review_carry)
     source = proof.source_inventory(root)
     folder = root / 'docs/planning/evidence/P11'
     evidence = {str(path.relative_to(root)): proof.file_identity(path)
@@ -60,10 +71,16 @@ def make(root, subject, attempt, qualification):
                          else f'docs/planning/chunks/{subject}.md'},
                'limitations': [
                    'Fresh read-only configured-model review; not cryptographic provider authorship.',
-                   'One actual P11 fixture candidate and phase Check/Test/native executions serve all reviews; none is relabelled a per-chunk execution.',
+                   'This request consumes its bound qualified evidence. Original execution/source/artifact bindings are retained; no per-chunk suite rerun is inferred.',
                    'D062 selects changed-flow coverage. Original P09/P10 results and owner standing are unchanged; no old artifact is claimed byte-identical to the new candidate.',
                    'No new live calls or actual remote warning diagnosis. Stable installed acceptance and Linux platform qualification remain separate.',
                    'controller_complete:false; actual review receipts supplement the historical ledger without fabricated standard-controller completion.']}
+    if review_carry is not None:
+        request['review_carry'] = proof.reference(root, review_carry)
+        request['limitations'][1] = ('Current C48 and phase review this qualification. '
+            'C46/C47/C49 retain actual full-nine qualification03 reviews via explicit unchanged-impact carry; '
+            'their original source, qualification, verdict, audit and artifact bindings remain unchanged. '
+            'This phase reviews all current source, integration and the new carry logic.')
     out.mkdir(parents=True)
     for name, value in [('request.json', request), ('source-inventory.json', {'files': source}),
                         ('evidence-inventory.json', {'files': evidence})]:
@@ -79,7 +96,10 @@ def make(root, subject, attempt, qualification):
         'Return only strict docs/architecture/review-verdict.schema.json JSON with the exact request identity/fingerprints, honest five scores and actionable findings. '
         'The registered subjects now include C46–C49/P11. Full gate is every score>=9 and empty required_fixes/blockers/evidence_gaps; D034 chunk acceptance starts at8 but never edits scores. '
         'Do not infer unperformed checks or demand unrelated full native/Rust replay merely for a new commit/review. Evaluate the bounded impact rationale. '
-        'The same shared actual phase qualification serves these reviews, not new per-chunk executions. Historical C30/C41 owner standing stays distinct and does not invent or lower current scores. '
+        + ('The phase consumes current C48 plus three explicitly carried original qualification03 member reviews. '
+         'Inspect the carry proof and all current source/provenance logic; do not relabel those members current. '
+         if review_carry is not None else 'This request consumes its supplied qualification; any unchanged prior member review needs a separate explicit carry proof at phase review. ')
+        + 'Historical C30/C41 owner standing stays distinct and does not invent or lower current scores. '
         'C26 stable installed/live acceptance and Linux first-platform qualification remain open.\n')
     return request
 
@@ -102,7 +122,8 @@ def audit(root, subject, attempt):
             require(proof.file_identity(root / relative) == identity, 'reviewed input drift: ' + relative)
     require(proof.verify(root, root / request['qualification']['record']) == request['qualification'],
             'shared qualification changed during review')
-    require(predecessors(root, subject, request['qualification']) == request['predecessors'],
+    require(predecessors(root, subject, request['qualification'],
+                review_carry=proof.bound(root, request['review_carry']) if 'review_carry' in request else None) == request['predecessors'],
             'review predecessor changed')
     try:
         full_gate(verdict)
@@ -127,5 +148,12 @@ if __name__ == '__main__':
     root = Path.cwd().resolve()
     action, subject, attempt, *rest = sys.argv[1:]
     require(action in ('make', 'audit'), 'expected make or audit')
-    result = make(root, subject, attempt, (root / rest[0]).resolve()) if action == 'make' else audit(root, subject, attempt)
+    if action == 'make':
+        require(len(rest) in (1, 3) and (len(rest) == 1 or rest[1] == '--review-carry'),
+                'usage: make SUBJECT ATTEMPT QUALIFICATION [--review-carry RECEIPT]')
+        result = make(root, subject, attempt, (root / rest[0]).resolve(),
+                      review_carry=(root / rest[2]).resolve() if len(rest) == 3 else None)
+    else:
+        require(not rest, 'usage: audit SUBJECT ATTEMPT')
+        result = audit(root, subject, attempt)
     print(json.dumps(result, indent=2))

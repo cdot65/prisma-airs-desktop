@@ -1,0 +1,371 @@
+{
+  "schema": "airs-desktop/p11-undelivered-source-supplement/1",
+  "recorded_utc": "2026-11-04T22:24:14.097451+00:00",
+  "producer_receipt": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/receipt.json",
+    "sha256": "755ee566436681696ceaccc0fc01a853a48e2137fa3e6209ae9bc28c20a982e4"
+  },
+  "baseline_qa": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-02/supplement.json",
+    "sha256": "2993659176b4d2e53ab6ba24051717716310090c10e71d1df30b68e94bf642ab"
+  },
+  "baseline_source": {
+    "path": "docs/planning/evidence/P11/remediation-selection-02/source-current.json",
+    "sha256": "802017c8632e05febf7c7f047f249e79b23e20c37e1260492095e15194b3916e"
+  },
+  "baseline_source_hashes": {
+    "apps/desktop/src/v2/workbench/api-client.tsx": "b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "161ad953f06049d464ef001857c3cb59fb221e62ff8d9e255c7a75a99d1cb548",
+    "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+  },
+  "source_files": {
+    "apps/desktop/src/v2/workbench/api-client.tsx": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3",
+    "apps/desktop/src/v2/store.ts": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+  },
+  "checks": [
+    {
+      "id": "C48/recovery-undelivered",
+      "record": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-02-run.json",
+        "sha256": "c541cf331dbb20f6bc06326256af204ef96bb54e7a741c9b21762af5b23c642f"
+      },
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-02.log",
+        "sha256": "5f2c70881d31d23e1227fa141804a405789f12ccd6ea2bbe91bb7d9c8e2d34c4"
+      },
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx",
+        "-t",
+        "restore delivery recovery actionable|preferred-folder recovery|in-flight restore|offers explicit restore recovery"
+      ],
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "exit_code": 0,
+      "passed": 8,
+      "tests": {
+        "passed": 8,
+        "failed": 0,
+        "skipped": 38,
+        "total": 46
+      },
+      "source_hashes": {
+        "apps/desktop/src/v2/workbench/api-client.tsx": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3",
+        "apps/desktop/src/v2/store.ts": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+      },
+      "source_inputs": {
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78"
+        },
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+          "sha256": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/store.ts",
+          "sha256": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+        }
+      },
+      "started_utc": "2026-11-04T22:21:13.699340+00:00",
+      "finished_utc": "2026-11-04T22:21:16.858614+00:00"
+    },
+    {
+      "id": "C48/typecheck-undelivered",
+      "record": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/typecheck-02-run.json",
+        "sha256": "0e7a0a68de54aa9e09b4ca112973ea928501b8a66ea7bed20bcdd5bebea88a96"
+      },
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/typecheck-02.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "apps/desktop/node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "-p",
+        "apps/desktop/tsconfig.json"
+      ],
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+      "exit_code": 0,
+      "passed": null,
+      "tests": null,
+      "source_hashes": {
+        "apps/desktop/src/v2/workbench/api-client.tsx": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3",
+        "apps/desktop/src/v2/store.ts": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+      },
+      "source_inputs": {
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78"
+        },
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+          "sha256": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/store.ts",
+          "sha256": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+        }
+      },
+      "started_utc": "2026-11-04T22:21:13.700207+00:00",
+      "finished_utc": "2026-11-04T22:21:16.921981+00:00"
+    }
+  ],
+  "failed_checks": [
+    {
+      "label": "red",
+      "record": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-run.json",
+        "sha256": "a33f2d65228b0555ab36ffbfbb3aa465211c278c4de59b1190bd12a2436377b1"
+      },
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red.log",
+        "sha256": "baf571f4a421922d69e270d99b7b39ae6bade088bb048096686472078929b033"
+      },
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx",
+        "-t",
+        "restore delivery recovery actionable"
+      ],
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "exit_code": 1,
+      "tests": {
+        "passed": 0,
+        "failed": 4,
+        "skipped": 42,
+        "total": 46
+      },
+      "source_hashes": {
+        "apps/desktop/src/v2/workbench/api-client.tsx": "b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "10f48ebf880038c07eb8b17b0f58b486e1336ee339a3e2ec3f818006b2384117",
+        "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+      },
+      "started_utc": "2026-11-04T22:18:35.405603+00:00",
+      "finished_utc": "2026-11-04T22:18:42.190151+00:00"
+    },
+    {
+      "label": "green",
+      "record": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-run.json",
+        "sha256": "b18bc7855c8e211f7db40ce838f2e5c96cc4ed45e65481ac478e59ab2dda76bd"
+      },
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green.log",
+        "sha256": "b75ade873a65431b11ade6c3ec44ba2b6052d18a123afe21be8f64adb397dd5b"
+      },
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx",
+        "-t",
+        "restore delivery recovery actionable|preferred-folder recovery|in-flight restore|offers explicit restore recovery"
+      ],
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "exit_code": 1,
+      "tests": {
+        "passed": 6,
+        "failed": 2,
+        "skipped": 38,
+        "total": 46
+      },
+      "source_hashes": {
+        "apps/desktop/src/v2/workbench/api-client.tsx": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "10f48ebf880038c07eb8b17b0f58b486e1336ee339a3e2ec3f818006b2384117",
+        "apps/desktop/src/v2/store.ts": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+      },
+      "started_utc": "2026-11-04T22:19:53.142304+00:00",
+      "finished_utc": "2026-11-04T22:19:58.205036+00:00"
+    }
+  ],
+  "failure_interpretation": "Original busy-labeled raw fixture used an invalid receipt/refused envelope. Real parser returned failed delivery, reproducing the same undelivered classification bug; first green correctly retained its generic failed-delivery message and failed2 busy-specific expected-text assertions. Corrected fixture to actual outer outcome:refusal/refusal:busy. All original outputs/source inputs remain unedited; final8 exercise real busy admission and lost observations. No failed outcome relabeled passing.",
+  "source_inputs": {
+    "baseline": {
+      "apps/desktop/src/v2/workbench/api-client.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before/apps/desktop/src/v2/workbench/api-client.tsx",
+        "sha256": "b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde"
+      },
+      "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before/apps/desktop/src/v2/workbench/api-client.test.tsx",
+        "sha256": "161ad953f06049d464ef001857c3cb59fb221e62ff8d9e255c7a75a99d1cb548"
+      },
+      "apps/desktop/src/v2/store.ts": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before/apps/desktop/src/v2/store.ts",
+        "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+      }
+    },
+    "red": {
+      "apps/desktop/src/v2/workbench/api-client.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+        "sha256": "b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde"
+      },
+      "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+        "sha256": "10f48ebf880038c07eb8b17b0f58b486e1336ee339a3e2ec3f818006b2384117"
+      },
+      "apps/desktop/src/v2/store.ts": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-inputs/apps/desktop/src/v2/store.ts",
+        "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+      }
+    },
+    "first_green": {
+      "apps/desktop/src/v2/workbench/api-client.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+        "sha256": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78"
+      },
+      "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+        "sha256": "10f48ebf880038c07eb8b17b0f58b486e1336ee339a3e2ec3f818006b2384117"
+      },
+      "apps/desktop/src/v2/store.ts": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-inputs/apps/desktop/src/v2/store.ts",
+        "sha256": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+      }
+    },
+    "final": {
+      "apps/desktop/src/v2/workbench/api-client.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+        "sha256": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78"
+      },
+      "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+        "sha256": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3"
+      },
+      "apps/desktop/src/v2/store.ts": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/store.ts",
+        "sha256": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+      }
+    }
+  },
+  "alias_map": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/alias-map.json",
+    "sha256": "29b496d3b2f957688ae654bbe42a8ce57115d6d208a2eaeeed3e9fcc8ed0705b"
+  },
+  "files": {
+    ".evidence-private/c48-undelivered-01/before/apps/desktop/src/v2/store.ts": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before/apps/desktop/src/v2/store.ts",
+      "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+    },
+    ".evidence-private/c48-undelivered-01/before/apps/desktop/src/v2/workbench/api-client.test.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before/apps/desktop/src/v2/workbench/api-client.test.tsx",
+      "sha256": "161ad953f06049d464ef001857c3cb59fb221e62ff8d9e255c7a75a99d1cb548"
+    },
+    ".evidence-private/c48-undelivered-01/before/apps/desktop/src/v2/workbench/api-client.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before/apps/desktop/src/v2/workbench/api-client.tsx",
+      "sha256": "b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde"
+    },
+    ".evidence-private/c48-undelivered-01/before.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/before.json",
+      "sha256": "90cd8727868889e5ed0c4ffcb2b7777c2c1848a67cdf6be35453c93a3d3eb16b"
+    },
+    ".evidence-private/c48-undelivered-01/final-inputs/apps/desktop/src/v2/store.ts": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/store.ts",
+      "sha256": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+    },
+    ".evidence-private/c48-undelivered-01/final-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+      "sha256": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3"
+    },
+    ".evidence-private/c48-undelivered-01/final-inputs/apps/desktop/src/v2/workbench/api-client.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/final-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+      "sha256": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78"
+    },
+    ".evidence-private/c48-undelivered-01/green-02-run.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-02-run.json",
+      "sha256": "c541cf331dbb20f6bc06326256af204ef96bb54e7a741c9b21762af5b23c642f"
+    },
+    ".evidence-private/c48-undelivered-01/green-02.log": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-02.log",
+      "sha256": "5f2c70881d31d23e1227fa141804a405789f12ccd6ea2bbe91bb7d9c8e2d34c4"
+    },
+    ".evidence-private/c48-undelivered-01/green-inputs/apps/desktop/src/v2/store.ts": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-inputs/apps/desktop/src/v2/store.ts",
+      "sha256": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+    },
+    ".evidence-private/c48-undelivered-01/green-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+      "sha256": "10f48ebf880038c07eb8b17b0f58b486e1336ee339a3e2ec3f818006b2384117"
+    },
+    ".evidence-private/c48-undelivered-01/green-inputs/apps/desktop/src/v2/workbench/api-client.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+      "sha256": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78"
+    },
+    ".evidence-private/c48-undelivered-01/green-run.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green-run.json",
+      "sha256": "b18bc7855c8e211f7db40ce838f2e5c96cc4ed45e65481ac478e59ab2dda76bd"
+    },
+    ".evidence-private/c48-undelivered-01/green.log": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/green.log",
+      "sha256": "b75ade873a65431b11ade6c3ec44ba2b6052d18a123afe21be8f64adb397dd5b"
+    },
+    ".evidence-private/c48-undelivered-01/production-and-tests.diff": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/production-and-tests.diff",
+      "sha256": "dea9451ebbc1b4ca95cb7d3930d07be415c13b3bc9b5b4a10836d3eecba85809"
+    },
+    ".evidence-private/c48-undelivered-01/receipt.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/receipt.json",
+      "sha256": "755ee566436681696ceaccc0fc01a853a48e2137fa3e6209ae9bc28c20a982e4"
+    },
+    ".evidence-private/c48-undelivered-01/red-inputs/apps/desktop/src/v2/store.ts": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-inputs/apps/desktop/src/v2/store.ts",
+      "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+    },
+    ".evidence-private/c48-undelivered-01/red-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+      "sha256": "10f48ebf880038c07eb8b17b0f58b486e1336ee339a3e2ec3f818006b2384117"
+    },
+    ".evidence-private/c48-undelivered-01/red-inputs/apps/desktop/src/v2/workbench/api-client.tsx": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+      "sha256": "b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde"
+    },
+    ".evidence-private/c48-undelivered-01/red-run.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red-run.json",
+      "sha256": "a33f2d65228b0555ab36ffbfbb3aa465211c278c4de59b1190bd12a2436377b1"
+    },
+    ".evidence-private/c48-undelivered-01/red.log": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/red.log",
+      "sha256": "baf571f4a421922d69e270d99b7b39ae6bade088bb048096686472078929b033"
+    },
+    ".evidence-private/c48-undelivered-01/typecheck-02-run.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/typecheck-02-run.json",
+      "sha256": "0e7a0a68de54aa9e09b4ca112973ea928501b8a66ea7bed20bcdd5bebea88a96"
+    },
+    ".evidence-private/c48-undelivered-01/typecheck-02.log": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/typecheck-02.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    ".evidence-private/c48-undelivered-01/typecheck-run.json": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/typecheck-run.json",
+      "sha256": "d5d3cc4ce4aeb00ec7d252c466efbcf8c9977e0af1a25955884d3d28fdd6e550"
+    },
+    ".evidence-private/c48-undelivered-01/typecheck.log": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "exact_diff": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/originals/production-and-tests.diff",
+    "sha256": "dea9451ebbc1b4ca95cb7d3930d07be415c13b3bc9b5b4a10836d3eecba85809"
+  },
+  "selected_scope": "Four new production App/DesktopClient/workbenchCall/store cases: initial or explicit-retry admission busy and rejected observation, sanitized outcome and Retry persist Home/back with no automatic load and no fallback; explicit opened result resolves. Four retained recovery cases exercise missing/replaced folder, canceled retry, both snapshot/result orders, intentional close, pending remount and context retirement.",
+  "unchanged_scope": "No App, adapter/contracts, Save/Send controls, JSON/URL/footer/tabs, Rust or native helper edits. Other38 API tests and prior Save/Send results are unaffected carry candidates, not newly executed here.",
+  "execution_meaning": "Only the eight selected recovery regressions and desktop typecheck are newly executed. Old baseline sourceQA is consumed at its archived source; no full same-source Check/Test RunRecord is fabricated or claimed.",
+  "native_executed": false,
+  "build_executed": false,
+  "qualified": false
+}

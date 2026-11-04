@@ -1,0 +1,40 @@
+/** Copy for the v2 Academy (C42): R2App start=academy. Tests assert these exact strings. */
+export const ACADEMY_COPY = {
+    title: 'AI Security Academy',
+    lead: 'Learn each product with your own tenant beside you',
+    region: 'Academy',
+    starting: 'Academy is starting…',
+    // The title row's pills: who is learning, and whether Academy can be reached.
+    guest: 'Browsing as a guest',
+    signedIn: (name: string) => name,
+    offline: 'Academy cannot be reached',
+    downloads: (n: number) => `${n} ${n === 1 ? 'course' : 'courses'} offline`,
+    // The frame: the learner pages on the left, the learner's place on the right.
+    pages: 'Academy pages',
+    place: 'Your place',
+    sections: 'Academy sections',
+    guestNote: 'Sign in from Settings to track progress and take knowledge checks.',
+    openSettings: 'Open Settings',
+    signedInNote: (name: string) => `Signed in as ${name}. Progress and knowledge checks are kept by Academy.`,
+    offlineNote: "Academy can't be reached. Downloaded courses and lab work saved on this Mac still open. Nothing is sent until you choose to send it again.",
+    downloadsLink: 'Downloads',
+    drafts: (n: number) => `${n} ${n === 1 ? 'piece' : 'pieces'} of lab work saved on this Mac, not sent`,
+    // The Learning paths row: Academy's paths as the catalog lists them.
+    paths: 'Learning paths',
+    pathsReading: 'Reading the catalog…',
+    pathsFailed: 'The catalog could not be read.',
+    pathsEmpty: 'Academy lists no learning paths for this account.',
+    pathMeta: (units: number, done: number, minutes: number | null) => `${done} of ${units} units${minutes ? ` · ${minutes} min` : ''}`,
+    pathLocked: 'Locked',
+    openPath: (title: string) => `Open ${title}`,
+    // Routes the desktop does not carry, failures, sign-in.
+    signInTitle: 'Sign in to continue',
+    signInText: 'Your Academy account is set up in Settings. Signing in opens Academy in your browser; the desktop never sees your password.',
+    backToCatalog: 'Back to the catalog',
+    failedTitle: 'This page could not be shown',
+    failedText: 'Something in this Academy page did not load correctly. Your progress is kept by Academy.',
+    notHereTitle: 'Not in the desktop app',
+    notHereText: 'This part of Academy is not part of the desktop app. Learning, the Program, assessments, certificates and your account are here.',
+    linkOutside: (host: string, href: string) => `This link goes to ${host}, outside the desktop app, and was not opened: ${href}`,
+    linkUnopenable: 'This link cannot be opened from the desktop app.',
+} as const

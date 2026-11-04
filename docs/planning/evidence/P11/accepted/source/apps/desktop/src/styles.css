@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* Self-hosted fonts: the packaged CSP allows only bundled font files. */
+@import '@fontsource-variable/inter/index.css';
+@import '@fontsource-variable/jetbrains-mono/index.css';
+
+/* Academy-owned shared presentation (ADR 0002): general tokens and themes,
+ * the base focus ring/interaction helpers, and the Tailwind token layer.
+ * Earned Academy skins are gamification and are not imported here. */
+@import '@ai-security-academy/presentation/tokens.css';
+@import '@ai-security-academy/presentation/base.css';
+@import '@ai-security-academy/presentation/theme.css';
+
+@source '../node_modules/@ai-security-academy/presentation/src';
+
+/* Academy's learner experience (C05): its reading styles and motion, and the
+ * Academy source its pages are built from (for utility classes). Caveat is
+ * the lab marginalia hand. Earned Academy skins are not imported. */
+@import '@fontsource-variable/inter/wght-italic.css';
+@import '@fontsource-variable/jetbrains-mono/wght-italic.css';
+@import '@fontsource-variable/caveat/index.css';
+@import '../../../.work/academy/src/styles/animations.css';
+@import '../../../.work/academy/src/styles/learner.css';
+@source '../../../.work/academy/src/features';
+@source '../../../.work/academy/src/components';
+@source '../../../.work/academy/packages/learner/src';
+
+/* The shared frame scrolls the document under a sticky 56px topbar and a
+ * fixed 60px decorative bottom fade. Focused controls scrolled into view stay
+ * clear of both, including at 200% zoom (C01-N10). */
+html {
+    scroll-padding-top: 72px;
+    scroll-padding-bottom: 76px;
+}
+
+/* Tailwind's reset strips form controls to bare text, so a field written
+ * without classes had no visible edge (C26 installed acceptance F04). Every
+ * text field, select and text area gets a visible box at zero specificity:
+ * any utility class on a control still wins. The border meets the 3:1
+ * non-text contrast floor in both themes. */
+@layer base {
+    :where(input:not([type='radio'], [type='checkbox'], [type='range'], [type='file'], [type='hidden']), select, textarea) {
+        border: 1px solid var(--academy-ink-faint);
+        border-radius: var(--academy-radius-md);
+        background: var(--academy-paper);
+        color: var(--academy-ink);
+        padding: 0.5rem 0.75rem;
+        min-height: 2.25rem;
+    }
+
+    :where(input, select, textarea):disabled {
+        opacity: 0.6;
+    }
+}

@@ -1,0 +1,823 @@
+{
+  "schema": "airs-v2/live-scope/1",
+  "generated_utc": "2026-11-01T13:36:32Z",
+  "manifest_sha256": "a2dd7b01ed289ed164859ac0daf6e582100de555d29eefb01fa13df87d0bdbe1",
+  "owner_approval": {
+    "approved_by": "Calvin Remsburg",
+    "approved_utc": "2026-11-01T13:36:31Z",
+    "decision": "Owner asked Claude to fill this file on 2026-10-25. Two test tenants: Redtail (TSG 1001464285, environment test-a) and Vulture (TSG 1852583913, environment test-b). L01 and L18 scan. L02, L05 and L06 are management reads on Redtail (read-only). Every other family stays blocked until its access is supplied. The owner also allowed: Gateway reads, reversible airs-v2-c25-* changes, and inference (gpt-5.6-luna, the cheapest model the workspace's integration allows; gpt-5-nano is refused there) capped at 50,000 tokens, all on Redtail's airs_desktop_harness workspace (https://gateway.redtail.cdot.io/v1). Changes go to Redtail only (the owner: 'change either'). MCP checks use the SCM server. L17 uses Redtail's SCM MCP server (the owner: the ServiceNow instance is down).; 2026-11-01 owner approved L19 Vulture wizard single latest-profile probe (limit=1), max two reads, discard contents, no other inventories or changes; existing Keychain reference only; 2026-11-01 additional owner authorization after verified correction of the existing Keychain reference from vulture.toml: exactly one further bounded wizard profile probe; original two reservations under manifest 999f95abf2f6fb75f3597c95d7903a385eb7a1e876b99f6d63185378ba24499e remain fully charged. No other scope extension."
+  },
+  "families": [
+    {
+      "id": "L01",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "denied_scan_key",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/L01-denied-key"
+        },
+        {
+          "name": "scan_key",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/L01-scan-key"
+        }
+      ]
+    },
+    {
+      "id": "L02",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        },
+        {
+          "name": "restricted_client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/restricted-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L03",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L04",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L05",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L06",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L07",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        },
+        {
+          "name": "restricted_client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/restricted-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L08",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L09",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        },
+        {
+          "name": "inference_key",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/gateway-inference-key"
+        }
+      ]
+    },
+    {
+      "id": "L10",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        }
+      ]
+    },
+    {
+      "id": "L11",
+      "status": "designated",
+      "reason": "",
+      "environment": "academy-test",
+      "environment_kind": "test",
+      "credentials": []
+    },
+    {
+      "id": "L12",
+      "status": "designated",
+      "reason": "",
+      "environment": "academy-test",
+      "environment_kind": "test",
+      "credentials": []
+    },
+    {
+      "id": "L13",
+      "status": "designated",
+      "reason": "",
+      "environment": "academy-test",
+      "environment_kind": "test",
+      "credentials": []
+    },
+    {
+      "id": "L14",
+      "status": "designated",
+      "reason": "",
+      "environment": "academy-test",
+      "environment_kind": "test",
+      "credentials": []
+    },
+    {
+      "id": "L15",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        },
+        {
+          "name": "endpoint_token",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/L15-endpoint-token"
+        }
+      ]
+    },
+    {
+      "id": "L16",
+      "status": "blocked",
+      "reason": "not designated by the owner on 2026-10-25 (no credentials supplied for this family)",
+      "environment": "",
+      "environment_kind": null,
+      "credentials": []
+    },
+    {
+      "id": "L17",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-a",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-redtail-client-secret"
+        },
+        {
+          "name": "inference_key",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/gateway-inference-key"
+        }
+      ]
+    },
+    {
+      "id": "L18",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-b",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "scan_key",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/L18-scan-key"
+        }
+      ]
+    },
+    {
+      "id": "L19",
+      "status": "designated",
+      "reason": "",
+      "environment": "test-b",
+      "environment_kind": "test",
+      "credentials": [
+        {
+          "name": "client_secret",
+          "reference": "keychain:io.cdot.prisma-airs-desktop.v2.live/mgmt-vulture-client-secret"
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "id": "W01",
+      "workflow": "Create/edit/select/remove scan-only tenant",
+      "families": [
+        "L01"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W02",
+      "workflow": "Protected versus session-only credentials, verify/reset",
+      "families": [
+        "L01",
+        "L02"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W03",
+      "workflow": "Reviewed custom endpoints and nonsecret metadata import",
+      "families": [
+        "L18"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W04",
+      "workflow": "Prompt/response/profile/application synchronous scan",
+      "families": [
+        "L01"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W05",
+      "workflow": "Denied, cancel, timeout, unknown/partial verdict and explicit retry",
+      "families": [
+        "L01"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W06",
+      "workflow": "Save/load/edit/delete named scan cases and expected outcomes",
+      "families": [
+        "L01"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W07",
+      "workflow": "Profile list/detail/create/update/delete, guided/JSON editor",
+      "families": [
+        "L02",
+        "L03"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W08",
+      "workflow": "Topic list/detail/create/update/delete",
+      "families": [
+        "L02",
+        "L03"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W09",
+      "workflow": "Application list/detail/update/delete; no inferred dedicated create",
+      "families": [
+        "L02",
+        "L03"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W10",
+      "workflow": "API key list/detail/create/additional-version/rotation/delete; no dedicated update",
+      "families": [
+        "L02",
+        "L03"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W11",
+      "workflow": "One-time secret reveal/copy/retirement after key operation",
+      "families": [
+        "L03"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W12",
+      "workflow": "DLP catalogue/list/detail and deployment-profile browse",
+      "families": [
+        "L02",
+        "L04"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W13",
+      "workflow": "Data-pattern create/update/delete",
+      "families": [
+        "L04"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W14",
+      "workflow": "Data-profile create/update; no inferred delete",
+      "families": [
+        "L04"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W15",
+      "workflow": "Filter profile update; no inferred create/delete",
+      "families": [
+        "L04"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W16",
+      "workflow": "Dictionary create/replace/delete and multipart semantics",
+      "families": [
+        "L04"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W17",
+      "workflow": "Sessions inventory/filter/detail/transactions",
+      "families": [
+        "L05"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W18",
+      "workflow": "Scan/session/detector searches with 1000-session/100-match bounds",
+      "families": [
+        "L05"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W19",
+      "workflow": "Explicit content reveal/hide and protected investigation cache",
+      "families": [
+        "L05"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W21",
+      "workflow": "Home/Inbox Runtime source facts/charts/freshness/attention",
+      "families": [
+        "L10"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W22",
+      "workflow": "Five-product case Library author/import/export/starters/catalog",
+      "families": [
+        "L01"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W23",
+      "workflow": "Existing Red Team inventory/statistics/static reports",
+      "families": [
+        "L06"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W24",
+      "workflow": "Existing Model/skill inventory/summaries/partial-source status",
+      "families": [
+        "L06"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W27",
+      "workflow": "Collections/environments/variables/private secrets",
+      "families": [
+        "L15"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W29",
+      "workflow": "HTTP headers/query/body/multipart/cookies/redirects",
+      "families": [
+        "L15"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W30",
+      "workflow": "History/download/cancel/large body/error recovery",
+      "families": [
+        "L15"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W31",
+      "workflow": "Built-in SCM 193 request specifications and options",
+      "families": [
+        "L15"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W32",
+      "workflow": "Managed workbench read/mutation admission, edited/imported IDs/URLs",
+      "families": [
+        "L15",
+        "L18"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W33",
+      "workflow": "Workbench 401/lost-response/reconnect no automatic resend",
+      "families": [
+        "L15"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W34",
+      "workflow": "Gateway workspace list/detail/select",
+      "families": [
+        "L07"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W35",
+      "workflow": "Provider/integration/config/config-version/guardrail/key inventories/details",
+      "families": [
+        "L07"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W36",
+      "workflow": "Routing/model/catalog/limit prerequisites",
+      "families": [
+        "L07"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W37",
+      "workflow": "Reviewed workspace/config/provider/integration/guardrail changes; integration models/workspace bindings",
+      "families": [
+        "L08"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W38",
+      "workflow": "Service/user key create/update/rotate/delete/limits where supported",
+      "families": [
+        "L08"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W39",
+      "workflow": "Multi-step workspace/IAM provisioning and reconciliation",
+      "families": [
+        "L08"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W40",
+      "workflow": "Gateway Playground streaming/model/route/cancel",
+      "families": [
+        "L09"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W41",
+      "workflow": "Gateway logs/telemetry/usage/cost/budget/limits/charts",
+      "families": [
+        "L10"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W42",
+      "workflow": "Harness start/stream/model routing/stop/crash/restart",
+      "families": [
+        "L16"
+      ],
+      "access_status": "blocked-by-access",
+      "blocked_families": [
+        "L16"
+      ],
+      "owner": null
+    },
+    {
+      "id": "W43",
+      "workflow": "Harness scoped key setup/company SSO/refresh-restart/history restore/sign-out",
+      "families": [
+        "L16"
+      ],
+      "access_status": "blocked-by-access",
+      "blocked_families": [
+        "L16"
+      ],
+      "owner": null
+    },
+    {
+      "id": "W44",
+      "workflow": "Protected Harness history inspect/export/delete/resume",
+      "families": [
+        "L16"
+      ],
+      "access_status": "blocked-by-access",
+      "blocked_families": [
+        "L16"
+      ],
+      "owner": null
+    },
+    {
+      "id": "W45",
+      "workflow": "Typed investigation/read and configuration proposal",
+      "families": [
+        "L16"
+      ],
+      "access_status": "blocked-by-access",
+      "blocked_families": [
+        "L16"
+      ],
+      "owner": null
+    },
+    {
+      "id": "W47",
+      "workflow": "MCP sign-in/discovery/server selection/fixed conversation scope",
+      "families": [
+        "L17"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W48",
+      "workflow": "MCP call-item approve-once/deny, token-only restart/expiry/grant retirement",
+      "families": [
+        "L17"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W49",
+      "workflow": "Academy guest/device sign-in/account/organization selection",
+      "families": [
+        "L11"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W50",
+      "workflow": "Academy catalog/path/course/unit/handbook client-safe reads",
+      "families": [
+        "L12"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W51",
+      "workflow": "Knowledge check/lab/sandbox/progress/hosted grading",
+      "families": [
+        "L12"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W52",
+      "workflow": "Academy feature-local gamification/cosmetics/awards/notifications",
+      "families": [
+        "L12",
+        "L13"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W53",
+      "workflow": "Program/exams/practical/certificates with hosted timing/access",
+      "families": [
+        "L13"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W54",
+      "workflow": "Academy preferences/avatar/export/account workflows",
+      "families": [
+        "L13"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W55",
+      "workflow": "Client-safe download/lease/encrypted read/draft save/restart",
+      "families": [
+        "L14"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W56",
+      "workflow": "Academy explicit submit/receipt/conflict/access/account retirement",
+      "families": [
+        "L14"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W63",
+      "workflow": "Signed/notarized/stapled DMG, quarantine install and tamper denial",
+      "families": [],
+      "access_status": "final-artifact",
+      "blocked_families": [],
+      "owner": "C26"
+    },
+    {
+      "id": "W65",
+      "workflow": "Academy Shift/Daily Incident start/serve/answer/decide/debrief/history/boards/context",
+      "families": [
+        "L12",
+        "L13"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    },
+    {
+      "id": "W66",
+      "workflow": "Academy course reset/removal with affected-course confirmation; earned certificates remain valid",
+      "families": [
+        "L13"
+      ],
+      "access_status": "designated",
+      "blocked_families": [],
+      "owner": null
+    }
+  ],
+  "summary": {
+    "families_designated": 18,
+    "families_blocked": 1,
+    "rows_required": 54,
+    "rows_designated": 49,
+    "rows_blocked": 4,
+    "rows_owned_by_c26": 1
+  }
+}

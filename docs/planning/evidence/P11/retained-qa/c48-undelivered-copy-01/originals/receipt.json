@@ -1,0 +1,59 @@
+{
+  "schema": "airs-desktop/c48-undelivered-copy-remediation/1",
+  "recorded_utc": "2026-11-04T22:32:35.292829+00:00",
+  "baseline_commit": "0ee164506ccfc397d5d60d2d7ab65df4b7f58e1f",
+  "before": {
+    "apps/desktop/src/v2/workbench/api-client.tsx": "a0de6b48b4c17fbd0d9f4e9409be7bcff38a2620889b394b0f8a57a36f5dbf78",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "b813060cc14143962b1063128d5591169e85d13732f8bf72c25620d5d7c017b3",
+    "apps/desktop/src/v2/store.ts": "35216403f4e43d44360273c3035f51b68ee9be365f1c208279f80699b1b80ff7"
+  },
+  "source_files": {
+    "apps/desktop/src/v2/workbench/api-client.tsx": "3116c93e0d83bb997a1edda763223be43b99888e04d90c42ababea574975923b",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "cf397af69ee6f19b399c64c475aa44d749f3121c8b217816c0d838b585516672",
+    "apps/desktop/src/v2/store.ts": "4612a821dc4779c4af4751ab426d227bcf8458f34e7a71f0ff4137f027850fee"
+  },
+  "command_records": {
+    "red": {
+      "path": ".evidence-private/c48-undelivered-copy-01/red-run.json",
+      "sha256": "f77df95d0199b2519032f608f409a5edd25ce70703bb99e9947b81b13bae7f00"
+    },
+    "green": {
+      "path": ".evidence-private/c48-undelivered-copy-01/green-run.json",
+      "sha256": "07013d1f7aa91109cee63f481b60735bf5aff00c13ee3a72847062ace34fb0d5"
+    },
+    "typecheck": {
+      "path": ".evidence-private/c48-undelivered-copy-01/typecheck-run.json",
+      "sha256": "f3eefb7ad32458315814556016069ea63bf89f22731da3b20f6f40a977a11a8e"
+    }
+  },
+  "actual_outcomes": {
+    "red": {
+      "exit_code": 1,
+      "passed": 0,
+      "failed": 1,
+      "skipped": 46
+    },
+    "green": {
+      "exit_code": 0,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 43
+    },
+    "typecheck": {
+      "exit_code": 0
+    }
+  },
+  "changed_behavior": "Store only sanitized undelivered outcome text; cancellation retains prior delivery text; core refused uses accurate generic restoreFailed with no misleading OpenFolder-specific detail and clears stale delivery text. Positive opened/done clears. failed flag, pending/context/collection/generation guard and automatic-load conditions are unchanged.",
+  "selected_tests": "New real adapter/store App case busy\u2192cancel\u2192core-refused\u2192opened; existing preferred missing/replaced2 and retrybusy1.",
+  "retention_rationale": "Prior actual8 recovery tests stay bound to their original input hashes in c48-undelivered-01. Only message selection changed, with new precise case and three affected existing cases executed. Save/Send/JSON/URL/footer/tabs, App, Rust and native helpers unchanged; no full source/native/Rust suite replay.",
+  "baseline_qa": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-undelivered-01/supplement.json",
+    "sha256": "fcae2aa0294ebad3e643e728d99aa1588b523e3048fe9c7e0e78c47fa34ec3b8"
+  },
+  "diff": {
+    "path": ".evidence-private/c48-undelivered-copy-01/production-and-tests.diff",
+    "sha256": "b509b359853e9de00c6089606c4be68257b15b18d95fa801b689dceb2bfb3f6e"
+  },
+  "no_build_native_rust_full_suite": true,
+  "staged_or_committed_by_producer": false
+}

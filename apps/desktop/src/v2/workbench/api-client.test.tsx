@@ -435,6 +435,92 @@ describe('C41 API Client board', () => {
         expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1)
     })
 
+    it.each([['initial', 'busy'], ['initial', 'lost'], ['retry', 'busy'], ['retry', 'lost']] as const)('keeps %s restore delivery recovery actionable after %s across Home and back', async (stage, failure) => {
+        const base = fxApi()
+        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
+        let mode: 'missing' | 'busy' | 'lost' | 'opened' = stage === 'initial' ? failure : 'missing'
+        const requests = workbench(native, answers((r) => r.kind === 'load'
+            ? mode === 'opened' ? { kind: 'opened', name: 'AIRS' } : { kind: 'refused', problem: { kind: 'project', detail: 'missing' } }
+            : null))
+        const respond = native.respond
+        native.respond = (intent) => intent.kind === 'workbench' && intent.request.kind === 'load' && mode === 'busy'
+            ? { outcome: 'refusal', refusal: 'busy' } : respond(intent)
+        const observe = native.observeWorkbench
+        native.observeWorkbench = (operation) => {
+            const request = requests.find((_, i) => `op-${i + 1}` === operation)
+            return request?.kind === 'load' && mode === 'lost' ? Promise.reject(new Error('private observation detail must not surface')) : observe(operation)
+        }
+        const loads = () => native.dispatched.filter((intent) => intent.kind === 'workbench' && intent.request.kind === 'load').length
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await waitFor(() => expect(loads()).toBe(1))
+        if (stage === 'retry') {
+            await native.push(closed)
+            await screen.findByRole('button', { name: 'Try again' })
+            mode = failure
+            await user.click(screen.getByRole('button', { name: 'Try again' }))
+        }
+        const count = stage === 'initial' ? 1 : 2
+        const outcome = failure === 'busy' ? 'The desktop is busy with a previous request. Try again in a moment.' : 'The desktop did not report how the request ended. Check the request before trying again.'
+        const warning = () => document_().querySelector('[data-slot=workbench-message]') as HTMLElement
+        await waitFor(() => expect(warning()).toHaveTextContent(outcome))
+        expect(warning()).toHaveTextContent('The preferred collection could not be opened.')
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        expect(screen.getByText('No collection is open.')).toBeInTheDocument()
+        expect(loads()).toBe(count)
+        // The initial failure deliberately leaves Rust's loaded=false snapshot unchanged.
+        for (const [feature, label] of [['home', 'Home'], ['apiClient', 'API Client']] as const) {
+            await user.click(within(screen.getByRole('navigation', { name: 'Destinations' })).getByRole('button', { name: new RegExp(label) }))
+            await native.push({ ...native.current, activeFeature: feature })
+            await screen.findByRole('heading', { level: 1, name: label })
+        }
+        expect(warning()).toHaveTextContent(outcome)
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        expect(loads()).toBe(count)
+        expect(screen.queryByText(/private observation detail/)).not.toBeInTheDocument()
+        mode = 'opened'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(count + 1))
+        await native.push(base)
+        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
+        expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+        expect(native.dispatched.filter((intent) => intent.kind === 'workbench' && ['openBuiltIn', 'createCollection', 'openFolder'].includes(intent.request.kind))).toHaveLength(0)
+    })
+
+    it('uses only the restore warning for a core refusal after an undelivered load', async () => {
+        const base = fxApi()
+        const native = scriptedNative({ ...base, workbench: { ...base.workbench, loaded: false, collection: null } })
+        let mode: 'busy' | 'cancelled' | 'refused' | 'opened' = 'busy'
+        workbench(native, answers((r) => r.kind === 'load'
+            ? mode === 'opened' ? { kind: 'opened', name: 'AIRS' } : mode === 'cancelled' ? { kind: 'cancelled' } : { kind: 'refused', problem: { kind: 'project', detail: 'notCollection' } }
+            : null))
+        const respond = native.respond
+        native.respond = (intent) => intent.kind === 'workbench' && intent.request.kind === 'load' && mode === 'busy'
+            ? { outcome: 'refusal', refusal: 'busy' } : respond(intent)
+        const loads = () => native.dispatched.filter((intent) => intent.kind === 'workbench' && intent.request.kind === 'load').length
+        const warning = () => document_().querySelector('[data-slot=workbench-message]') as HTMLElement
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await waitFor(() => expect(warning()).toHaveTextContent('The desktop is busy with a previous request.'))
+        mode = 'cancelled'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(2))
+        expect(warning()).toHaveTextContent('The desktop is busy with a previous request.')
+        mode = 'refused'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(3))
+        expect(warning()).toHaveTextContent('The preferred collection could not be opened.')
+        expect(warning()).not.toHaveTextContent("That folder isn't empty")
+        expect(warning()).not.toHaveTextContent('The desktop is busy')
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        mode = 'opened'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(4))
+        await native.push(base)
+        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
+    })
+
     it('settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement', async () => {
         const base = fxApi()
         const closed = { ...base, workbench: { ...base.workbench, collection: null } }

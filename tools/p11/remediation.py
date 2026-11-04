@@ -23,11 +23,11 @@ BUILD_HELPER = ('crates/xtask/examples/p11_native_candidate.rs',
 APP_DELTA = {'apps/desktop/src/app.tsx': ('9de8de88cb261f3b826d05ab2c2c1ca195a7dc1ba05f68e6bfbb60ad20fdef89',
                               'c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e'),
  'apps/desktop/src/v2/store.ts': ('e5569371c60bd473fab6f3a944d32b458a7878223e89d883918ca0d4e88d143d',
-                                  '8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8'),
+                                  '4612a821dc4779c4af4751ab426d227bcf8458f34e7a71f0ff4137f027850fee'),
  'apps/desktop/src/v2/workbench/api-client.test.tsx': ('f154cef0337e4f9ded2949958cf995f30df806ea177a984a8e5b9de5f5b5b5c5',
-                                                       '161ad953f06049d464ef001857c3cb59fb221e62ff8d9e255c7a75a99d1cb548'),
+                                                       'cf397af69ee6f19b399c64c475aa44d749f3121c8b217816c0d838b585516672'),
  'apps/desktop/src/v2/workbench/api-client.tsx': ('c510a3118520f2cbef52f310b70662f0a1cb06e5a42f71a9937088e847000116',
-                                                  'b95eb3953ff1e51b16012d38c982b4f71cebc39b12c294b383c2134346d43bde')}
+                                                  '3116c93e0d83bb997a1edda763223be43b99888e04d90c42ababea574975923b')}
 TEST_DELTA = {
     'crates/desktop-core/tests/harness_tools/main.rs': (
         'ad88285ee7ae6b2e3ee1e7828565f50659423fd27483b10f3511eb81a18c287f',
@@ -256,8 +256,46 @@ def source_transition(root, receipt, candidate, source, files):
     return old_record, old_coverage, history
 
 
+def undelivered_qa(root, supplement, files, retained=False):
+    import review_carry
+    original = read(bound(root, {'path': review_carry.OLD_QUALIFICATION,
+                                'sha256': review_carry.OLD_QUALIFICATION_SHA}))
+    require(supplement['baseline_source'] == original['source'], 'undelivered QA baseline differs')
+    before = read(bound(root, supplement['baseline_source']))['files']
+    review_carry.impact_delta(before, files, sorted(n for n in set(before)|set(files) if before.get(n) != files.get(n)))
+    source_qa(root, supplement['baseline_qa'], before)
+    producer = read(bound(root, supplement['producer_receipt']))
+    prior = supplement.get('prior_undelivered')
+    if prior:
+        require(prior == {'path': 'docs/planning/evidence/P11/retained-qa/c48-undelivered-01/supplement.json',
+            'sha256': 'fcae2aa0294ebad3e643e728d99aa1588b523e3048fe9c7e0e78c47fa34ec3b8'},
+            'unapproved retained undelivered-source stage')
+        undelivered_qa(root, read(bound(root, prior)), files, retained=True)
+    expected = supplement['source_files'] if retained else {n: files[n]['sha256'] for n in review_carry.RETRY_DELTA}
+    require(supplement['source_files'] == producer['source_files'] == expected
+            and len(supplement['checks']) == 2, 'current undelivered QA source/coverage differs')
+    count = 4 if prior else 8
+    for item, label in zip(supplement['checks'], ('green', 'typecheck') if prior else ('green-02', 'typecheck-02')):
+        raw = read(bound(root, item['record'])); log = bound(root, item['log'])
+        require(completed(raw) and raw['argv'] == item['argv']
+                and item['record']['sha256'] == producer['command_records'][label]['sha256']
+                and raw['log_sha256'] == sha(log)
+                and raw['source_before'] == raw['source_after'] == expected
+                and item['source_hashes'] == expected and set(item['source_inputs']) == set(expected),
+                'undelivered source selector failed or lost its original execution binding')
+        for name, ref in item['source_inputs'].items():
+            require(name in expected and sha(bound(root, ref)) == expected[name], 'undelivered original input differs')
+        if label.startswith('green'):
+            require(item['passed'] == producer['actual_outcomes'][label]['passed'] == count
+                    and producer['actual_outcomes'][label]['failed'] == 0
+                    and str(count)+' passed' in log.read_text(), 'undelivered regression coverage missing')
+    return supplement
+
+
 def source_qa(root, reference, files):
     supplement = read(bound(root, reference))
+    if supplement['schema'] == 'airs-desktop/p11-undelivered-source-supplement/1':
+        return undelivered_qa(root, supplement, files)
     require(supplement['schema'] == 'airs-desktop/p11-c48-source-supplement/1'
             and supplement['source_files'] == {n: files[n]['sha256'] for n in APP_DELTA},
             'C48 affected source inputs differ')

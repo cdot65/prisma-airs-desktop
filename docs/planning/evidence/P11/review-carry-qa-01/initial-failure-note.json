@@ -1,0 +1,33 @@
+{
+  "schema": "airs-desktop/p11-pure-qa-followup-note/1",
+  "actual_command": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "-m",
+    "unittest",
+    "test_review_carry",
+    "test_remediation",
+    "test_standing",
+    "-v"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/tools/p11",
+  "observed_exit_code": 1,
+  "observed_tests": 20,
+  "observed_failures": 1,
+  "observed_errors": 1,
+  "failure_details": [
+    "New temporary test root was /var while proof.reference resolves /private/var, causing a relative_to ValueError; production CLI root is canonical.",
+    "Existing no-carry standing test expected the prior 'one shared qualification' error wording; validation still rejected the foreign qualification, with a changed message."
+  ],
+  "before_inputs": {
+    "test_review_carry.py": {
+      "path": "docs/planning/evidence/P11/review-carry-qa-01/before-test_review_carry.py",
+      "sha256": "98be89f27b0d51557b13450d61a5fdd906f968f217a5e723c2d56262eee5835b"
+    },
+    "standing.py": {
+      "path": "docs/planning/evidence/P11/review-carry-qa-01/before-standing.py",
+      "sha256": "14db30a5c0ffd31045ff5eac2532827ef26e33067aae5bc6e7a7f53b6d860238"
+    }
+  },
+  "raw_output_location": "Actual tool result in the current conversation; no separate raw log/UTC recorder existed for that exploratory command. No passing result is claimed for it.",
+  "scope": "Pure temporary validator fixtures only; no app/native/Rust check executed."
+}

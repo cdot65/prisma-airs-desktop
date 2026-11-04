@@ -164,3 +164,30 @@ origins. It never presents the original 099/eb9 artifact as the new app.
 Historical finalization archives the accepted source/app and retains all three
 prior source contexts. P10's generic coverage and historical consumers are
 unchanged. This path does not assign review scores or complete a controller.
+
+### Retain unaffected full-nine members after the C48 retry fix
+
+The dated `airs-desktop/p11-member-review-carry/1` receipt retains exactly
+C46/C47/C49 attempt-02 on qualification03. It binds their original actual
+request/verdict/audit/receipt objects, source S4 and complete old f558 application,
+the current qualification/source, the pinned three-file C48 retry-only delta,
+per-member reasons and conservative dependency identities including all resources.
+C48 and P11 cannot be carried. Unexpected production/configuration changes,
+changed dependencies, another qualification or a non-full-nine review reject.
+
+Make C48 attempt-03 against qualification04 normally. After its actual full-nine
+audit, make the phase packet with:
+
+```
+python3 tools/p11/review.py make P11 attempt-01 QUALIFICATION04 --review-carry docs/planning/evidence/P11/member-review-carry-01/receipt.json
+```
+
+The phase request explicitly distinguishes three retained original qualification03
+members from current C48; it reviews all current source, integration and the carry
+logic. Its audit reads the bound carry reference from that request. Old review
+scores/fingerprints/qualification bindings are never rewritten. The current
+consumer is not recursively applied to old qualification03 after its one-off
+application hashes advance: actual old audits plus exact archived source/app
+preserve that original standing. Final historical context includes S4 and the
+old f558 application alongside the accepted current source/app. P10 remains
+unchanged.
