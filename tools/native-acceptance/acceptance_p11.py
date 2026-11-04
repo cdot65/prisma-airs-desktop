@@ -6,6 +6,7 @@ it binds measured facts, actual P11 test records, and capture-specific visual re
 No old scan-only setup helper, installed app lookup, or process-name signaling.
 """
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -78,6 +79,7 @@ class Context:
                         'bundle_sha256': self.prepared['bundle_sha256'], 'helper_closure': self.closure,
                         'native_inventory_sha256': sha(ROOT/'docs/architecture/native-checks.json')}
         self.started = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+        self.execution_exit_code = 1
         self.app = self.mgmt = self.scan = self.academy = None
 
     @staticmethod
@@ -165,7 +167,7 @@ class Context:
         return {'schema': 'airs-desktop/p11-native-observations/1', 'subject': 'P11', 'complete': complete,
                 'argv': self.argv, 'started_utc': self.started, 'finished_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 'performed_by': os.environ.get('AIRS_NATIVE_ORCHESTRATOR'), 'host': platform.platform(),
-                'execution_id': self.out.name, 'status': 'observed' if complete else 'failed', 'exit_code': 0 if complete else 1,
+                'execution_id': self.out.name, 'status': 'observed' if complete else 'failed', 'exit_code': self.execution_exit_code,
                 'executable_sha256': self.prepared['executable_sha256'], 'bundle_sha256': self.prepared['bundle_sha256'], 'helper_closure': self.closure,
                 'binding': self.binding, 'artifact_sha256': self.artifacts, 'checks': list(self.rows.values()), 'errors': self.errors, 'log': self.log,
                 'meaning': 'Actual fixture AX/keyboard/geometry observations. Pixels and production-interface results need separate bound review; no unrun assertion is a pass.'}
@@ -210,7 +212,9 @@ def execute(args):
         ctx.require(_binding.helper_closure(ROOT, 'acceptance_p11') == ctx.closure, 'native helper changed during execution')
         ctx.require(set(ctx.rows) == set(inventory()), 'some native assertions were never reached')
         ctx.require(all(value for row in ctx.rows.values() for value in row['facts'].values()), 'one or more measured native facts failed')
-    except Exception as error:
+        ctx.execution_exit_code = 0
+    except BaseException as error:
+        ctx.execution_exit_code = 130 if isinstance(error, KeyboardInterrupt) else (error.code if isinstance(error, SystemExit) and isinstance(error.code, int) else 1)
         ctx.errors.append({'type': type(error).__name__, 'message': str(error)})
         if ctx.app:
             try:
@@ -237,9 +241,11 @@ def execute(args):
         # Preserve failed owned fixture state for diagnosis; never copy a Keychain.
         if ctx.fixture_root_owned and not ctx.errors:
             fx.clean_fixture_root()
-        write_new(ctx.out/'observations.json', ctx.observations(not ctx.errors))
+        if ctx.errors and ctx.execution_exit_code == 0:
+            ctx.execution_exit_code = 1
+        write_new(ctx.out/'observations.json', ctx.observations(not ctx.errors and ctx.execution_exit_code == 0))
     print('P11 observations saved; acceptance requires bound test and pixel review.')
-    return 1 if ctx.errors else 0
+    return ctx.execution_exit_code
 
 
 def test_run(path):
@@ -251,16 +257,28 @@ def test_run(path):
     if not commands or any(c['status'] != 'passed' or c['exit_code'] != 0 for c in commands):
         raise RuntimeError('test command missing or failed')
     for command in commands:
-        log = ROOT/command['log']
+        log = (path.parent/command['log']).resolve()
+        if not log.is_relative_to(path.parent.resolve()) or not log.is_relative_to(ROOT):
+            raise RuntimeError('test log escapes its actual run')
         if sha(log) != command['output_sha256']:
             raise RuntimeError('test raw log drift')
     tests = [c['tests'] for c in commands if c.get('tests')]
     if not tests or any(t['failed'] for t in tests) or sum(t['passed'] for t in tests) == 0:
         raise RuntimeError('no actual passing tests')
-    argv = '\n'.join(' '.join(c['argv']) for c in commands)
-    if 'setup_warning_recheck' not in argv or 'shell-refinement.test.tsx' not in argv:
-        raise RuntimeError('required warning/shell boundary membership absent')
-    return {'path': str(path), 'sha256': sha(path), 'inputs': value['inputs_after']}
+    argv = [arg for command in commands for arg in command['argv']]
+    declared = {}
+    for name in ('setup', 'shell', 'api', 'settings'):
+        source = ROOT/'tools/native-acceptance'/('acceptance_p11_'+name+'.py')
+        tree = ast.parse(source.read_text())
+        declaration = next((node.value for node in tree.body if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'SOURCE_REQUIREMENTS' for t in node.targets)), None)
+        if declaration is None:
+            raise RuntimeError('helper omitted source boundary requirements: '+name)
+        requirements = ast.literal_eval(declaration)
+        declared[name] = requirements
+        for required in requirements.get('frontend', []) + requirements.get('rust', []):
+            if not any(arg == required or arg.endswith('/'+required) or arg.endswith('::'+required) for arg in argv):
+                raise RuntimeError('required source boundary absent from actual P11 run: '+required)
+    return {'path': str(path), 'sha256': sha(path), 'inputs': value['inputs_after'], 'source_requirements': declared}
 
 
 def finalize(args):
@@ -307,8 +325,10 @@ def finalize(args):
               'method': 'cua', 'performed_by': raw['performed_by'], 'host': raw['host'],
               'app': {'bundle': prepared['bundle'], 'identifier': prepared['identifier'], 'executable_sha256': prepared['executable_sha256'], 'fixture': True},
               'checks': checks, 'limitations': ['Synthetic fixture only; no installed/live acceptance, production app control, user data, login Keychain, real credentials or product configuration changes. Linux qualification is separate. Raw outcomes remain unchanged.']}
-    write_new(raw_path.parent/'native-acceptance.json', record)
+    if (raw_path.parent/'native-acceptance.json').exists() or (raw_path.parent/'native-bindings.json').exists():
+        raise RuntimeError('preserve the existing finalization attempt')
     write_new(raw_path.parent/'native-bindings.json', {'schema': 'airs-desktop/p11-native-bindings/1', 'observations': {'path': str(raw_path), 'sha256': sha(raw_path)}, 'visual_review': {'path': str(args.visual_review), 'sha256': sha(args.visual_review)}, 'test_run': test, **binding})
+    write_new(raw_path.parent/'native-acceptance.json', record)
     return 0
 
 

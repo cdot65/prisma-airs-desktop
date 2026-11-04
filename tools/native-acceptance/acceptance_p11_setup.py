@@ -4,6 +4,11 @@ import time
 import acceptance_c08 as c8
 import fixture_app as fx
 
+SOURCE_REQUIREMENTS = {
+    'frontend': ['src/v2/inbox/setup-warning.test.tsx', 'src/contracts/setup-warning-contract.test.ts', 'src/v2/settings/setup-warning-history.test.tsx'],
+    'rust': ['setup_warning_recheck', 'ui_v2_setup_reads', 'ui_v2_onboarding', 'context_retirement_prunes_checks_without_waiting_for_a_management_reply', 'models_scope_bindings_and_inference_keys'],
+}
+
 
 def enabled(app, label):
     node = app.node(app.tree(), 'AXButton', label)
@@ -95,6 +100,12 @@ def bootstrap(ctx):
     ctx.press('AXButton', 'Add tenant…')
     facts['add_also_requires_oauth'] = draft(ctx, 'P11 Cancelled')
     client(ctx)
+    deadline = time.monotonic()+12
+    draft_accounts = fx.keychain_accounts(c8.SCAN_SERVICE)
+    while time.monotonic() < deadline and len(draft_accounts) <= len(accounts):
+        time.sleep(.3)
+        draft_accounts = fx.keychain_accounts(c8.SCAN_SERVICE)
+    ctx.require(set(accounts).issubset(draft_accounts) and len(draft_accounts) == len(accounts)+1, 'draft secret was not independently observed in the disposable fixture Keychain')
     evidence.append(ctx.save('add-draft-before-cancel'))
     ctx.press('AXButton', 'Cancel')
     after = ctx.wait_state(lambda s: not s.get('tenantDraft') and not s.get('pendingCleanup'), 'cancelled draft cleanup did not settle')
@@ -102,7 +113,9 @@ def bootstrap(ctx):
     deadline = time.monotonic()+12
     while time.monotonic() < deadline and fx.keychain_accounts(c8.SCAN_SERVICE) != accounts:
         time.sleep(.3)
-    facts['cancel_removed_only_draft_fixture_credentials'] = fx.keychain_accounts(c8.SCAN_SERVICE) == accounts
+    final_accounts = fx.keychain_accounts(c8.SCAN_SERVICE)
+    facts['cancel_removed_only_draft_fixture_credentials'] = final_accounts == accounts and len(draft_accounts) == len(accounts)+1
+    evidence.append(ctx.save('draft-credential-account-lifecycle', {'before': accounts, 'draft_saved': draft_accounts, 'after_cancel': final_accounts, 'scope': 'nonsecret account attributes of this disposable fixture Keychain/service only'}))
     evidence.append(ctx.save('add-cancelled'))
     # A fully authenticated second owned profile supports real tenant-switch UI.
     ctx.press('AXButton', 'Add tenant…')

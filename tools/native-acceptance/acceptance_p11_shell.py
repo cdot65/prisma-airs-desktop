@@ -4,6 +4,11 @@ import acceptance_c29 as c29
 import acceptance_c41 as c41
 import acceptance_p11_setup as setup
 
+SOURCE_REQUIREMENTS = {
+    'frontend': ['src/v2/shell-refinement.test.tsx', 'src/v2/v2-shell.test.tsx', 'src/v2/modal.test.tsx', 'src/v2/home.test.tsx', 'src/v2/inbox/inbox.test.tsx', 'src/v2/admin/administration.test.tsx', 'src/v2/harness/harness.test.tsx', 'src/v2/academy/academy.test.tsx', 'src/v2/workbench/workbench.test.tsx', 'src/modules/sessions/sessions-view.test.tsx'],
+    'rust': [],
+}
+
 PAGES = ('Home', 'Inbox', 'Test Cases', 'API Client', 'Administration', 'Settings', 'Harness', 'Academy')
 ACTIONS = {'Home': ('Refresh',), 'Inbox': ('Refresh',), 'Test Cases': ('Load packs', 'New case'),
            'API Client': ('URL', 'Send'), 'Administration': ('Expand all', 'Collapse all'),
