@@ -1,20 +1,72 @@
 # Internal Apple Silicon builder
 
-This branch validates one production compile on Jadzia's repository-scoped
-`airs-jadzia-arm64:host` runner. It does not change application code, qualify a
-release, reopen a chunk, or execute native gates. C26/P08 remains open.
+The original RC1 admission and a disabled P11 draft share one unsigned
+production-build recipe on Jadzia's repository-scoped
+`airs-jadzia-arm64:host` runner. Neither lane qualifies a release, reopens a
+chunk, runs native gates, signs or publishes. C26/P08 remains open.
 
-The workflow accepts only pushes to `infra/macos-builder-20261103` in
-`cdot/prisma-airs-desktop-v2`. Review this branch before pushing it: that push
-starts the build. There are no pull-request, tag, release or manual-dispatch
-entry points. The runner must stay restricted to trusted maintainers' code.
+## Original RC1 lane — unchanged admission
 
-The helper requires the actual triggering commit, a clean checkout and ancestry
-from accepted application commit `1241916e46156b6fe821f98b93bf281c255a7cbe`.
-Every difference from that base must be an addition of one of the five declared
-CI files. Any application, existing controller, lockfile or resource change
-stops the job. Provenance records the actual build commit and accepted base;
-it does not claim that an earlier qualified application was rebuilt identically.
+Pushes to `infra/macos-builder-20261103` in
+`cdot/prisma-airs-desktop-v2` retain the original contract: exact triggering
+commit, clean checkout, ancestry from accepted application commit
+`1241916e46156b6fe821f98b93bf281c255a7cbe`, and a nonempty delta consisting
+only of additions of the five declared CI files. Existing-file modifications,
+application changes, lockfiles and resource changes are rejected. Published
+RC1 source, tags, assets and qualification are unchanged.
+
+## P11 candidate lane — disabled until final phase acceptance
+
+The new `infra/macos-candidate-p11-20261104` branch is preparation only.
+Its workflow condition contains a literal `false` for this branch, and
+`P11_ACCEPTED_SOURCE` plus `P11_ACCEPTED_TREE` are deliberately `None`
+in the controller. Direct controller admission also stops on these missing
+pins before input materialization, dependency installs or compilation.
+No draft push or dispatch is authorized by this preparation.
+
+`62580dec9287d05b7a4aae03ca0625247f28542c` is the provisional qualified
+ancestry bound only. It is never used as a default accepted source.
+After the independent P11 chunk and phase gate, root supplies the real
+accepted commit and its Git tree. The build commit must descend from that
+exact pin; that pin must descend from the provisional ancestor. A different
+resolved commit/tree, dirty checkout, wrong event/ref/repository or mismatch
+with the immutable triggering SHA stops admission.
+
+Only a nonempty delta within these five paths is allowed above the final
+accepted application source:
+
+- `.forgejo/workflows/macos-builder.yml`
+- `crates/xtask/examples/ci_macos_build.rs`
+- `tools/ci/macos_builder.py`
+- `tools/ci/test_macos_builder.py`
+- `docs/planning/ci/macos-builder.md`
+
+P11 permits additions and reviewed modifications because these files already
+exist at its base. Deletions, renames, symlinks, file-type/mode changes and
+every product-source/input change are rejected. This allowance does not
+change the original RC1 additions-only contract. Full CI delta hashes and
+both the accepted application commit/tree and actual build commit are
+recorded in provenance; no earlier qualified binary is claimed as this build.
+
+Activation is one reviewed follow-up in this isolated branch:
+
+1. Complete P11 reviews/phase acceptance and name the final approved commit.
+2. Insert that exact 40-hex commit and its exact 40-hex Git tree into
+   `P11_ACCEPTED_SOURCE`/`P11_ACCEPTED_TREE`. Preserve the ancestry guard.
+3. Recheck the complete application-to-CI delta and the focused admission
+   tests; enable only the P11 `false` workflow condition in the same reviewed
+   change. Do not change the original branch condition or pin constants.
+4. Root approves the final diff, then normally pushes the explicit branch.
+   That approved push starts the build. There are no pull-request, tag,
+   release or manual-dispatch entry points.
+5. Retain the actual production archive/receipts promptly; Actions retention
+   is seven days. Signing, notarization, exact-package installed preview and
+   immutable new prerelease promotion are separate protected operations.
+   Do not replace or amend RC1.
+
+The runner remains restricted to trusted maintainers' code. GitHub mirror
+pushes must not start duplicate application builds. This CI-only preparation
+requires no new broad Rust/native application qualification.
 
 ## Inputs and host setup
 
@@ -72,10 +124,22 @@ It is an internal build candidate, not a redistributable release.
 
 ## Verification scope
 
-The change affects CI dispatch, input provenance and child-process isolation.
-Focused Python tests cover unauthorized ref/event/commit rejection, rejecting
-application deltas, pinned-input drift and stripped credential/override values.
-Rust formatting and Python/YAML checks are appropriate preparation checks.
-The first approved CI run compiles this new adapter and the production app.
-No full Rust suite or native end-to-end rerun is warranted by CI-only additions;
-the original accepted evidence and its bindings remain unchanged.
+The change affects dispatch, accepted-source admission, input provenance and
+child-process isolation. Run the focused file:
+
+```sh
+python3 -m unittest discover -s tools/ci -p test_macos_builder.py -v
+```
+
+Tests use disposable local Git repositories and synthetic files to exercise
+exact commit/tree plus CI-only modifications, wrong/missing acceptance pins,
+unrelated same-tree source, provisional-ancestor rejection, immutable checkout
+mismatch, product edits, dirty tracked/untracked inputs, empty deltas and
+mode/symlink changes. The original RC1 additions-only, pinned-input drift and
+cleared credential/override environment cases remain covered. No app is
+compiled or opened, and no host credentials or network access are used.
+
+The first approved CI run compiles the existing adapter and production app.
+No Rust source is changed by this admission draft, so no Rust formatting/check
+suite or native end-to-end rerun is needed. Original P11 and RC1 evidence
+retains its real source/artifact/execution bindings.

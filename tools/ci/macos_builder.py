@@ -13,6 +13,13 @@ from datetime import datetime, timezone
 BASE = "1241916e46156b6fe821f98b93bf281c255a7cbe"
 REPOSITORY = "cdot/prisma-airs-desktop-v2"
 REF = "refs/heads/infra/macos-builder-20261103"
+P11_REF = "refs/heads/infra/macos-candidate-p11-20261104"
+# Ancestry evidence only; it is NOT an accepted P11 source pin.
+P11_PROVISIONAL_ANCESTOR = "62580dec9287d05b7a4aae03ca0625247f28542c"
+# Root inserts the final independently accepted commit/tree only after P11's
+# phase gate, together with enabling this branch in macos-builder.yml.
+P11_ACCEPTED_SOURCE = None
+P11_ACCEPTED_TREE = None
 ACADEMY_ORIGIN = "ssh://git@git-ssh.cdot.io/cdot.io/ai-security-academy.git"
 ACADEMY_COMMIT = "532809aa4bb2e1484e11ca9f7a414328260c7901"
 ACADEMY_TREE = "73e1c80889af89311b374808fce1f99386ced2fe95bc3a54429c40a72ce5530d"
@@ -63,17 +70,76 @@ def child_environment(source, transport=False):
     return env
 
 
+def full_commit(value):
+    return isinstance(value, str) and len(value) == 40 and all(c in "0123456789abcdef" for c in value)
+
+
 def validate_context(context, head):
     require(context.get("GITHUB_REPOSITORY") == REPOSITORY, "unexpected repository")
-    require(context.get("GITHUB_REF") == REF, "unexpected branch")
+    ref = context.get("GITHUB_REF")
+    require(ref in (REF, P11_REF), "unexpected branch")
     require(context.get("GITHUB_EVENT_NAME") == "push", "only maintainer branch pushes are allowed")
     require(context.get("GITHUB_SHA") == head and len(head) == 40, "checkout differs from triggering commit")
+    if ref == P11_REF:
+        require(full_commit(P11_ACCEPTED_SOURCE) and full_commit(P11_ACCEPTED_TREE),
+                "P11 lane is disabled until its final accepted source and tree are pinned after phase review")
+        return P11_ACCEPTED_SOURCE
+    return BASE
 
 
-def validate_delta(entries):
-    require(bool(entries), "expected declared CI-only additions to accepted base")
+def validate_source(ref, actual_base, actual_tree):
+    expected_base = P11_ACCEPTED_SOURCE if ref == P11_REF else BASE
+    require(actual_base == expected_base, "accepted source did not resolve to its exact commit")
+    if ref == P11_REF:
+        require(actual_tree == P11_ACCEPTED_TREE, "accepted P11 tree differs from the reviewed pin")
+
+
+def validate_delta(entries, ref=REF):
+    require(bool(entries), "expected declared CI-only changes to accepted base")
+    allowed = {"A", "M"} if ref == P11_REF else {"A"}
     for status, path in entries:
-        require(status == "A" and path in CI_FILES, f"non-CI change from accepted base: {status} {path}")
+        require(status in allowed and path in CI_FILES, f"non-CI change from accepted base: {status} {path}")
+
+
+def validate_p11_modes(raw, entries):
+    modes = []
+    for line in raw.splitlines():
+        metadata, path = line.split("\t", 1)
+        fields = metadata.split()
+        require(len(fields) == 5 and fields[0].startswith(":"), "invalid CI mode delta")
+        old_mode, new_mode, _, _, status = fields
+        old_mode = old_mode[1:]
+        require(path in CI_FILES and status in ("A", "M"), "unexpected P11 mode delta")
+        require(new_mode in ("100644", "100755")
+                and ((status == "A" and old_mode == "000000")
+                     or (status == "M" and old_mode == new_mode)),
+                f"P11 CI path changed type or mode: {path}")
+        modes.append((status, path))
+    require(sorted(modes) == sorted(tuple(row) for row in entries), "CI mode/path delta mismatch")
+
+
+def admit_checkout(context, env, cwd=ROOT):
+    # No input materialization, shims, caches, install or compiler subprocess
+    # occurs before all source/admission checks below finish successfully.
+    head = run(["git", "rev-parse", "HEAD"], env, True, cwd=cwd).strip()
+    base = validate_context(context, head)
+    actual_base = run(["git", "rev-parse", "--verify", base + "^{commit}"], env, True, cwd=cwd).strip()
+    actual_tree = run(["git", "rev-parse", "--verify", base + "^{tree}"], env, True, cwd=cwd).strip()
+    validate_source(context["GITHUB_REF"], actual_base, actual_tree)
+    run(["git", "merge-base", "--is-ancestor", base, head], env, cwd=cwd)
+    if context["GITHUB_REF"] == P11_REF:
+        # Qualified source is ancestry only, never a substitute acceptance pin.
+        run(["git", "merge-base", "--is-ancestor", P11_PROVISIONAL_ANCESTOR, base], env, cwd=cwd)
+    changes = run(["git", "diff", "--name-status", "--no-renames", base, head], env, True, cwd=cwd)
+    delta = [line.split("\t", 1) for line in changes.splitlines()]
+    validate_delta(delta, context["GITHUB_REF"])
+    if context["GITHUB_REF"] == P11_REF:
+        raw = run(["git", "diff", "--raw", "--no-abbrev", "--no-renames", base, head], env, True, cwd=cwd)
+        validate_p11_modes(raw, delta)
+    require(not run(["git", "status", "--porcelain", "--untracked-files=all"], env, True, cwd=cwd).strip(),
+            "checkout is not clean")
+    return {"head": head, "base": actual_base, "tree": actual_tree, "delta": delta,
+            "lane": "p11-accepted-source" if context["GITHUB_REF"] == P11_REF else "rc1-original"}
 
 
 def validate_pins(academy, harness):
@@ -93,13 +159,8 @@ def main():
     require(platform.system() == "Darwin" and platform.machine() == "arm64", "native Apple Silicon required")
     env = child_environment(os.environ)
     transport = child_environment(os.environ, transport=True)
-    head = run(["git", "rev-parse", "HEAD"], env, True).strip()
-    validate_context(os.environ, head)
-    run(["git", "merge-base", "--is-ancestor", BASE, head], env)
-    changes = run(["git", "diff", "--name-status", "--no-renames", BASE, head], env, True)
-    delta = [line.split("\t", 1) for line in changes.splitlines()]
-    validate_delta(delta)
-    require(not run(["git", "status", "--porcelain", "--untracked-files=all"], env, True).strip(), "checkout is not clean")
+    admission = admit_checkout(os.environ, env)
+    head, base, delta = admission["head"], admission["base"], admission["delta"]
     academy = json.loads((ROOT / "docs/architecture/inputs.lock.json").read_text())["academy"]
     harness = json.loads((ROOT / "resources/harness/pin.json").read_text())
     validate_pins(academy, harness)
@@ -153,7 +214,9 @@ def main():
     run(["/usr/bin/tar", "-czf", str(packaged), "-C", str(app.parent), app.name], env)
     receipt = {
         "schema": "airs-ci-macos-provenance/1", "kind": "internal-unsigned-build-only",
-        "repository": REPOSITORY, "build_commit": head, "accepted_application_base": BASE,
+        "repository": REPOSITORY, "build_commit": head, "accepted_application_base": base,
+        "accepted_application_tree": admission["tree"], "admission_lane": admission["lane"],
+        "provisional_qualification_ancestor": P11_PROVISIONAL_ANCESTOR if admission["lane"] == "p11-accepted-source" else None,
         "ci_only_delta": {path: sha256(ROOT / path) for _, path in delta},
         "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT", "1"),
         "started_utc": started, "finished_utc": datetime.now(timezone.utc).isoformat(),
