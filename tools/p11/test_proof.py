@@ -429,5 +429,232 @@ class ProofTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'reviewed Rust test-only change'): verify()
 
 
+    def impact_fixture(self):
+        bind_check, _, old_selection, _, _, before, _ = self.check_selection_fixture()
+        folder = self.root / 'docs/planning/evidence/P11/impact-fixture'
+        folder.mkdir()
+        baseline_root = self.root / proof.D2_SOURCE
+        for name in before['files']:
+            target = baseline_root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(self.root / name, target)
+        baseline_check = self.root / 'docs/planning/evidence/P11/check-fixture/selection.json'
+        old_inputs = old_selection['runner_inputs']
+        names = ['rustc', 'cargo', 'rustc-toolchain', 'cargo-toolchain', 'node', 'pnpm']
+        tools = [dict(name=name, version='same pinned fixture version', sha256='old-' + name)
+                 for name in names]
+        new_tools = copy.deepcopy(tools)
+        for row in new_tools:
+            if row['name'] in ('rustc', 'cargo'):
+                row['sha256'] = 'new-shim-' + row['name']
+        def write(name, value):
+            path = folder / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(value))
+            return proof.reference(self.root, path)
+        def raw(kind, labels, inputs, identity, destination):
+            commands = []
+            for i, needed in enumerate(proof.command_plan(self.root, kind)):
+                if labels is not None and needed['label'] not in labels:
+                    continue
+                log = folder / destination / (str(i) + '.log')
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text('Synthetic validator fixture; never a product pass.\n')
+                commands.append(dict(label=needed['label'], argv=needed['argv'], cwd='.',
+                    status='passed', exit_code=0, note=None, log=log.name,
+                    output_sha256=proof.sha(log), tests={'passed': 1, 'failed': 0}
+                    if needed['expects_tests'] else None))
+            result = dict(schema='airs-v2/run/1', subject='P11', kind=kind, status='passed',
+                failure=None, inputs_before=inputs, inputs_after=inputs,
+                commands=commands, toolchain=copy.deepcopy(identity), run_id='fixture-' + destination,
+                started_utc='fixture-start', finished_utc='fixture-finish')
+            return result, write(destination + '/run.json', result)
+        old_test, old_test_ref = raw('test', None, old_inputs, tools, 'old-test')
+        app = self.root / 'apps/desktop/src/v2/modal.tsx'
+        app.parent.mkdir(parents=True, exist_ok=True)
+        app.write_text('synthetic affected frontend only\n')
+        after = {'files': proof.source_inventory(self.root), 'git_config': before['git_config']}
+        inputs = dict(old_inputs, source=proof.inventory_source(after), dependencies='new-shim-deps')
+        affected = {'check': list(proof.IMPACT_CHECKS), 'test': [
+            row['label'] for row in proof.command_plan(self.root, 'test')
+            if not row['label'].startswith('setup/') and row['argv'][:2] != ['cargo', 'test']]}
+        fresh = {}; run_refs = {}
+        for kind in ('check', 'test'):
+            fresh[kind], run_refs[kind] = raw(kind, affected[kind], inputs, new_tools, 'new-' + kind)
+        audit = dict(current_tools=copy.deepcopy(new_tools), comparison=[
+            dict(name=a['name'], old_sha256=a['sha256'], new_sha256=b['sha256'])
+            for a, b in zip(tools, new_tools)])
+        origin = dict(source_inventory_sha256=proof.digest(before['files']), runner_inputs=old_inputs,
+            execution_root=str(self.root), executable_sha256='synthetic-executable',
+            bundle_sha256='synthetic-bundle', build_flags={'target': 'fixture-arm64'},
+            conditions={'host': 'original-fixture-host', 'native': 'unqualified'},
+            helper_closure={'synthetic-helper': 'hash'})
+        origin_ref = write('origin.json', origin)
+        record = dict(schema='airs-desktop/p11-impact-selection/1', runner_inputs=inputs,
+            reason='Synthetic unchanged Rust closure and audited tool-shim transition.',
+            baseline_source=write('before.json', before), baseline_candidate=origin_ref,
+            baseline_check=proof.reference(self.root, baseline_check), baseline_test=old_test_ref,
+            current_source=write('after.json', after),
+            changed_paths=sorted(name for name in set(before['files']) | set(after['files'])
+                if before['files'].get(name) != after['files'].get(name)),
+            dependencies=proof.carry_dependencies(before['files']), affected=affected,
+            current_runs=run_refs, tool_transition=write('audit.json', audit))
+        selection_path = folder / 'selection.json'
+        def bind():
+            for kind in ('check', 'test'):
+                record['current_runs'][kind] = write('new-' + kind + '/run.json', fresh[kind])
+            record['tool_transition'] = write('audit.json', audit)
+            record['current_source'] = write('after.json', after)
+            write('selection.json', record)
+        def verify():
+            return proof.validate_impact_selection(self.root, selection_path, inputs)
+        bind()
+        return bind, verify, record, fresh, audit, after, inputs, origin_ref, write
+
+    def test_impact_selection_requires_complete_current_frontend_and_original_bindings(self):
+        bind, verify, record, fresh, audit, after, inputs, _, _ = self.impact_fixture()
+        selected = verify()
+        self.assertEqual(sum(r['disposition'] == 'carried_unaffected'
+                             for r in selected['choices']['test']), 8)
+        self.assertEqual(sum(r['disposition'] == 'executed'
+                             for r in selected['choices']['test']), 12)
+        original = copy.deepcopy(record)
+        for change in ('missing-frontend', 'wrong-delta', 'tiny-deps'):
+            record.clear(); record.update(copy.deepcopy(original))
+            if change == 'missing-frontend': record['affected']['test'].pop()
+            elif change == 'wrong-delta': record['changed_paths'] = []
+            else: record['dependencies'] = record['dependencies'][:1]
+            bind()
+            with self.subTest(change=change), self.assertRaises(ValueError): verify()
+        record.clear(); record.update(original)
+        fresh['test']['commands'][0]['tests']['passed'] = 0
+        bind()
+        with self.assertRaisesRegex(ValueError, 'no passing tests'): verify()
+
+    def test_impact_selection_rejects_changed_tool_or_dependency(self):
+        bind, verify, record, fresh, audit, after, inputs, _, write = self.impact_fixture()
+        original = copy.deepcopy(audit)
+        audit['comparison'][2]['new_sha256'] = 'changed compiler'
+        bind()
+        with self.assertRaisesRegex(ValueError, 'actual executables'): verify()
+        audit.clear(); audit.update(original)
+        module = self.root / 'crates/desktop-core/src/authority/setup_warning_domain.rs'
+        module.write_text('changed production Rust behavior\n')
+        after['files'] = proof.source_inventory(self.root)
+        inputs['source'] = proof.inventory_source(after)
+        record['changed_paths'] = sorted(name for name in
+            set(proof.read(proof.bound(self.root, record['baseline_source']))['files']) | set(after['files'])
+            if proof.read(proof.bound(self.root, record['baseline_source']))['files'].get(name) != after['files'].get(name))
+        bind()
+        with self.assertRaisesRegex(ValueError, 'carried dependency membership/content'): verify()
+
+    def test_selected_runner_rejects_unregistered_and_failed_partial_records(self):
+        path, raw = self.run_fixture('test')
+        labels = [row['label'] for row in proof.command_plan(self.root, 'test')
+                  if not row['label'].startswith('setup/') and row['argv'][:2] != ['cargo', 'test']]
+        raw['commands'] = [row for row in raw['commands'] if row['label'] in labels]
+        path.write_text(json.dumps(raw))
+        proof.validate_run(self.root, path, 'test', self.inputs, labels=labels)
+        for selected in (labels[:-1], labels + [labels[-1]], ['unknown'], ['setup/1']):
+            with self.subTest(labels=selected), self.assertRaises(ValueError):
+                proof.validate_run(self.root, path, 'test', self.inputs, labels=selected)
+        raw['commands'][0]['exit_code'] = 1
+        path.write_text(json.dumps(raw))
+        with self.assertRaisesRegex(ValueError, 'failed or was skipped'):
+            proof.validate_run(self.root, path, 'test', self.inputs, labels=labels)
+
+
+    def test_impact_generic_carry_survives_fresh_clone_without_target(self):
+        from standing import ArchivedP11
+        bind, verify, record, fresh, audit, after, inputs, origin_ref, write = self.impact_fixture()
+        selected = verify()
+        source_hash = proof.digest(after['files'])
+        candidate = dict(selected['origin'], source_inventory_sha256=source_hash,
+                         runner_inputs=inputs, executable_sha256='current-fixture-executable',
+                         bundle_sha256='current-fixture-bundle', conditions={'host': 'new-fixture-vm'})
+        candidate_ref = write('current-candidate.json', candidate)
+        requirements, rows = [], []
+        for kind in ('check', 'test'):
+            for choice in selected['choices'][kind]:
+                needed, actual, raw, path = (choice[k] for k in ('needed', 'actual', 'raw', 'path'))
+                cid = kind + ':' + needed['label']
+                carried = choice['disposition'] == 'carried_unaffected'
+                requirement = dict(id=cid, kind='command', **needed, affected=not carried,
+                                   must_execute=not carried, helper_paths=[])
+                if carried: requirement['dependencies'] = selected['dependencies']
+                requirements.append(requirement)
+                result = dict(status='pass', exit_code=0, execution_id=raw['run_id'],
+                    argv=actual['argv'], cwd=str(self.root), started_utc=raw['started_utc'],
+                    finished_utc=raw['finished_utc'], required_ids=[cid],
+                    log=proof.reference(self.root, path.parent / actual['log']),
+                    candidate=origin_ref if carried and kind == 'test' else candidate_ref,
+                    raw=proof.reference(self.root, path), evidence={})
+                if kind == 'check':
+                    result.update(original_runner_inputs=raw['inputs_before'], reason=choice['reason'])
+                row = dict(id=cid, disposition=choice['disposition'],
+                           result=write('results/' + cid.replace('/', '-') + '.json', result))
+                if carried and kind == 'test':
+                    deps = selected['dependencies']
+                    proof_ref = write('impacts/' + cid.replace('/', '-') + '.json', {
+                        'unchanged_dependencies': deps,
+                        'current_source_inventory_sha256': source_hash,
+                        'original_candidate_sha256': origin_ref['sha256'],
+                        'file_bindings': {name: {'original_sha256': proof.sha(self.root / proof.D2_SOURCE / name),
+                            'current_sha256': proof.sha(self.root / name),
+                            'original_file': proof.reference(self.root, self.root / proof.D2_SOURCE / name)}
+                            for name in deps}})
+                    row['impact'] = dict(reason=record['reason'], dependencies=deps,
+                        original_candidate_sha256=origin_ref['sha256'], proof=proof_ref)
+                rows.append(row)
+        native_ids = [r['id'] for chunk in proof.CHUNKS for r in
+                      proof.read(self.root / 'docs/architecture/native-checks.json')['chunks'][chunk]]
+        observation = write('observations.json', {'fixture': 'not a native product execution'})
+        native_ref = write('native.json', {'schema': 'airs-v2/native-acceptance/1',
+            'app': {'executable_sha256': candidate['executable_sha256']},
+            'checks': [dict(id=cid, result='pass', observation='synthetic validator only',
+                            evidence=[observation['path']]) for cid in native_ids]})
+        for cid in native_ids:
+            requirements.append(dict(id=cid, kind='native', argv=['fixture-native'],
+                                     affected=True, must_execute=True))
+            rows.append(dict(id=cid, disposition='executed', result=write('results/' + cid + '.json',
+                dict(status='pass', exit_code=0, execution_id='fixture-native', argv=['fixture-native'],
+                    cwd=str(self.root), started_utc='fixture-start', finished_utc='fixture-end',
+                    required_ids=[cid], log=observation, candidate=candidate_ref, raw=native_ref,
+                    evidence={observation['path']: observation['sha256']}))))
+        plan = dict(schema='airs-desktop/required-coverage/1', subject='P11', requirements=requirements)
+        qualified = dict(schema='airs-desktop/qualified-coverage/1',
+            plan=write('plan.json', plan), candidate=candidate_ref,
+            source_inventory_sha256=source_hash, coverage=rows,
+            impact_selection=proof.reference(self.root,
+                self.root / 'docs/planning/evidence/P11/impact-fixture/selection.json'),
+            impact_source=record['current_source'],
+            runtime_plan=write('runtime-plan.json', dict(plan, requirements=[
+                r for r in requirements if not r['id'].startswith('check:')])))
+        current_source = self.root / 'docs/planning/evidence/P11/accepted/source'
+        for name in after['files']:
+            destination = current_source / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(self.root / name, destination)
+        context = write('context.json', {
+            'schema': 'airs-desktop/historical-qualification-context/1',
+            'sources': {source_hash: {'path': str(current_source.relative_to(self.root)),
+                                     'seal': record['current_source']},
+                        selected['origin']['source_inventory_sha256']: {
+                            'path': str(proof.D2_SOURCE), 'seal': record['baseline_source']}},
+            'applications': {}})
+        expected = proof.verify_impact_coverage(self.root, qualified)
+        self.assertEqual(expected['dispositions'], {'executed': 26, 'carried_unaffected': 15})
+        with tempfile.TemporaryDirectory() as clone:
+            clone = Path(clone).resolve()
+            shutil.copytree(self.root, clone, dirs_exist_ok=True)
+            self.assertFalse((clone / 'target').exists())
+            history = ArchivedP11(clone, context)
+            self.assertEqual(proof.verify_impact_coverage(clone, qualified, historical=history), expected)
+            dependency = clone / proof.D2_SOURCE / selected['dependencies'][0]
+            dependency.write_text('historical dependency drift\n')
+            with self.assertRaisesRegex(ValueError, 'archive membership/content drift|D2 source archive'):
+                proof.verify_impact_coverage(clone, qualified, historical=history)
+
+
 if __name__ == '__main__':
     unittest.main()

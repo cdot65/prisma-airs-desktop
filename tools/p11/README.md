@@ -66,3 +66,41 @@ without a current `target` directory, installed app, host toolchain or matching
 hostname. Production promotion requires both the original P09/P10 proof and this
 new P11 standing. Stable installed/live acceptance and Linux qualification remain
 separate. These tools perform no signing, publication or live product calls.
+
+## VM affected verification after the Modal fix
+
+The dedicated VM uses the unchanged registered command plan. Run selected labels
+with the existing Runner through the small build-only example:
+
+    cargo run --locked -p xtask --example p11_affected -- check C46/check/1 C46/check/4
+    cargo run --locked -p xtask --example p11_affected -- test <all 12 registered frontend labels, in order>
+
+This produces ordinary subset RunRecords. It refuses setup, unknown, duplicate
+and reordered labels; it does not create full-suite or controller completion.
+The source checks originally run on Kirk retain their original logs and inputs.
+
+The optional proof.py make --impact-selection FILE keeps --check and --tests
+pointing to the original D2 records. FILE has schema
+airs-desktop/p11-impact-selection/1, current runner_inputs, a nonempty reason,
+and these bound references: baseline_source, baseline_candidate,
+baseline_check, baseline_test, current_source, tool_transition, and
+current_runs (check/test). Both source records contain files and git_config.
+It also lists exact changed_paths, dependencies from carry_dependencies,
+and affected labels: the two checks above and all registered frontend tests.
+
+D2 is source-check context, with no native qualification claimed. Its permanent
+archive is docs/planning/evidence/P11/source-history/D2. The original failed
+Check and its two repairs stay intact. Current format/typecheck and frontend
+results execute in the VM; eight unchanged Rust test commands and seven other
+checks are carried with explicit reasons. Dependencies include all desktop-core,
+xtask library, contracts, resources, architecture inputs and root lock/toolchain
+files. The tool audit must bind exact original/current compiler, Cargo, Node and
+pnpm bytes; only the rustup shims may differ. No whole dependency hash is relabelled.
+
+The P11 wrapper validates Check provenance at its original source context. The
+unchanged P10 generic consumer validates carried Rust results against their
+original candidate, raw runs/logs and exact dependency proofs. Every registered
+requirement remains present. Final standing includes both source contexts and
+verifies without a target directory or the original host. A changed production
+dependency, omitted command, failed/zero-test result or changed compiler fails
+the consumer. New native assertions still require actual current VM evidence.

@@ -198,7 +198,7 @@ def command_plan(source, kind):
     return rows + selected
 
 
-def validate_run(root, path, kind, runner_inputs):
+def validate_run(root, path, kind, runner_inputs, labels=None, source=None):
     raw = read(path)
     if raw.get('schema') == 'airs-desktop/p11-check-selection/1':
         require(kind == 'check', 'check selection cannot replace a test run')
@@ -209,7 +209,12 @@ def validate_run(root, path, kind, runner_inputs):
             'P11 run is not passing')
     require(raw['inputs_before'] == raw['inputs_after'] == runner_inputs,
             'P11 run inputs differ or changed')
-    expected = command_plan(root, kind)
+    expected = command_plan(source or root, kind)
+    if labels is not None:
+        expected = [row for row in expected if row['label'] in labels]
+        require(labels and [row['label'] for row in expected] == labels
+                and not any(label.startswith('setup/') for label in labels),
+                'unknown, duplicate or out-of-order selected command')
     require([row['argv'] for row in raw['commands']] == [row['argv'] for row in expected],
             'P11 command membership/order differs from approved focused plan')
     for actual, needed in zip(raw['commands'], expected):
@@ -319,6 +324,175 @@ def validate_check_selection(root, path, runner_inputs, source=None, files=None)
     return {'selection': selection, 'selected': selected}
 
 
+
+D2_SOURCE = Path('docs/planning/evidence/P11/source-history/D2')
+IMPACT_CHECKS = ('C46/check/1', 'C46/check/4')
+
+
+def carry_dependencies(files):
+    """Conservative Rust/contract/controller closure; frontend executes current."""
+    roots = ('crates/desktop-core/', 'crates/xtask/src/', 'packages/desktop-contracts/',
+             'resources/', 'docs/architecture/', '.cargo/')
+    exact = {'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'pnpm-lock.yaml',
+             'pnpm-workspace.yaml', 'package.json', 'crates/xtask/Cargo.toml'}
+    return sorted(name for name in files if name in exact or name.startswith(roots))
+
+
+def verify_tool_transition(root, reference, old, new):
+    audit = read(bound(root, reference))
+    old_tools = {row['name']: row for row in old['toolchain']}
+    new_tools = {row['name']: row for row in new['toolchain']}
+    audited = {row['name']: row for row in audit['current_tools']}
+    comparisons = {row['name']: row for row in audit['comparison']}
+    names = {'rustc', 'cargo', 'rustc-toolchain', 'cargo-toolchain', 'node', 'pnpm'}
+    require(set(old_tools) == set(new_tools) == set(audited) == set(comparisons) == names,
+            'tool transition membership differs')
+    for name in names:
+        before, after, joined = old_tools[name], new_tools[name], comparisons[name]
+        require(before['sha256'] == joined['old_sha256']
+                and after['sha256'] == joined['new_sha256'] == audited[name]['sha256'],
+                'tool transition audit does not bind actual executables')
+        if name in ('rustc', 'cargo'):
+            require(before['version'] == after['version'], 'selected Rust version changed')
+        else:
+            # Historical rustup-resolved identities recorded no version string.
+            require(before['sha256'] == after['sha256'], 'actual compiler or JS tool changed')
+
+
+def validate_impact_selection(root, path, runner_inputs, source=None, files=None):
+    """Dated Kirk-to-VM/frontend fix accounting; never creates a passing raw run."""
+    record = read(path)
+    require(record['schema'] == 'airs-desktop/p11-impact-selection/1'
+            and record['runner_inputs'] == runner_inputs and record['reason'],
+            'impact selection binding missing')
+    before = read(bound(root, record['baseline_source']))
+    after = read(bound(root, record['current_source']))
+    require(after['files'] == (source_inventory(root) if files is None else files),
+            'impact selection current source differs')
+    require(inventory_source(after) == runner_inputs['source'], 'impact source fingerprint differs')
+    changed = sorted(name for name in set(before['files']) | set(after['files'])
+                     if before['files'].get(name) != after['files'].get(name))
+    require(changed and changed == record['changed_paths'], 'impact delta differs')
+    origin = read(bound(root, record['baseline_candidate']))
+    require(origin['source_inventory_sha256'] == digest(before['files'])
+            and origin['runner_inputs']['source'] == inventory_source(before),
+            'baseline source-check context differs')
+    baseline_root = root / D2_SOURCE
+    require({str(p.relative_to(baseline_root)): file_identity(p)
+             for p in baseline_root.rglob('*') if p.is_file() or p.is_symlink()} == before['files'],
+            'D2 source archive membership/content differs')
+    baseline_check = validate_check_selection(root, bound(root, record['baseline_check']),
+        origin['runner_inputs'], source=baseline_root, files=before['files'])
+    baseline_test = validate_run(root, bound(root, record['baseline_test']), 'test',
+                                 origin['runner_inputs'], source=baseline_root)
+    dependencies = carry_dependencies(before['files'])
+    require(dependencies and dependencies == carry_dependencies(after['files'])
+            and dependencies == record['dependencies']
+            and all(before['files'][name] == after['files'][name] for name in dependencies),
+            'carried dependency membership/content changed')
+    plans = {kind: command_plan(source or root, kind) for kind in ('check', 'test')}
+    labels = {'check': list(IMPACT_CHECKS), 'test': [
+        row['label'] for row in plans['test'] if row['argv'][:2] != ['cargo', 'test']
+        and not row['label'].startswith('setup/')]}
+    require(record['affected'] == labels, 'affected frontend/check selection differs')
+    current = {kind: validate_run(root, bound(root, record['current_runs'][kind]), kind,
+                                  runner_inputs, labels=labels[kind], source=source)
+               for kind in ('check', 'test')}
+    require(current['check']['toolchain'] == current['test']['toolchain'],
+            'affected runs used different tools')
+    verify_tool_transition(root, record['tool_transition'], baseline_test, current['test'])
+    baseline_choices = {'check': baseline_check['selected'], 'test': [
+        {'needed': needed, 'actual': actual, 'raw': baseline_test,
+         'path': bound(root, record['baseline_test'])}
+        for needed, actual in zip(command_plan(baseline_root, 'test'), baseline_test['commands'])]}
+    choices = {}
+    for kind in ('check', 'test'):
+        old = {row['needed']['label']: row for row in baseline_choices[kind]}
+        fresh = {row['label']: row for row in current[kind]['commands']}
+        choices[kind] = []
+        for needed in plans[kind]:
+            if needed['label'].startswith('setup/'):
+                continue
+            label = needed['label']
+            if label in fresh:
+                choice = dict(needed=needed, actual=fresh[label], raw=current[kind],
+                              path=bound(root, record['current_runs'][kind]),
+                              disposition='executed', reason=None)
+            else:
+                require(label in old and old[label]['needed']['argv'] == needed['argv'],
+                        'carried command was not in the original approved plan')
+                choice = dict(old[label], needed=needed, disposition='carried_unaffected',
+                              reason=record['reason'])
+            choices[kind].append(choice)
+    return {'record': record, 'choices': choices, 'origin': origin,
+            'dependencies': dependencies}
+
+
+def verify_impact_coverage(root, qualified, historical=None):
+    candidate = read(bound(root, qualified['candidate']))
+    source = historical.source(qualified['source_inventory_sha256']) if historical else root
+    seal = read(bound(root, qualified['impact_source']))
+    require(digest(seal['files']) == qualified['source_inventory_sha256'],
+            'impact selection does not bind qualified source')
+    selected = validate_impact_selection(root, bound(root, qualified['impact_selection']),
+        candidate['runner_inputs'], source=source, files=seal['files'] if historical else None)
+    require(qualified['impact_source'] == selected['record']['current_source'],
+            'impact source reference differs')
+    check_choices = {'check:' + row['needed']['label']: row for row in selected['choices']['check']}
+    modes = {kind + ':' + row['needed']['label']: row['disposition']
+             for kind in ('check', 'test') for row in selected['choices'][kind]}
+    plan = read(bound(root, qualified['plan']))
+    verify_plan(source, plan, modes)
+    require(all(row.get('dependencies') == selected['dependencies']
+                for row in plan['requirements'] if modes.get(row['id']) == 'carried_unaffected'),
+            'impact dependency plan differs from conservative closure')
+    rows = qualified['coverage']
+    require(len(rows) == len(plan['requirements']) and {r['id'] for r in rows}
+            == {r['id'] for r in plan['requirements']}, 'impact coverage membership differs')
+    test_choices = {'test:' + row['needed']['label']: row for row in selected['choices']['test']}
+    for row in rows:
+        if row['id'] in test_choices:
+            choice = test_choices[row['id']]
+            raw, actual, path = choice['raw'], choice['actual'], choice['path']
+            carried = choice['disposition'] == 'carried_unaffected'
+            require(row['disposition'] == choice['disposition']
+                    and read(bound(root, row['result'])) == {
+                'status': 'pass', 'exit_code': 0, 'execution_id': raw['run_id'],
+                'argv': actual['argv'],
+                'cwd': selected['origin']['execution_root'] if carried else candidate['execution_root'],
+                'started_utc': raw['started_utc'], 'finished_utc': raw['finished_utc'],
+                'required_ids': [row['id']], 'log': reference(root, path.parent / actual['log']),
+                'candidate': selected['record']['baseline_candidate'] if carried else qualified['candidate'],
+                'raw': reference(root, path), 'evidence': {}},
+                'impact Test result changed original provenance')
+            continue
+        if row['id'] not in check_choices:
+            continue
+        choice = check_choices[row['id']]
+        raw, actual, path = choice['raw'], choice['actual'], choice['path']
+        result = read(bound(root, row['result']))
+        require(row['disposition'] == choice['disposition'] and result == {
+            'status': 'pass', 'exit_code': 0, 'execution_id': raw['run_id'],
+            'argv': actual['argv'], 'cwd': selected['origin']['execution_root'],
+            'started_utc': raw['started_utc'], 'finished_utc': raw['finished_utc'],
+            'required_ids': [row['id']], 'log': reference(root, path.parent / actual['log']),
+            'candidate': qualified['candidate'], 'raw': reference(root, path),
+            'original_runner_inputs': raw['inputs_before'], 'reason': choice['reason'], 'evidence': {}},
+            'impact Check result changed original provenance')
+    runtime_plan = read(bound(root, qualified['runtime_plan']))
+    require(runtime_plan == dict(plan, requirements=[r for r in plan['requirements']
+                                                     if r['id'] not in check_choices]),
+            'impact runtime plan membership differs')
+    runtime = dict(qualified, plan=qualified['runtime_plan'],
+                   coverage=[row for row in rows if row['id'] not in check_choices])
+    result = coverage.verify(root, runtime, historical=historical)
+    result['required'] += len(check_choices)
+    for row in check_choices.values():
+        mode = row['disposition']
+        result['dispositions'][mode] = result['dispositions'].get(mode, 0) + 1
+    return result
+
+
 def verify_plan(source, plan, check_dispositions=None):
     expected = {}
     for kind in ('check', 'test'):
@@ -347,6 +521,8 @@ def verify_plan(source, plan, check_dispositions=None):
 
 def verify_coverage(root, qualified, historical=None):
     """P11 check selection plus the unchanged generic test/native consumer."""
+    if 'impact_selection' in qualified:
+        return verify_impact_coverage(root, qualified, historical=historical)
     if 'check_selection' not in qualified:
         source = historical.source(qualified['source_inventory_sha256']) if historical else root
         verify_plan(source, read(bound(root, qualified['plan'])))
@@ -412,8 +588,11 @@ def verify(root, path):
     require(source_inventory(root) == seal['files'], 'P11 source changed after qualification')
     qualified = read(bound(root, record['coverage']))
     require(digest(seal['files']) == qualified['source_inventory_sha256'], 'P11 source binding')
-    for kind in ('check', 'test'):
-        validate_run(root, bound(root, record['runs'][kind]), kind, record['runner_inputs'])
+    if 'impact_selection' in record:
+        validate_impact_selection(root, bound(root, record['impact_selection']), record['runner_inputs'])
+    else:
+        for kind in ('check', 'test'):
+            validate_run(root, bound(root, record['runs'][kind]), kind, record['runner_inputs'])
     inputs = read(bound(root, record['fingerprint']))
     require(record['runner_inputs'] == {key: inputs[key] for key in record['runner_inputs']},
             'P11 observed current fingerprint mismatch')
@@ -467,15 +646,20 @@ def verify(root, path):
             'controller_complete': False}
 
 
-def make(root, check, tests, fingerprint, prepare, native, execution, build, out, carry=None):
+def make(root, check, tests, fingerprint, prepare, native, execution, build, out, carry=None, impact=None):
     """Bind existing executions; never create a passing raw run or verdict."""
     require(not out.exists(), 'preserve previous P11 qualification')
     require((root / 'tools/native-acceptance/acceptance_p11.py').is_file(),
             'P11 native driver missing')
     inputs = read(fingerprint)
     runner_inputs = {key: inputs[key] for key in ('source', 'dependencies', 'build_flags')}
-    runs = {kind: validate_run(root, path, kind, runner_inputs)
-            for kind, path in [('check', check), ('test', tests)]}
+    selection = validate_impact_selection(root, impact, runner_inputs) if impact else None
+    runs = ({} if selection else {kind: validate_run(root, path, kind, runner_inputs)
+            for kind, path in [('check', check), ('test', tests)]})
+    if selection:
+        require(selection['record']['baseline_check'] == reference(root, check)
+                and selection['record']['baseline_test'] == reference(root, tests),
+                'impact original Check/Test references differ')
     prepared, acceptance, performed = read(prepare), read(native), read(execution)
     require(prepared['subject'] == acceptance['subject'] == 'P11', 'P11 candidate subject')
     require(acceptance['schema'] == 'airs-v2/native-acceptance/1'
@@ -512,9 +696,9 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
     validate_execution(root, performed, candidate)
     requirements, rows = [], []
     for kind, path in [('check', check), ('test', tests)]:
-        raw = runs[kind]
-        selected_check = kind == 'check' and 'selection' in raw
-        choices = (raw['selected'] if selected_check else
+        raw = runs.get(kind, {})
+        selected_check = kind == 'check' and ('selection' in raw or selection is not None)
+        choices = (selection['choices'][kind] if selection else raw['selected'] if selected_check else
                    [{'needed': needed, 'actual': actual, 'raw': raw, 'path': path,
                      'disposition': 'executed', 'reason': None}
                     for needed, actual in zip(command_plan(root, kind), raw['commands'])])
@@ -524,8 +708,11 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
                 continue
             cid = kind + ':' + needed['label']
             affected = choice['disposition'] == 'executed'
-            requirements.append(dict(id=cid, kind='command', **needed, affected=affected,
-                                     must_execute=affected, helper_paths=[]))
+            requirement = dict(id=cid, kind='command', **needed, affected=affected,
+                               must_execute=affected, helper_paths=[])
+            if selection and not affected:
+                requirement['dependencies'] = selection['dependencies']
+            requirements.append(requirement)
             origin, origin_path = choice['raw'], choice['path']
             log = reference(root, origin_path.parent / actual['log'])
             result = dict(status='pass', exit_code=0, execution_id=origin['run_id'],
@@ -534,8 +721,25 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
                           candidate=candidate_ref, raw=reference(root, origin_path), evidence={})
             if selected_check:
                 result.update(original_runner_inputs=origin['inputs_before'], reason=choice['reason'])
+            if selection and kind == 'test' and not affected:
+                result['candidate'] = selection['record']['baseline_candidate']
+                result['cwd'] = selection['origin']['execution_root']
             result_ref = write('results/' + kind + '-' + needed['label'].replace('/', '-') + '.json', result)
-            rows.append(dict(id=cid, disposition=choice['disposition'], result=result_ref))
+            row = dict(id=cid, disposition=choice['disposition'], result=result_ref)
+            if selection and kind == 'test' and not affected:
+                deps = selection['dependencies']
+                bindings = {name: {'original_sha256': sha(root / D2_SOURCE / name),
+                                    'current_sha256': sha(root / name),
+                                    'original_file': reference(root, root / D2_SOURCE / name)}
+                            for name in deps}
+                impact_ref = write('impact/' + needed['label'].replace('/', '-') + '.json', {
+                    'file_bindings': bindings, 'unchanged_dependencies': deps,
+                    'current_source_inventory_sha256': digest(source),
+                    'original_candidate_sha256': selection['record']['baseline_candidate']['sha256']})
+                row['impact'] = {'reason': selection['record']['reason'], 'dependencies': deps,
+                                 'original_candidate_sha256': selection['record']['baseline_candidate']['sha256'],
+                                 'proof': impact_ref}
+            rows.append(row)
     expected = {row['id'] for chunk in CHUNKS for row in
                 read(root / 'docs/architecture/native-checks.json')['chunks'][chunk]}
     require(len(acceptance['checks']) == len(expected)
@@ -561,7 +765,13 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
     qualified_record = {'schema': 'airs-desktop/qualified-coverage/1',
                       'plan': plan, 'candidate': candidate_ref,
                       'source_inventory_sha256': digest(source), 'coverage': rows}
-    if 'selection' in runs['check']:
+    if selection:
+        qualified_record.update(impact_selection=reference(root, impact),
+            impact_source=selection['record']['current_source'],
+            runtime_plan=write('runtime-required-coverage.json', {
+                'schema': 'airs-desktop/required-coverage/1', 'subject': 'P11',
+                'requirements': [r for r in requirements if not r['id'].startswith('check:')]}))
+    elif 'selection' in runs['check']:
         qualified_record.update(check_selection=reference(root, check),
             check_source=runs['check']['selection']['current_source'],
             runtime_plan=write('runtime-required-coverage.json', {
@@ -576,6 +786,8 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
               'historical_baseline': reference(root, root / 'docs/planning/evidence/P10/completion-proof.json'),
               'historical_use': 'Original P10 standing/artifact bindings retained. No old result is relabelled current and no RC1 byte equality is claimed. P11 executes the changed-flow requirements on one shared candidate.',
               'controller_complete': False}
+    if selection:
+        record['impact_selection'] = reference(root, impact)
     if carry is not None:
         record['build_input_carry'] = reference(root, carry)
     from review_gate import release_prerequisites
@@ -593,6 +805,7 @@ if __name__ == '__main__':
     for flag in ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out'):
         create.add_argument('--' + flag, type=Path, required=True)
     create.add_argument('--build-input-carry', type=Path)
+    create.add_argument('--impact-selection', type=Path)
     args = parser.parse_args()
     root = Path.cwd().resolve()
     if args.action == 'verify':
@@ -600,5 +813,6 @@ if __name__ == '__main__':
     else:
         result = make(root, *[getattr(args, key).resolve() for key in
                              ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out')],
-                      carry=args.build_input_carry.resolve() if args.build_input_carry else None)
+                      carry=args.build_input_carry.resolve() if args.build_input_carry else None,
+                      impact=args.impact_selection.resolve() if args.impact_selection else None)
     print(json.dumps(result, indent=2))

@@ -23,7 +23,9 @@ SUBJECTS = (*CHUNKS, 'P11')
 BASE = Path('docs/planning/evidence/P11')
 ACCEPTED = BASE / 'accepted'
 COMPLETION = BASE / 'completion-proof.json'
-LFS_PATHS = (str(ACCEPTED / 'application/Contents/MacOS/prisma-airs-desktop'),
+D2_SOURCE = BASE / 'source-history/D2'
+LFS_PATHS = (str(D2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+             str(ACCEPTED / 'application/Contents/MacOS/prisma-airs-desktop'),
              str(ACCEPTED / 'application/Contents/Resources/harness/airs-harness'),
              str(ACCEPTED / 'source/resources/harness/darwin-arm64.tar.gz'))
 
@@ -32,7 +34,8 @@ class ArchivedP11(Historical):
     """Explicit P11 archive context; historical C45 behavior is untouched."""
     def archive_path(self, name):
         path = self.root / name
-        require(path.resolve().is_relative_to((self.root / ACCEPTED).resolve()),
+        require(path.resolve().is_relative_to((self.root / ACCEPTED).resolve())
+                or path.resolve() == (self.root / D2_SOURCE).resolve(),
                 'historical archive escapes accepted P11 evidence')
         return path
 
@@ -188,10 +191,16 @@ def finalize(root, qualification_path, attempts):
     shutil.copytree(root / prepared['bundle'], application, symlinks=True)
     require(bundle_hash(application) == candidate['bundle_sha256'], 'application changed while archiving')
     source_seal = write('source-seal.json', seal)
+    sources = {coverage['source_inventory_sha256']: {
+        'path': str(source.relative_to(root)), 'seal': source_seal}}
+    if 'impact_selection' in original:
+        impact = read(bound(root, original['impact_selection']))
+        baseline = read(bound(root, impact['baseline_source']))
+        sources[digest(baseline['files'])] = {
+            'path': str(D2_SOURCE), 'seal': impact['baseline_source']}
     context = write('historical-context.json', {
         'schema': 'airs-desktop/historical-qualification-context/1',
-        'sources': {coverage['source_inventory_sha256']: {
-            'path': str(source.relative_to(root)), 'seal': source_seal}},
+        'sources': sources,
         'applications': {candidate['bundle_sha256']: {
             'path': str(application.relative_to(root)),
             'executable_sha256': candidate['executable_sha256']}}})
