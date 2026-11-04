@@ -1,0 +1,56 @@
+{
+  "schema": "airs-desktop/modal-composition-fix/1",
+  "recorded_utc": "2026-11-04T14:44:10.727999+00:00",
+  "base_head": "2e4439fa04a56c822a44286359b294587428e161",
+  "files": {
+    "apps/desktop/src/v2/modal.tsx": "770b8e2befce1717336af1394e8fd00c227eaaa09d179ca5c812601fe765b891",
+    "apps/desktop/src/v2/v2-shell.tsx": "a0b6209551ab4d958b238cc49cf6a9cd6341e936c742f5e1efceedfe10ab97bd",
+    "apps/desktop/src/v2/v2-shell.test.tsx": "8b1444d21bf8ee447f0858415a34babe5dc371e0fd523effaacef9694de7978a"
+  },
+  "scope": "Explicit desktop Modal portal host within V2Shell palette and outside inert branches; capture opener in layout effect before child wizard passive focus; App-level Settings Add regression across both desktop palettes.",
+  "red": {
+    "raw_record": "red.json",
+    "log": "red.log",
+    "log_sha256": "b27eec95bc4f06482b410fba8ac0b3d14bf754a6acdde51730558015b1e170b3",
+    "actual_exit_code": 1,
+    "actual_failed_tests": 2,
+    "assertion": "dialog.closest(inert or aria-hidden=true) must be null",
+    "limit": "Red run predates production fix. Its final no-durable-intent assertion spelling was corrected to the real Intent enum before green; no historical complete-source seal was captured."
+  },
+  "intermediate": {
+    "raw_record": "green-01.json",
+    "log": "green-01.log",
+    "log_sha256": "8ac195daf89f1b45d34d7adb1c5c5cf008d4c65bf430e994831bb34c7627cef5",
+    "actual_exit_code": 1,
+    "actual_failed_tests": 2,
+    "assertion": "opener focus restoration; causal host checks passed before this failure"
+  },
+  "green": {
+    "raw_record": "green-02.json",
+    "log": "green-02.log",
+    "log_sha256": "03553f31f3652c00b0cd22b65e335259dc65b6c1da8dc60476c8cf822d905f21",
+    "actual_exit_code": 0,
+    "actual_passed_tests": 2,
+    "unrelated_skipped_tests": 27
+  },
+  "modal_lease": {
+    "raw_record": "modal-lease.json",
+    "log": "modal-lease.log",
+    "log_sha256": "d43cb329c092cd2137a37982ead25f7472416590b714422bb768b09d4718ab57",
+    "actual_exit_code": 0,
+    "actual_passed_tests": 4
+  },
+  "diff_check_exit_code": 0,
+  "deferred_to_root_runner": [
+    "coalesced relevant modal/settings/shell/theme/Academy cross-consumer commands",
+    "desktop typecheck"
+  ],
+  "not_executed": [
+    "application build",
+    "Rust checks/tests/build",
+    "native/UI",
+    "formal review",
+    "push"
+  ],
+  "raw_native_05": "preserved unchanged"
+}

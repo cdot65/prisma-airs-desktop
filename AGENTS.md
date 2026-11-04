@@ -14,11 +14,13 @@ owner. No new live API calls are authorized by this refinement task.
 
 ## Execution location — owner correction, 2026-11-04
 
-Automated development, builds, focused checks and native UI tests run inside the
+Interactive automated development, local builds, focused checks and native UI tests run inside the
 dedicated Worf macOS VM, reachable as `admin@worf-vm` (formerly `airs-vm`). The
 current isolated checkout is
 `/Users/cdot/development/redtail/p09-queue/refinement-20261104/core`, on
 `refinement/20261104-vm`. Preserve the other VM checkouts and their user changes.
+The separately approved CI/release builder roles remain unchanged: Enterprise
+for Linux AMD64 and Jadzia initially for macOS ARM64, as in the build/release plan.
 
 Kirk is for the owner's live acceptance. Do not drive its desktop or start native
 development/test launchers there unless the owner explicitly changes this rule.

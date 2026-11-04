@@ -1,0 +1,281 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+ ✓ src/modules/sessions/sessions-view.test.tsx (10 tests) 991ms
+ ✓ src/v2/admin/administration.test.tsx (34 tests) 5853ms
+   ✓ v2 Administration > V2-T20: every product and tab renders its disposition, its content, and exactly the admitted actions  714ms
+   ✓ v2 Administration > the open sheet says what became of the Gateway draft from the current state: kept, rejected (incomplete JSON), not stored, and a save the desktop refused (C39b attempt-01 R2)  1718ms
+ ✓ src/v2/harness/harness.test.tsx (61 tests) 8767ms
+   ✓ v2 Harness > choosing New investigation while an archived record is read retires the contextual restart: its late success or failure changes neither the draft nor the choice (attempt-15 R1)  369ms
+   ✓ v2 Harness > keeps a refused or undelivered follow-up beside the edit made while it was delivered, and resends nothing (attempt-04 R1)  386ms
+   ✓ v2 Harness > a send whose receipt was lost and that the core then gave back is never taken as delivered: its exact text stays in the box or under Not sent (attempt-17 R1)  384ms
+   ✓ v2 Harness > a receipt that arrives after the core gave its send back never clears the returned text, on either send path (attempt-18 R1)  491ms
+   ✓ v2 Harness > a pending report is never final: a send later given back keeps its exact text beside newer edits, on both send paths and through an A/B/A that retires its conversation (attempt-19 R1)  473ms
+   ✓ v2 Harness > sets up company sign-in, signs in through the browser, chooses the credential and signs out, through the v2 sign-in panel; a refused save is named (C20, attempt-01 E2)  694ms
+   ✓ v2 Harness > reads the MCP catalog, turns servers on, signs in and out, says why a server cannot be used and keeps at most eight on, through the v2 MCP panel (C22, attempt-01 E2)  311ms
+
+ Test Files  3 passed (3)
+      Tests  105 passed (105)
+   Start at  15:08:54
+   Duration  10.53s (transform 1.01s, setup 167ms, collect 4.29s, tests 15.61s, environment 390ms, prepare 125ms)
+
+
+--- stderr ---
+stderr | src/modules/sessions/sessions-view.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/harness/harness.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/admin/administration.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > contextual navigation into an ended conversation shows the hint; it opens the saved transcript or prefills a new investigation, and clears on navigation
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > contextual navigation into an ended conversation shows the hint; it opens the saved transcript or prefills a new investigation, and clears on navigation
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > contextual navigation into an ended conversation shows the hint; it opens the saved transcript or prefills a new investigation, and clears on navigation
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a contextual restart of the ended conversation prefills its whole opening question, never its shortened title; a draft is kept and nothing is sent (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a contextual restart of an archived conversation reads its record for the whole opening question; a draft is kept and nothing is sent (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > says when the opening question is not known, or its record could not be read, and never substitutes the title (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > says when the opening question is not known, or its record could not be read, and never substitutes the title (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a repeated read failure of an archived record settles each read by its receipt: loading ends, the failure is said, retry works, the draft stays and nothing starts (attempt-13 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a contextual arrival waits for the saved conversations to be listed: the hint appears once its record is, the draft stays and nothing starts (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > choosing New investigation while an archived record is read retires the contextual restart: its late success or failure changes neither the draft nor the choice (attempt-15 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > choosing New investigation while an archived record is read retires the contextual restart: its late success or failure changes neither the draft nor the choice (attempt-15 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a read refused after the operator chose another investigation says nothing over it (attempt-16 S1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a new investigation while one runs ends it and sends to a different conversation; the contextual restart shows its opening question (R3)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending decision holds a contextual restart back without losing its hint; an unconfirmed read is never called a failure
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > one Send starts at most one conversation and delivers once, even when the clear publishes before its receipt (attempt-03 R4)
+You called act(async () => ...) without await. This could lead to unexpected testing behaviour, interleaving multiple act calls and mixing their scopes. You should - await act(async () => ...);
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > one Send starts at most one conversation and delivers once, even when the clear publishes before its receipt (attempt-03 R4)
+You seem to have overlapping act() calls, this is not supported. Be sure to await previous act() calls before making a new one. 
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a receipt that arrives after the core gave its send back never clears the returned text, on either send path (attempt-18 R1)
+An update to ForwardRef(Harness2) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a receipt that arrives after the core gave its send back never clears the returned text, on either send path (attempt-18 R1)
+An update to ForwardRef(Harness2) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+

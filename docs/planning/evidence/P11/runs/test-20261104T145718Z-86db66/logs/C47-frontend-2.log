@@ -1,0 +1,930 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+ ✓ src/modules/sessions/sessions-view.test.tsx (10 tests) 966ms
+ ❯ src/v2/admin/administration.test.tsx (34 tests | 1 failed) 6761ms
+   ✓ v2 Administration > renders the inventory: unavailable products show their gate and nothing else, removed tabs do not exist, unavailable tabs have no rows or actions (V2-T19, V2-T20) 143ms
+   ✓ v2 Administration > labels creation and row actions per tab from the inventory: no "New application…", no key "Edit…" (V2-T20, gap 3) 106ms
+   ✓ v2 Administration > applies a review only when the typed name matches, in the review sheet (V2-T03) 204ms
+   ✓ v2 Administration > follows a rotation: Issued reveals only through the host and forgets the key on exit, Resumed has no secret controls, Complete shows both labelled timestamps (V2-T06, V2-T08, I6) 200ms
+   ✓ v2 Administration > Gateway keys rotate in place: never "Issue additional key…" or "Finish rotation…" (V2-T20) 40ms
+   ✓ v2 Administration > shows custom topic results apart from the detectors: an applied topic flags without suppressing an enabled detector (gap 2) 29ms
+   ✓ v2 Administration > V2-T20: every product and tab renders its disposition, its content, and exactly the admitted actions  690ms
+   ✓ v2 Administration > Gateway keys show their rows and rotate in place through the typed review; no staged rotation (V2-T20) 141ms
+   ✓ v2 Administration > V2-T21: the Red Team Targets tab shows identifiers and types only; a target name in the reply never renders 51ms
+   ✓ v2 Administration > a review exit ends the review in the core, also before its change settles and on unmount (V2-R06, I6) 230ms
+   ✓ v2 Administration > says only what each action established: an update read back absent is not "Removed"; reconciliation reads the reviewed item (R5) 83ms
+   ✓ v2 Administration > shows a response-only topic violation in its own labelled section beside unrelated detectors (R8) 43ms
+   ✓ v2 Administration > announces each rotation stage in one persistent status region, without moving focus, and toasts completion for its tenant (R9, I10) 85ms
+   ✓ v2 Administration > derives profile and topic relationships from one profile walk, and marks the keys of a rotation (R7) 45ms
+   ✓ v2 Administration > opens the old key’s removal only once the acknowledgement is recorded: refused, invalid, stale or unconfirmed never advance (R3) 135ms
+   × v2 Administration > opens a Harness proposal’s native review in the review sheet with its exact draft; leaving discards it (R4) 1010ms
+     → Unable to find role="heading" and name "Administration"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+      [33mdata-v2-shell[39m=[32m""[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33maria-label[39m=[32m"Destinations"[39m
+        [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+        [33mdata-desktop-theme[39m=[32m""[39m
+        [33mdata-v2-rail[39m=[32m""[39m
+        [33minert[39m=[32m""[39m
+        [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"relative"[39m
+          [33mdata-slot[39m=[32m"tenant-switcher"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33maria-expanded[39m=[32m"false"[39m
+            [33maria-haspopup[39m=[32m"true"[39m
+            [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+            [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+            [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+            [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+              [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+            [36m>[39m
+              [0mNH[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+              [33mdata-v2-label[39m=[32m"true"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mNorthwind Health[0m
+                [36m</span>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"11"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2.4"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"11"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                  [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mProduction[0m
+                  [0m · Team A[0m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<ul[39m
+          [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+          [33mdata-slot[39m=[32m"nav-list"[39m
+          [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+        [36m>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                [33mdata-inset-focus[39m=[32m""[39m
+                [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                [33mtitle[39m=[32m"Home (⌘1)"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"16"[39m
+                  [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.8"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"16"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex-grow truncate"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                [36m>[39m
+                  [0mHome[0m
+                [36m</span>[39m
+                [36m<kbd[39m
+                  [33maria-label[39m=[32m"Command 1"[39m
+                  [33mclass[39m=[32m"text-[12px]"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                [36m>[39m
+                  [0m⌘[0m
+                  [0m1[0m
+                [36m</kbd>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</li>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounde...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+      [33mdata-v2-shell[39m=[32m""[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33maria-label[39m=[32m"Destinations"[39m
+        [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+        [33mdata-desktop-theme[39m=[32m""[39m
+        [33mdata-v2-rail[39m=[32m""[39m
+        [33minert[39m=[32m""[39m
+        [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"relative"[39m
+          [33mdata-slot[39m=[32m"tenant-switcher"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33maria-expanded[39m=[32m"false"[39m
+            [33maria-haspopup[39m=[32m"true"[39m
+            [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+            [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+            [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+            [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+              [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+            [36m>[39m
+              [0mNH[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+              [33mdata-v2-label[39m=[32m"true"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mNorthwind Health[0m
+                [36m</span>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"11"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2.4"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"11"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                  [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mProduction[0m
+                  [0m · Team A[0m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<ul[39m
+          [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+          [33mdata-slot[39m=[32m"nav-list"[39m
+          [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+        [36m>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                [33mdata-inset-focus[39m=[32m""[39m
+                [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                [33mtitle[39m=[32m"Home (⌘1)"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"16"[39m
+                  [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.8"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"16"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex-grow truncate"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                [36m>[39m
+                  [0mHome[0m
+                [36m</span>[39m
+                [36m<kbd[39m
+                  [33maria-label[39m=[32m"Command 1"[39m
+                  [33mclass[39m=[32m"text-[12px]"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                [36m>[39m
+                  [0m⌘[0m
+                  [0m1[0m
+                [36m</kbd>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</li>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounde...
+   ✓ v2 Administration > names what a confirmed change established: tenant, resource, returned name and revision, and the recorded readback time (R5) 91ms
+   ✓ v2 Administration > shows a failed second issuance apart from the rotation it leaves unchanged, with a manual retry and nothing resent (R2) 118ms
+   ✓ v2 Administration > gives every topic verdict an icon and words, for the prompt and the response, in the production Playground (R3, I9) 61ms
+   ✓ v2 Administration > draws the product cards: description, headline figure from the read, status pill and alerts; Expand all and Collapse all (C39a) 88ms
+   ✓ v2 Administration > draws the Runtime Overview from the read: three tiles and the 24-hour bars; the table footer names the count and the read time (C39a) 39ms
+   ✓ v2 Administration > says when the chart was not read: the events tile names it and the bars are none (C39a) 30ms
+   ✓ v2 Administration > draws the Gateway Overview from the tenant read: requests, error rate and cost of the chosen workspace, never invented (C39b) 37ms
+   ✓ v2 Administration > saves, replaces and removes the chosen workspace’s inference key from the Gateway card’s Workspaces tab; the key never stays in the page (C44, the legacy Playground form is gone) 264ms
+   ✓ v2 Administration > lists Gateway routes as a table with View per row and the inventory actions in the detail; the Red Team overview draws its tiles and ranked bars (C39b) 77ms
+   ✓ v2 Administration > opens a change in the prototype’s sheet: the title with the review’s state, a close control, the change’s path (C39b) 95ms
+   ✓ v2 Administration > keeps a Gateway draft typed within the save pause when the sheet is closed at once: the exact text is saved, nothing is applied (C39b attempt-01 R1) 132ms
+   ✓ v2 Administration > the open sheet says what became of the Gateway draft from the current state: kept, rejected (incomplete JSON), not stored, and a save the desktop refused (C39b attempt-01 R2)  1720ms
+   ✓ v2 Administration > every Red Team tab drawn from the scan list says what that list is: a partial sample of the reported total on Scans, Targets, Attack results and Reports, not only Overview; a list that could not be read says so there too (C39b attempt-01 R3) 163ms
+   ✓ v2 Playground handlers (C39a E2) > submits the fields as typed, says a refusal and an unconfirmed delivery without replaying, and cancels a running scan 208ms
+   ✓ v2 Playground handlers (C39a E2) > saves a case from the fields as typed and says only what the library established 152ms
+   ✓ v2 inventory table reads (C39a E2, R2, R3) > pages with Next page and First page, says the search is page-local, and starts again for a replaced context (E2, R3) 106ms
+   ✓ v2 inventory table reads (C39a E2, R2, R3) > keeps the rows with their read time when a refresh is denied (E2) 31ms
+   ✓ v2 inventory table reads (C39a E2, R2, R3) > a detail closed before its reply arrives stays closed and keeps focus where it was (R2) 115ms
+ ✓ src/v2/harness/harness.test.tsx (61 tests) 8583ms
+   ✓ v2 Harness > choosing New investigation while an archived record is read retires the contextual restart: its late success or failure changes neither the draft nor the choice (attempt-15 R1)  371ms
+   ✓ v2 Harness > a send whose receipt was lost and that the core then gave back is never taken as delivered: its exact text stays in the box or under Not sent (attempt-17 R1)  343ms
+   ✓ v2 Harness > a receipt that arrives after the core gave its send back never clears the returned text, on either send path (attempt-18 R1)  474ms
+   ✓ v2 Harness > a pending report is never final: a send later given back keeps its exact text beside newer edits, on both send paths and through an A/B/A that retires its conversation (attempt-19 R1)  480ms
+   ✓ v2 Harness > sets up company sign-in, signs in through the browser, chooses the credential and signs out, through the v2 sign-in panel; a refused save is named (C20, attempt-01 E2)  699ms
+   ✓ v2 Harness > reads the MCP catalog, turns servers on, signs in and out, says why a server cannot be used and keeps at most eight on, through the v2 MCP panel (C22, attempt-01 E2)  317ms
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 104 passed (105)
+   Start at  14:57:41
+   Duration  10.34s (transform 986ms, setup 168ms, collect 4.25s, tests 16.31s, environment 401ms, prepare 114ms)
+
+undefined
+/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run --config vitest.config.ts src/modules/sessions/sessions-view.test.tsx src/v2/admin/administration.test.tsx src/v2/harness/harness.test.tsx
+
+--- stderr ---
+stderr | src/modules/sessions/sessions-view.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/admin/administration.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/harness/harness.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > contextual navigation into an ended conversation shows the hint; it opens the saved transcript or prefills a new investigation, and clears on navigation
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > contextual navigation into an ended conversation shows the hint; it opens the saved transcript or prefills a new investigation, and clears on navigation
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > contextual navigation into an ended conversation shows the hint; it opens the saved transcript or prefills a new investigation, and clears on navigation
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a contextual restart of the ended conversation prefills its whole opening question, never its shortened title; a draft is kept and nothing is sent (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a contextual restart of an archived conversation reads its record for the whole opening question; a draft is kept and nothing is sent (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > says when the opening question is not known, or its record could not be read, and never substitutes the title (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > says when the opening question is not known, or its record could not be read, and never substitutes the title (attempt-12 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a repeated read failure of an archived record settles each read by its receipt: loading ends, the failure is said, retry works, the draft stays and nothing starts (attempt-13 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a contextual arrival waits for the saved conversations to be listed: the hint appears once its record is, the draft stays and nothing starts (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending contextual arrival is cancelled by navigation or another workspace, and says when its record is not listed or cannot be (attempt-14 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > choosing New investigation while an archived record is read retires the contextual restart: its late success or failure changes neither the draft nor the choice (attempt-15 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > choosing New investigation while an archived record is read retires the contextual restart: its late success or failure changes neither the draft nor the choice (attempt-15 R1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a read refused after the operator chose another investigation says nothing over it (attempt-16 S1)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a new investigation while one runs ends it and sends to a different conversation; the contextual restart shows its opening question (R3)
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a pending decision holds a contextual restart back without losing its hint; an unconfirmed read is never called a failure
+An update to V2Shell inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > one Send starts at most one conversation and delivers once, even when the clear publishes before its receipt (attempt-03 R4)
+You called act(async () => ...) without await. This could lead to unexpected testing behaviour, interleaving multiple act calls and mixing their scopes. You should - await act(async () => ...);
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > one Send starts at most one conversation and delivers once, even when the clear publishes before its receipt (attempt-03 R4)
+You seem to have overlapping act() calls, this is not supported. Be sure to await previous act() calls before making a new one. 
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a receipt that arrives after the core gave its send back never clears the returned text, on either send path (attempt-18 R1)
+An update to ForwardRef(Harness2) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/harness/harness.test.tsx > v2 Harness > a receipt that arrives after the core gave its send back never clears the returned text, on either send path (attempt-18 R1)
+An update to ForwardRef(Harness2) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v2/admin/administration.test.tsx > v2 Administration > opens a Harness proposal’s native review in the review sheet with its exact draft; leaving discards it (R4)
+TestingLibraryElementError: Unable to find role="heading" and name "Administration"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+      [33mdata-v2-shell[39m=[32m""[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33maria-label[39m=[32m"Destinations"[39m
+        [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+        [33mdata-desktop-theme[39m=[32m""[39m
+        [33mdata-v2-rail[39m=[32m""[39m
+        [33minert[39m=[32m""[39m
+        [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"relative"[39m
+          [33mdata-slot[39m=[32m"tenant-switcher"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33maria-expanded[39m=[32m"false"[39m
+            [33maria-haspopup[39m=[32m"true"[39m
+            [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+            [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+            [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+            [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+              [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+            [36m>[39m
+              [0mNH[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+              [33mdata-v2-label[39m=[32m"true"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mNorthwind Health[0m
+                [36m</span>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"11"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2.4"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"11"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                  [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mProduction[0m
+                  [0m · Team A[0m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<ul[39m
+          [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+          [33mdata-slot[39m=[32m"nav-list"[39m
+          [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+        [36m>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                [33mdata-inset-focus[39m=[32m""[39m
+                [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                [33mtitle[39m=[32m"Home (⌘1)"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"16"[39m
+                  [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.8"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"16"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex-grow truncate"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                [36m>[39m
+                  [0mHome[0m
+                [36m</span>[39m
+                [36m<kbd[39m
+                  [33maria-label[39m=[32m"Command 1"[39m
+                  [33mclass[39m=[32m"text-[12px]"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                [36m>[39m
+                  [0m⌘[0m
+                  [0m1[0m
+                [36m</kbd>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</li>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounde...
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+      [33mdata-v2-shell[39m=[32m""[39m
+    [36m>[39m
+      [36m<nav[39m
+        [33maria-hidden[39m=[32m"true"[39m
+        [33maria-label[39m=[32m"Destinations"[39m
+        [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+        [33mdata-desktop-theme[39m=[32m""[39m
+        [33mdata-v2-rail[39m=[32m""[39m
+        [33minert[39m=[32m""[39m
+        [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"relative"[39m
+          [33mdata-slot[39m=[32m"tenant-switcher"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33maria-expanded[39m=[32m"false"[39m
+            [33maria-haspopup[39m=[32m"true"[39m
+            [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+            [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+            [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+            [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+              [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+            [36m>[39m
+              [0mNH[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+              [33mdata-v2-label[39m=[32m"true"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mNorthwind Health[0m
+                [36m</span>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"11"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2.4"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"11"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                  [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mProduction[0m
+                  [0m · Team A[0m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<ul[39m
+          [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+          [33mdata-slot[39m=[32m"nav-list"[39m
+          [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+        [36m>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                [33mdata-inset-focus[39m=[32m""[39m
+                [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                [33mtitle[39m=[32m"Home (⌘1)"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"16"[39m
+                  [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"1.8"[39m
+                  [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"16"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex-grow truncate"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                [36m>[39m
+                  [0mHome[0m
+                [36m</span>[39m
+                [36m<kbd[39m
+                  [33maria-label[39m=[32m"Command 1"[39m
+                  [33mclass[39m=[32m"text-[12px]"[39m
+                  [33mdata-v2-label[39m=[32m"true"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                [36m>[39m
+                  [0m⌘[0m
+                  [0m1[0m
+                [36m</kbd>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</li>[39m
+          [36m<li[39m
+            [33mclass[39m=[32m"flex flex-col"[39m
+            [33mstyle[39m=[32m"gap: 1px;"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center"[39m
+              [33mstyle[39m=[32m"gap: 2px;"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounde...
+ ❯ waitForWrapper ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ launch src/v2/admin/administration.test.tsx:223:18
+    221|     const user = userEvent.setup()
+    222|     const { unmount } = render(<App client={new DesktopClient(native.t…
+    223|     await screen.findByRole('heading', { level: 1, name: 'Administrati…
+       |                  ^
+    224|     return { native, user, unmount }
+    225| }
+ ❯ src/v2/admin/administration.test.tsx:873:40
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

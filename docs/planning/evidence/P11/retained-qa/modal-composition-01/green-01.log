@@ -1,0 +1,757 @@
+
+> @prisma-airs/desktop@1.0.0 test /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+> vitest run --config vitest.config.ts src/v2/v2-shell.test.tsx -t 'keeps Settings Add outside inert shell ancestors'
+
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+stderr | src/v2/v2-shell.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+ ❯ src/v2/v2-shell.test.tsx (29 tests | 2 failed | 27 skipped) 2458ms
+   × v2 shell > keeps Settings Add outside inert shell ancestors in prismaAirs 1251ms
+     → [2mexpect([22m[31melement[39m[2m).toHaveFocus()[22m
+
+Expected element with focus:
+  [32m<button
+  class="rounded-academy-md inline-flex items-center justify-center whitespace-nowrap transition-[background,color,border-color,filter,transform,box-shadow] duration-[var(--academy-dur-1)] disabled:pointer-events-none bg-academy-accent text-academy-accent-ink font-semibold shadow-[var(--academy-shadow-float)] hover:brightness-[1.08] active:scale-[0.97] disabled:bg-academy-bg-inset disabled:text-academy-ink-faint disabled:shadow-none min-h-11 min-w-11 gap-2 px-4 py-2 text-[13px]"
+  data-slot="ax-button"
+  data-tier="primary"
+  type="button"
+>
+  Add tenant…
+</button>[39m
+Received element with focus:
+  [31m<h1
+  class="min-w-0 truncate text-[18px] font-bold"
+  data-slot="page-heading"
+  id="page-heading"
+  tabindex="-1"
+>
+  <span
+    data-slot="header-title"
+  >
+    Settings
+  </span>
+</h1>[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+   × v2 shell > keeps Settings Add outside inert shell ancestors in gruvbox 1206ms
+     → [2mexpect([22m[31melement[39m[2m).toHaveFocus()[22m
+
+Expected element with focus:
+  [32m<button
+  class="rounded-academy-md inline-flex items-center justify-center whitespace-nowrap transition-[background,color,border-color,filter,transform,box-shadow] duration-[var(--academy-dur-1)] disabled:pointer-events-none bg-academy-accent text-academy-accent-ink font-semibold shadow-[var(--academy-shadow-float)] hover:brightness-[1.08] active:scale-[0.97] disabled:bg-academy-bg-inset disabled:text-academy-ink-faint disabled:shadow-none min-h-11 min-w-11 gap-2 px-4 py-2 text-[13px]"
+  data-slot="ax-button"
+  data-tier="primary"
+  type="button"
+>
+  Add tenant…
+</button>[39m
+Received element with focus:
+  [31m<h1
+  class="min-w-0 truncate text-[18px] font-bold"
+  data-slot="page-heading"
+  id="page-heading"
+  tabindex="-1"
+>
+  <span
+    data-slot="header-title"
+  >
+    Settings
+  </span>
+</h1>[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"gruvbox"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass[39...
+   ↓ v2 shell > renders the sidebar from the Rust catalogue with the menu shortcuts and marks an unavailable destination
+   ↓ v2 shell > dispatches navigate for the sidebar, the native menu and Home cards, never local state
+   ↓ v2 shell > reports a refused navigation on the status surface as a warn toast
+   ↓ v2 shell > opens the palette from the sidebar, lists destinations, tenants and actions, and dispatches on Enter
+   ↓ v2 shell > switches tenants from the rail switcher with one selectTenant intent and lists Add a tenant
+   ↓ v2 shell > picks the nth tenant with ⌃n while the menu is open, as its hints say (C35)
+   ↓ v2 shell > dispatches the appearance and show-the-calls preferences from the rail toggle and the header switch
+   ↓ v2 shell > applies the dark theme attribute the tokens key on
+   ↓ v2 shell > shows the read status from the observed overview, never a timer of its own
+   ↓ v2 shell > keeps one topmost modal: the palette over the switcher, Escape closes only the top, focus returns
+   ↓ v2 shell > expires toasts after their lifetime, or keeps them under Reduce Motion
+   ↓ v2 shell > keeps an unconfirmed delivery inline with Retry, never auto-resending, and retries only on the click
+   ↓ v2 shell > opens the tenant switcher from the native ⌘T command without switching, and returns focus to the trigger on Escape
+   ↓ v2 shell > keeps destination names when the rail is collapsed and does not restart a toast deadline on re-render
+   ↓ v2 shell > hands focus to the tenant list when ⌘T replaces an open palette, and Escape returns it to the trigger
+   ↓ v2 shell > routes appearance through the same recovery path from the rail and the native menu
+   ↓ v2 shell > focuses the tenant list after ⌘T even when focus inside an inert rail is refused, as WebKit does
+   ↓ v2 shell > renders the tenant popup outside the rail with a usable width; Settings has no interface switch (C44)
+   ↓ v2 shell > makes toast controls inert and hidden while a modal is topmost, usable again after
+   ↓ v2 shell > bounds the tenant popup to the viewport and lets the keyboard reach the last of twenty tenants
+   ↓ v2 shell > names the intended tenant in a refused switch; a late refusal of a read for a tenant no longer shown is never surfaced (I2)
+   ↓ v2 shell > tells two tenants with the same label and region apart by TSG, and names the current tenant on the trigger away from Home
+   ↓ v2 shell > identifies identically named tenants in the palette by environment and TSG, and ArrowDown moves the current row
+   ↓ v2 shell > reports the Harness credential the Harness would use for the selected workspace: SSO only for that workspace, else the key, else none (R1)
+   ↓ v2 shell > follows an OS appearance change while the preference is system: the toggle updates without a new snapshot and its next click picks the opposite (R2)
+   ↓ v2 shell > opens the Gateway workspace choice from the tenant menu, and gates the row while no tenant is active (R3)
+   ↓ v2 shell > lets Tab reach the palette’s "Ask the Harness instead" fallback, Enter opens the Harness once, and Escape returns focus to the search button (R4)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v2/v2-shell.test.tsx > v2 shell > keeps Settings Add outside inert shell ancestors in prismaAirs
+Error: [2mexpect([22m[31melement[39m[2m).toHaveFocus()[22m
+
+Expected element with focus:
+  [32m<button
+  class="rounded-academy-md inline-flex items-center justify-center whitespace-nowrap transition-[background,color,border-color,filter,transform,box-shadow] duration-[var(--academy-dur-1)] disabled:pointer-events-none bg-academy-accent text-academy-accent-ink font-semibold shadow-[var(--academy-shadow-float)] hover:brightness-[1.08] active:scale-[0.97] disabled:bg-academy-bg-inset disabled:text-academy-ink-faint disabled:shadow-none min-h-11 min-w-11 gap-2 px-4 py-2 text-[13px]"
+  data-slot="ax-button"
+  data-tier="primary"
+  type="button"
+>
+  Add tenant…
+</button>[39m
+Received element with focus:
+  [31m<h1
+  class="min-w-0 truncate text-[18px] font-bold"
+  data-slot="page-heading"
+  id="page-heading"
+  tabindex="-1"
+>
+  <span
+    data-slot="header-title"
+  >
+    Settings
+  </span>
+</h1>[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"prismaAirs"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass...
+ ❯ src/v2/v2-shell.test.tsx:61:44
+     59|         await user.keyboard('{Escape}')
+     60|         await waitFor(() => expect(screen.queryByRole('dialog')).toBeN…
+     61|         await waitFor(() => expect(opener).toHaveFocus())
+       |                                            ^
+     62|         expect(native.dispatched.filter((intent) => intent.kind !== 'n…
+     63|     })
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/v2/v2-shell.test.tsx > v2 shell > keeps Settings Add outside inert shell ancestors in gruvbox
+Error: [2mexpect([22m[31melement[39m[2m).toHaveFocus()[22m
+
+Expected element with focus:
+  [32m<button
+  class="rounded-academy-md inline-flex items-center justify-center whitespace-nowrap transition-[background,color,border-color,filter,transform,box-shadow] duration-[var(--academy-dur-1)] disabled:pointer-events-none bg-academy-accent text-academy-accent-ink font-semibold shadow-[var(--academy-shadow-float)] hover:brightness-[1.08] active:scale-[0.97] disabled:bg-academy-bg-inset disabled:text-academy-ink-faint disabled:shadow-none min-h-11 min-w-11 gap-2 px-4 py-2 text-[13px]"
+  data-slot="ax-button"
+  data-tier="primary"
+  type="button"
+>
+  Add tenant…
+</button>[39m
+Received element with focus:
+  [31m<h1
+  class="min-w-0 truncate text-[18px] font-bold"
+  data-slot="page-heading"
+  id="page-heading"
+  tabindex="-1"
+>
+  <span
+    data-slot="header-title"
+  >
+    Settings
+  </span>
+</h1>[39m
+
+Ignored nodes: comments, script, style
+[36m<html[39m
+  [33mdata-appearance[39m=[32m"dark"[39m
+  [33mdata-color-theme[39m=[32m"gruvbox"[39m
+  [33mdata-theme[39m=[32m"gruvbox"[39m
+[36m>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex h-screen overflow-hidden"[39m
+        [33mdata-v2-shell[39m=[32m""[39m
+      [36m>[39m
+        [36m<nav[39m
+          [33maria-label[39m=[32m"Destinations"[39m
+          [33mclass[39m=[32m"flex h-screen shrink-0 flex-col overflow-y-auto"[39m
+          [33mdata-desktop-theme[39m=[32m""[39m
+          [33mdata-v2-rail[39m=[32m""[39m
+          [33mstyle[39m=[32m"width: var(--v2-rail); padding: 12px 10px 12px; background: var(--v2-side); border-right: 1px solid var(--v2-rule);"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"relative"[39m
+            [33mdata-slot[39m=[32m"tenant-switcher"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33maria-expanded[39m=[32m"false"[39m
+              [33maria-haspopup[39m=[32m"true"[39m
+              [33maria-label[39m=[32m"Switch tenant: Northwind Health · Production · TSG 1762204418"[39m
+              [33mclass[39m=[32m"flex w-full items-center gap-2.5 rounded-[9px] text-left"[39m
+              [33mstyle[39m=[32m"padding: 7px 8px; margin: 0px 0px 10px; background: transparent; color: var(--v2-ink);"[39m
+              [33mtitle[39m=[32m"Northwind Health · Production · TSG 1762204418"[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33maria-hidden[39m=[32m"true"[39m
+                [33mclass[39m=[32m"grid size-[34px] shrink-0 place-items-center rounded-[9px] text-[13px] font-bold"[39m
+                [33mstyle[39m=[32m"background: rgb(47, 111, 122); color: rgb(255, 255, 255);"[39m
+              [36m>[39m
+                [0mNH[0m
+              [36m</span>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"flex min-w-0 flex-grow flex-col"[39m
+                [33mdata-v2-label[39m=[32m"true"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[14px] font-bold"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mNorthwind Health[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"11"[39m
+                    [33mstroke[39m=[32m"currentColor"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"2.4"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"11"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M6 9l6 6 6-6"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"flex items-center gap-[5px] text-[12px]"[39m
+                  [33mstyle[39m=[32m"color: var(--v2-faint);"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"size-1.5 shrink-0 rounded-full"[39m
+                    [33mstyle[39m=[32m"background: var(--v2-block);"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"truncate"[39m
+                  [36m>[39m
+                    [0mProduction[0m
+                    [0m · TSG 1762204418[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+              [36m</span>[39m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"flex flex-grow flex-col overflow-y-auto overscroll-contain"[39m
+            [33mdata-slot[39m=[32m"nav-list"[39m
+            [33mstyle[39m=[32m"gap: 2px; min-height: 0;"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"flex flex-col"[39m
+              [33mstyle[39m=[32m"gap: 1px;"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center"[39m
+                [33mstyle[39m=[32m"gap: 2px;"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"flex h-[34px] min-h-0 flex-grow items-center rounded-[8px] px-2.5 text-left text-[13px]"[39m
+                  [33mdata-inset-focus[39m=[32m""[39m
+                  [33mstyle[39m=[32m"background: transparent; color: var(--v2-ink); gap: 9px; font-weight: 500;"[39m
+                  [33mtitle[39m=[32m"Home (⌘1)"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"16"[39m
+                    [33mstroke[39m=[32m"var(--v2-soft)"[39m
+                    [33mstroke-linecap[39m=[32m"round"[39m
+                    [33mstroke-linejoin[39m=[32m"round"[39m
+                    [33mstroke-width[39m=[32m"1.8"[39m
+                    [33mstyle[39m=[32m"flex-shrink: 0;"[39m
+                    [33mviewBox[39m=[32m"0 0 24 24"[39m
+                    [33mwidth[39m=[32m"16"[39m
+                  [36m>[39m
+                    [36m<path[39m
+                      [33md[39m=[32m"M3 11l9-7 9 7M5 10v10h14V10"[39m
+                    [36m/>[39m
+                  [36m</svg>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"flex-grow truncate"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                  [36m>[39m
+                    [0mHome[0m
+                  [36m</span>[39m
+                  [36m<kbd[39m
+                    [33maria-label[39m=[32m"Command 1"[39m
+                    [33mclass[39m=[32m"text-[12px]"[39m
+                    [33mdata-v2-label[39m=[32m"true"[39m
+                    [33mstyle[39m=[32m"color: var(--v2-faint); opacity: 1;"[39m
+                  [36m>[39m
+                    [0m⌘[0m
+                    [0m1[0m
+                  [36m</kbd>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass[39...
+ ❯ src/v2/v2-shell.test.tsx:61:44
+     59|         await user.keyboard('{Escape}')
+     60|         await waitFor(() => expect(screen.queryByRole('dialog')).toBeN…
+     61|         await waitFor(() => expect(opener).toHaveFocus())
+       |                                            ^
+     62|         expect(native.dispatched.filter((intent) => intent.kind !== 'n…
+     63|     })
+ ❯ runWithExpensiveErrorDiagnosticsDisabled ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback ../../node_modules/.pnpm/@testing-library+dom@10.4.1/node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 27 skipped (29)
+   Start at  14:40:32
+   Duration  4.11s (transform 871ms, setup 52ms, collect 1.33s, tests 2.46s, environment 123ms, prepare 35ms)
+
+/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prisma-airs/desktop@1.0.0 test: `vitest run --config vitest.config.ts src/v2/v2-shell.test.tsx -t 'keeps Settings Add outside inert shell ancestors'`
+Exit status 1

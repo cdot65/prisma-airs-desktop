@@ -1,0 +1,3472 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 29b13db3..54d8333e 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -776,7 +776,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "desktop-core"
+-version = "0.2.0"
++version = "2.0.0"
+ dependencies = [
+  "base64 0.22.1",
+  "bytes",
+@@ -813,7 +813,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "desktop-host"
+-version = "0.2.0"
++version = "2.0.0"
+ dependencies = [
+  "base64 0.22.1",
+  "block2",
+@@ -5292,7 +5292,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "xtask"
+-version = "0.2.0"
++version = "2.0.0"
+ dependencies = [
+  "base64 0.22.1",
+  "desktop-core",
+diff --git a/apps/desktop/package.json b/apps/desktop/package.json
+index ff33c30b..7d14d2a9 100644
+--- a/apps/desktop/package.json
++++ b/apps/desktop/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "@prisma-airs/desktop",
+-  "version": "0.2.0",
++  "version": "2.0.0",
+   "private": true,
+   "license": "Apache-2.0",
+   "type": "module",
+diff --git a/apps/desktop/src-tauri/Cargo.toml b/apps/desktop/src-tauri/Cargo.toml
+index 42584865..a374c65f 100644
+--- a/apps/desktop/src-tauri/Cargo.toml
++++ b/apps/desktop/src-tauri/Cargo.toml
+@@ -1,6 +1,6 @@
+ [package]
+ name = "desktop-host"
+-version = "0.2.0"
++version = "2.0.0"
+ description = "Prisma AIRS Desktop v2 native host: window/origin admission and OS adapters"
+ edition.workspace = true
+ rust-version.workspace = true
+diff --git a/apps/desktop/src-tauri/tauri.conf.json b/apps/desktop/src-tauri/tauri.conf.json
+index b3982c83..d9c3c3d2 100644
+--- a/apps/desktop/src-tauri/tauri.conf.json
++++ b/apps/desktop/src-tauri/tauri.conf.json
+@@ -1,7 +1,7 @@
+ {
+   "$schema": "https://schema.tauri.app/config/2",
+   "productName": "Prisma AIRS Desktop v2",
+-  "version": "0.2.0",
++  "version": "2.0.0",
+   "identifier": "io.cdot.prisma-airs-desktop.v2",
+   "build": {
+     "frontendDist": "../dist",
+diff --git a/apps/desktop/src/features/gateway/gateway-inference.test.tsx b/apps/desktop/src/features/gateway/gateway-inference.test.tsx
+index fcd5d9db..c73387e4 100644
+--- a/apps/desktop/src/features/gateway/gateway-inference.test.tsx
++++ b/apps/desktop/src/features/gateway/gateway-inference.test.tsx
+@@ -206,6 +206,50 @@ describe('AI Gateway Playground and observation (C18)', () => {
+         expect(screen.getByRole('button', { name: 'Run prompt' })).toBeDisabled()
+     })
+ 
++    it('says why Run prompt is unavailable, one missing condition at a time, and nothing once it can run', async () => {
++        const native = scriptedNative(ready())
++        scripted(native, answer)
++        const user = await open(native)
++        await user.click(screen.getByRole('tab', { name: 'Playground' }))
++        const runButton = screen.getByRole('button', { name: 'Run prompt' })
++        const why = () => document.querySelector('[data-slot="gateway-playground-blocked"]')
++        // Every control has a visible name; the endpoint says what it is.
++        expect(screen.getByRole('radiogroup', { name: 'Where the key is kept' })).toBeInTheDocument()
++        expect(screen.getByText('Where the key is kept')).toBeVisible()
++        expect(screen.getByText('Inference API')).toBeVisible()
++        expect(screen.getByLabelText('Runtime endpoint')).toHaveValue('')
++        expect(screen.getByLabelText('Runtime endpoint')).toHaveAccessibleDescription(/runtime or inference endpoint/)
++        expect(screen.getByLabelText('Prompt')).toHaveAttribute('placeholder', 'What to send to the model')
++        // No key.
++        expect(runButton).toBeDisabled()
++        expect(why()).toHaveTextContent('Store an inference key for this workspace above.')
++        expect(runButton).toHaveAccessibleDescription('Store an inference key for this workspace above.')
++        // A key for another workspace is still no key here.
++        await native.push({ ...native.current, tenants: ready(view(), keyFor(B)).tenants })
++        await screen.findByText(/The stored key is for workspace Team B\./)
++        expect(why()).toHaveTextContent('Store an inference key for this workspace above.')
++        // Key here, no model.
++        await native.push({ ...native.current, tenants: ready(view(), keyFor(A)).tenants })
++        await waitFor(() => expect(why()).toHaveTextContent('Enter a model.'))
++        expect(runButton).toBeDisabled()
++        expect(runButton).toHaveAccessibleDescription('Enter a model.')
++        // Model, no prompt (blank does not count).
++        await user.type(screen.getByLabelText('Model'), '@openai-prod/gpt-4o')
++        await user.type(screen.getByLabelText('Prompt'), '   ')
++        expect(why()).toHaveTextContent('Enter a prompt.')
++        expect(runButton).toBeDisabled()
++        // Everything there: no reason, and the button works.
++        await user.type(screen.getByLabelText('Prompt'), 'Say hello')
++        expect(why()).toBeNull()
++        expect(runButton).toBeEnabled()
++        expect(runButton).not.toHaveAttribute('aria-describedby')
++        // While a run is under way the button is disabled with no reason shown.
++        await native.push({ ...native.current, gateway: view({ playground: run() }) })
++        expect(await screen.findByText('Receiving…')).toBeInTheDocument()
++        expect(runButton).toBeDisabled()
++        expect(why()).toBeNull()
++    })
++
+     it('runs once when asked, streams the output, and stopping never claims nothing was charged', async () => {
+         const native = scriptedNative(ready(view(), keyFor(A)))
+         const reads = scripted(native, answer)
+diff --git a/apps/desktop/src/features/gateway/gateway-view.test.tsx b/apps/desktop/src/features/gateway/gateway-view.test.tsx
+index 7e70d547..5bc912d6 100644
+--- a/apps/desktop/src/features/gateway/gateway-view.test.tsx
++++ b/apps/desktop/src/features/gateway/gateway-view.test.tsx
+@@ -241,7 +241,28 @@ describe('AI Gateway', () => {
+         expect(sources).toHaveTextContent('Unavailable: This management client is not allowed to read this.')
+         expect(screen.getByText('Admin plane', { selector: 'dt' }).nextElementSibling).toHaveTextContent('Not allowed for this management client')
+         expect(screen.getByText(/1 of the service keys read may call inference/)).toBeInTheDocument()
+-        expect(screen.getByText(/the management client is never\s+used in its place/)).toBeInTheDocument()
++        // No key yet: the Playground is where one is stored.
++        const credential = () => document.querySelector('[data-slot="gateway-inference-credential"]')
++        expect(credential()).toHaveTextContent(
++            "No inference key is stored for Team A. To run inference from here, store the workspace's runtime endpoint and an API key with completions access in the Playground tab. The management client is never used in its place."
++        )
++        expect(credential()).not.toHaveTextContent(/is stored \(/)
++        // A key stored for this workspace is said so, from the same state the Playground uses.
++        const tenants = (inference: ShellSnapshot['tenants'][number]['inference']) =>
++            withTenant(baseSnapshot, tenant({ management: native.current.tenants[0]!.management, inference }), CONTEXT).tenants
++        const endpoint = 'https://gateway.example/v1'
++        await native.push({ ...native.current, tenants: tenants({ state: 'ready', mode: 'keychain', failure: null, target: { workspace: A, endpoint } }) })
++        await waitFor(() =>
++            expect(credential()).toHaveTextContent(
++                `An inference key for Team A is stored (Keychain) and is sent only to ${endpoint}. Run prompts from the Playground tab. The management client is never used in its place.`
++            )
++        )
++        expect(credential()).not.toHaveTextContent(/No inference key/)
++        // A key for another workspace does not serve this one.
++        await native.push({ ...native.current, tenants: tenants({ state: 'ready', mode: 'keychain', failure: null, target: { workspace: B, endpoint } }) })
++        await waitFor(() => expect(credential()).toHaveTextContent(/^The stored inference key is for workspace Team B\. To run inference from Team A, store a key for it/))
++        await user.click(within(credential() as HTMLElement).getByRole('button', { name: 'Open Playground' }))
++        expect(screen.getByRole('tab', { name: 'Playground' })).toHaveAttribute('aria-selected', 'true')
+     })
+ 
+     it('says when the remembered workspace is gone, restored, or unconfirmed', async () => {
+diff --git a/apps/desktop/src/features/gateway/gateway-view.tsx b/apps/desktop/src/features/gateway/gateway-view.tsx
+index fb46e019..e3f6bd27 100644
+--- a/apps/desktop/src/features/gateway/gateway-view.tsx
++++ b/apps/desktop/src/features/gateway/gateway-view.tsx
+@@ -40,7 +40,7 @@ import {
+ } from '../administration/runtime-changes'
+ import { LimitsPanel, LogsPanel, UsagePanel } from './gateway-observe'
+ import { fileFailureText, FilesPanel, sizeText } from './gateway-files'
+-import { INFERENCE_FAILURE_TEXT, KeptDraftEditor, PlaygroundPanel } from './playground'
++import { INFERENCE_FAILURE_TEXT, inferenceKey, KeptDraftEditor, PlaygroundPanel } from './playground'
+ 
+ interface Props {
+     snapshot: ShellSnapshot
+@@ -583,7 +583,13 @@ export const GatewayView = forwardRef<HTMLHeadingElement, Props>(function Gatewa
+                                 ) : tab === 'limits' ? (
+                                     <LimitsPanel key={reference} workspace={selected.workspace.name} read={read} />
+                                 ) : tab === 'prerequisites' ? (
+-                                    <PrerequisitesPanel held={prerequisites} onRefresh={() => void readPrerequisites()} />
++                                    <PrerequisitesPanel
++                                        held={prerequisites}
++                                        onRefresh={() => void readPrerequisites()}
++                                        snapshot={snapshot}
++                                        workspace={selected.workspace}
++                                        onPlayground={() => setTab('playground')}
++                                    />
+                                 ) : tab === 'workspace' ? (
+                                     <WorkspacePanel
+                                         name={selected.workspace.name}
+@@ -1233,7 +1239,26 @@ function sourceText(list: GatewayList | null, failure: string | null, what: stri
+     return list ? coverage(list, what) : 'Not read'
+ }
+ 
+-function PrerequisitesPanel({ held, onRefresh }: { held: Held<GatewayPrerequisites>; onRefresh: () => void }) {
++/** Where this workspace stands for inference from the desktop, from the same key state the Playground uses. */
++function inferenceText(snapshot: ShellSnapshot, workspace: ListedWorkspace): string {
++    const { key, target, here } = inferenceKey(snapshot, workspace)
++    if (here && target)
++        return `An inference key for ${workspace.name} is stored (${key?.mode === 'session' ? 'this session only' : 'Keychain'}) and is sent only to ${target.endpoint}. Run prompts from the Playground tab.`
++    if (key?.state === 'ready' && target)
++        return `The stored inference key is for workspace ${target.workspace.name}. To run inference from ${workspace.name}, store a key for it in the Playground tab (it replaces that one).`
++    if (key?.state === 'storing') return 'An inference key is being stored.'
++    return `No inference key is stored for ${workspace.name}. To run inference from here, store the workspace's runtime endpoint and an API key with completions access in the Playground tab.`
++}
++
++interface PrerequisitesProps {
++    held: Held<GatewayPrerequisites>
++    onRefresh: () => void
++    snapshot: ShellSnapshot
++    workspace: ListedWorkspace
++    onPlayground: () => void
++}
++
++function PrerequisitesPanel({ held, onRefresh, snapshot, workspace, onPlayground }: PrerequisitesProps) {
+     const p = held.read
+     const failure = (f: GatewayPrerequisites['routesFailure']) => (f ? MANAGEMENT_FAILURE_TEXT[f] : null)
+     return (
+@@ -1276,8 +1301,12 @@ function PrerequisitesPanel({ held, onRefresh }: { held: Held<GatewayPrerequisit
+                         <dd>{PLANE_TEXT[p.iamPlane]}</dd>
+                     </dl>
+                     <Callout tone='default' icon={Info} data-slot='gateway-inference-credential'>
+-                        No Gateway inference credential is configured in the desktop yet, and the management client is never
+-                        used in its place. Inference from this workspace is not available here.
++                        <div className='flex flex-col items-start gap-2'>
++                            <p>{`${inferenceText(snapshot, workspace)} The management client is never used in its place.`}</p>
++                            <Button type='button' tier='secondary' size='sm' onClick={onPlayground}>
++                                Open Playground
++                            </Button>
++                        </div>
+                     </Callout>
+                 </>
+             ) : null}
+diff --git a/apps/desktop/src/features/gateway/playground.tsx b/apps/desktop/src/features/gateway/playground.tsx
+index dad6d3ef..35a2d9f2 100644
+--- a/apps/desktop/src/features/gateway/playground.tsx
++++ b/apps/desktop/src/features/gateway/playground.tsx
+@@ -102,16 +102,37 @@ function draftOf(f: Fields, id: string | undefined): PlaygroundDraftInput {
+ 
+ function ApiChoice({ name, value, onChange, label }: { name: string; value: InferenceApi; onChange: (api: InferenceApi) => void; label: string }) {
+     return (
+-        <div role='radiogroup' aria-label={label} className='flex gap-4 text-[13px]'>
+-            {(['chat', 'responses'] as const).map((api) => (
+-                <label key={api} className='flex items-center gap-1'>
+-                    <input type='radio' name={name} checked={value === api} onChange={() => onChange(api)} /> {API_TEXT[api]}
+-                </label>
+-            ))}
++        <div className='flex flex-col gap-1 text-[13px]'>
++            <span id={`${name}-label`}>{label}</span>
++            <div role='radiogroup' aria-labelledby={`${name}-label`} className='flex gap-4'>
++                {(['chat', 'responses'] as const).map((api) => (
++                    <label key={api} className='flex items-center gap-1'>
++                        <input type='radio' name={name} checked={value === api} onChange={() => onChange(api)} /> {API_TEXT[api]}
++                    </label>
++                ))}
++            </div>
+         </div>
+     )
+ }
+ 
++/**
++ * The active tenant's inference key and whether it serves this workspace:
++ * one key is held per tenant, for the one workspace it was stored for.
++ */
++export function inferenceKey(snapshot: ShellSnapshot, workspace: ListedWorkspace) {
++    const key = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)?.inference
++    const target = key?.target ?? null
++    return { key, target, here: key?.state === 'ready' && target?.workspace.id === workspace.id }
++}
++
++/** Why a run cannot start yet, first missing condition only; null when it can. */
++export function runBlockedText(keyHere: boolean, model: string, prompt: string): string | null {
++    if (!keyHere) return 'Store an inference key for this workspace above.'
++    if (model.trim().length === 0) return 'Enter a model.'
++    if (prompt.trim().length === 0) return 'Enter a prompt.'
++    return null
++}
++
+ /** Why the Gateway ended an answer early, from its sanitized finish reason. */
+ export function finishText(finish: string | null): string {
+     switch (finish) {
+@@ -160,10 +181,7 @@ const routeRows = (list: GatewayList | null) =>
+  */
+ export function PlaygroundPanel({ snapshot, dispatch, context, reference, workspace, routes, onLogs }: Props) {
+     const ids = useId()
+-    const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
+-    const key = tenant?.inference
+-    const target = key?.target ?? null
+-    const keyHere = key?.state === 'ready' && target?.workspace.id === workspace.id
++    const { key, target, here: keyHere } = inferenceKey(snapshot, workspace)
+     const run = snapshot.gateway.playground
+     const kept = snapshot.gateway.local.playground.find((d) => d.workspace.id === workspace.id)
+     const [api, setApi] = useState<InferenceApi>(kept?.api ?? 'chat')
+@@ -236,6 +254,8 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
+     }
+ 
+     const running = run?.state === 'running'
++    // A disabled Run says why; nothing is said while a run is under way.
++    const blocked = running ? null : runBlockedText(keyHere, model, prompt)
+     const rows = routeRows(routes)
+     const read = snapshot.gateway.files?.workspace.id === workspace.id ? snapshot.gateway.files.files : null
+     return (
+@@ -263,29 +283,40 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
+                         void storeKey()
+                     }}
+                 >
+-                    <label className='flex flex-col text-[13px]'>
+-                        Runtime endpoint
+-                        <input
+-                            type='url'
+-                            value={endpoint}
+-                            onChange={(e) => setEndpoint(e.target.value)}
+-                            placeholder='https://'
+-                            spellCheck={false}
+-                            autoComplete='off'
+-                            className='font-mono'
+-                        />
+-                    </label>
++                    <div className='flex flex-col gap-1'>
++                        <label className='flex flex-col text-[13px]'>
++                            Runtime endpoint
++                            <input
++                                type='url'
++                                value={endpoint}
++                                onChange={(e) => setEndpoint(e.target.value)}
++                                placeholder='https://'
++                                spellCheck={false}
++                                autoComplete='off'
++                                aria-describedby={`${ids}-endpoint-hint`}
++                                className='font-mono'
++                            />
++                        </label>
++                        {/* Kept outside the label so the field's name stays "Runtime endpoint". */}
++                        <span id={`${ids}-endpoint-hint`} className='text-academy-ink-faint text-[12px]' data-slot='gateway-endpoint-hint'>
++                            The https address this workspace's Gateway answers inference requests on (its runtime or inference endpoint), as shown
++                            for the workspace in the AI Gateway. The key is sent only there.
++                        </span>
++                    </div>
+                     <label className='flex flex-col text-[13px]'>
+                         Workspace API key with completions access
+                         <input type='password' value={secret} onChange={(e) => setSecret(e.target.value)} autoComplete='off' spellCheck={false} />
+                     </label>
+-                    <div role='radiogroup' aria-label='Where the key is kept' className='flex gap-4 text-[13px]'>
+-                        <label className='flex items-center gap-1'>
+-                            <input type='radio' name={`${ids}-mode`} checked={mode === 'keychain'} onChange={() => setMode('keychain')} /> Keychain
+-                        </label>
+-                        <label className='flex items-center gap-1'>
+-                            <input type='radio' name={`${ids}-mode`} checked={mode === 'session'} onChange={() => setMode('session')} /> This session only
+-                        </label>
++                    <div className='flex flex-col gap-1 text-[13px]'>
++                        <span id={`${ids}-mode-label`}>Where the key is kept</span>
++                        <div role='radiogroup' aria-labelledby={`${ids}-mode-label`} className='flex gap-4'>
++                            <label className='flex items-center gap-1'>
++                                <input type='radio' name={`${ids}-mode`} checked={mode === 'keychain'} onChange={() => setMode('keychain')} /> Keychain
++                            </label>
++                            <label className='flex items-center gap-1'>
++                                <input type='radio' name={`${ids}-mode`} checked={mode === 'session'} onChange={() => setMode('session')} /> This session only
++                            </label>
++                        </div>
+                     </div>
+                     <div className='flex gap-2'>
+                         <Button type='submit' tier='secondary' size='sm' disabled={secret.length === 0 || endpoint.trim().length === 0}>
+@@ -372,6 +403,7 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
+                     <textarea
+                         value={prompt}
+                         rows={4}
++                        placeholder='What to send to the model'
+                         onChange={(e) => {
+                             setPrompt(e.target.value)
+                             keep({ prompt: e.target.value })
+@@ -405,8 +437,13 @@ export function PlaygroundPanel({ snapshot, dispatch, context, reference, worksp
+                     The form is kept on this Mac as a draft for {workspace.name}. At most 256 output tokens are asked for. A Responses run asks the
+                     Gateway not to store the response.
+                 </p>
++                {blocked ? (
++                    <p id={`${ids}-why`} className='text-academy-ink-soft text-[13px]' data-slot='gateway-playground-blocked'>
++                        {blocked}
++                    </p>
++                ) : null}
+                 <div className='flex gap-2'>
+-                    <Button type='submit' tier='primary' size='sm' disabled={!keyHere || running || model.trim().length === 0 || prompt.trim().length === 0}>
++                    <Button type='submit' tier='primary' size='sm' disabled={running || blocked !== null} aria-describedby={blocked ? `${ids}-why` : undefined}>
+                         Run prompt
+                     </Button>
+                     {running && run ? (
+diff --git a/apps/desktop/src/features/harness/harness-view.test.tsx b/apps/desktop/src/features/harness/harness-view.test.tsx
+index ab4c0be6..e42ba963 100644
+--- a/apps/desktop/src/features/harness/harness-view.test.tsx
++++ b/apps/desktop/src/features/harness/harness-view.test.tsx
+@@ -146,7 +146,7 @@ describe('the native Harness (C19)', () => {
+         expect(screen.getByText(/Engine 0\.1\.7-desktop\.2 · 9331a5839bc6 · airs-desktop\/1/)).toBeInTheDocument()
+ 
+         await native.push(snapshot({ selected: null }))
+-        expect(await screen.findByText('Choose a workspace in AI Gateway first; the Harness answers with its inference key.')).toBeInTheDocument()
++        expect(await screen.findByRole('heading', { name: 'What you need first' })).toBeInTheDocument()
+         expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
+ 
+         await native.push(snapshot({ key: keyFor(B) }))
+@@ -296,6 +296,68 @@ describe('the native Harness (C19)', () => {
+     })
+ })
+ 
++describe('what the Harness needs first (C26 F05)', () => {
++    const step = (id: string) => document.querySelector<HTMLElement>(`[data-slot="harness-prerequisite-${id}"]`) as HTMLElement
++    const ready: ShellSnapshot['tenants'][number]['management'] = {
++        state: 'ready',
++        mode: 'keychain',
++        failure: null,
++        clientId: 'svc@1234567890.iam.panserviceaccount.com',
++        tokenOrigin: 'https://auth.apps.paloaltonetworks.com',
++    }
++
++    it('lists each prerequisite with its state and where to set it up', async () => {
++        const native = scriptedNative({ ...snapshot({ selected: null }), tenants: [], active: null })
++        const user = await open(native)
++        const list = screen.getByRole('list', { name: 'What you need first' })
++        expect(within(list).getAllByRole('listitem').map((i) => i.querySelector('p')?.textContent)).toEqual([
++            'Not yet: A tenant chosen',
++            'Not yet: A management client for the tenant',
++            'Not yet: A Gateway workspace chosen',
++            'Not yet: An inference key for that workspace, or company sign-in (SSO)',
++        ])
++        expect(step('credential')).toHaveTextContent('issuer URL, a client ID, the Gateway audience and the Gateway endpoint')
++        expect(step('credential')).toHaveTextContent('loopback redirects to http://127.0.0.1')
++        // Without a tenant, only choosing one is offered, and no sign-in section.
++        expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Go to Settings'])
++        expect(screen.queryByRole('heading', { name: 'Company sign-in (SSO)' })).toBeNull()
++
++        await native.push(snapshot({ selected: null }))
++        await waitFor(() => expect(step('tenant')).toHaveAttribute('data-done', 'true'))
++        expect(step('tenant')).toHaveTextContent('Done: A tenant chosen')
++        expect(step('management')).toHaveTextContent('Not yet: A management client for the tenant')
++        expect(within(step('management')).getByRole('button', { name: 'Go to Settings' })).toBeInTheDocument()
++        expect(within(step('workspace')).getByRole('button', { name: 'Go to AI Gateway' })).toBeInTheDocument()
++
++        await native.push({ ...snapshot({ selected: null }), tenants: [tenant({ management: ready })] })
++        await waitFor(() => expect(step('management')).toHaveAttribute('data-done', 'true'))
++        expect(within(step('management')).queryByRole('button')).toBeNull()
++        expect(step('workspace')).toHaveAttribute('data-done', 'false')
++
++        await native.push(snapshot({ selected: null }))
++        await user.click(await within(step('management')).findByRole('button', { name: 'Go to Settings' }))
++        expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeInTheDocument()
++    })
++
++    it('shows company sign-in without a workspace, with setup disabled and the reason', async () => {
++        const native = scriptedNative(snapshot({ selected: null }))
++        await open(native)
++        const heading = screen.getByRole('heading', { name: 'Company sign-in (SSO)' })
++        const section = heading.closest('section') as HTMLElement
++        const setup = within(section).getByRole('button', { name: 'Set up company sign-in' })
++        expect(setup).toBeDisabled()
++        expect(setup).toHaveAccessibleDescription('Choose a Gateway workspace first')
++        expect(within(section).getByText('Choose a Gateway workspace first')).toBeVisible()
++        expect(section).toHaveTextContent('loopback redirects to http://127.0.0.1')
++
++        // With a workspace, the same section offers setup.
++        await native.push(snapshot({ key: keyFor(B) }))
++        const enabled = await screen.findByRole('button', { name: 'Set up company sign-in' })
++        expect(enabled).toBeEnabled()
++        expect(screen.getByRole('heading', { name: 'Company sign-in (SSO)' })).toBeInTheDocument()
++    })
++})
++
+ describe('company sign-in and protected history (C20)', () => {
+     it('sets up company sign-in, signs in through the browser, chooses it and signs out', async () => {
+         const native = scriptedNative(snapshot())
+@@ -319,9 +381,18 @@ describe('company sign-in and protected history (C20)', () => {
+             })
+         )
+ 
+-        await native.push(snapshot({ signIn: signIn({ selected: false }) }))
++        // Newly set up, company sign-in becomes the choice; signing in is not started.
++        await waitFor(() =>
++            expect(native.dispatched).toContainEqual({ kind: 'chooseHarnessCredential', context: CONTEXT, source: 'companySignIn' })
++        )
++        expect(native.dispatched.some((i) => i.kind === 'signInHarness')).toBe(false)
++        await native.push(snapshot({ signIn: signIn() }))
+         const choice = await screen.findByRole('group', { name: 'Answer with' })
+-        expect(within(choice).getByRole('radio', { name: /The workspace inference key/ })).toBeChecked()
++        expect(within(choice).getByRole('radio', { name: /Company sign-in/ })).toBeChecked()
++        expect(screen.getByRole('button', { name: 'Start conversation' })).toBeDisabled()
++        // Choosing the key again is the operator's; it is not chosen back on a later save.
++        await native.push(snapshot({ signIn: signIn({ selected: false }) }))
++        expect(await within(choice).findByRole('radio', { name: /The workspace inference key/ })).toBeChecked()
+         expect(screen.getByRole('button', { name: 'Start conversation' })).toBeEnabled()
+         await user.click(screen.getByRole('button', { name: 'Sign in with your browser' }))
+         await waitFor(() => expect(native.dispatched).toContainEqual({ kind: 'signInHarness', context: CONTEXT }))
+@@ -347,6 +418,37 @@ describe('company sign-in and protected history (C20)', () => {
+         expect(document.body.textContent).not.toContain('eyJ')
+     })
+ 
++    it('names why saving company sign-in was refused', async () => {
++        const native = scriptedNative(snapshot())
++        let refusal = 'invalidInput'
++        native.respond = (intent) =>
++            intent.kind === 'configureHarnessSignIn'
++                ? { outcome: 'refusal', refusal }
++                : { outcome: 'receipt', receipt: { kind: 'admitted', request: 'rq-x', operation: null } }
++        const user = await open(native)
++        const setup = screen.getByRole('button', { name: 'Set up company sign-in' })
++        expect(setup).toHaveAttribute('data-tier', 'secondary')
++        await user.click(setup)
++        const form = screen.getByRole('button', { name: 'Save company sign-in' }).closest('form') as HTMLFormElement
++        expect(form).toHaveTextContent('loopback redirects to http://127.0.0.1')
++        await user.type(within(form).getByLabelText('Gateway endpoint'), ENDPOINT)
++        await user.type(within(form).getByLabelText('Identity provider (issuer URL)'), 'http://id.example/?x=1')
++        await user.type(within(form).getByLabelText('Client ID'), 'desktop-client')
++        await user.type(within(form).getByLabelText('Gateway audience'), 'https://gateway.example')
++        for (const [kind, text] of [
++            ['invalidInput', 'Issuer and Gateway endpoint must be https URLs without a query string.'],
++            ['busy', 'Sign out of the current company sign-in first.'],
++            ['staleContext', 'The workspace changed; choose it again in AI Gateway.'],
++            ['lockedStore', 'The Keychain is locked. Unlock it and try again.'],
++        ] as const) {
++            refusal = kind
++            await user.click(screen.getByRole('button', { name: 'Save company sign-in' }))
++            expect(await screen.findByRole('alert')).toHaveTextContent(text)
++        }
++        // A refused save chooses nothing.
++        expect(native.dispatched.some((i) => i.kind === 'chooseHarnessCredential')).toBe(false)
++    })
++
+     it('gives a message back when its renewal fails and shows the conversation as saved or not', async () => {
+         const native = scriptedNative(
+             snapshot({
+diff --git a/apps/desktop/src/features/harness/harness-view.tsx b/apps/desktop/src/features/harness/harness-view.tsx
+index 4c01500d..bdf4bcbd 100644
+--- a/apps/desktop/src/features/harness/harness-view.tsx
++++ b/apps/desktop/src/features/harness/harness-view.tsx
+@@ -17,6 +17,7 @@ import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
+ import { DecisionsPanel } from './decisions-panel'
+ import { HISTORY_FAILURE_TEXT, HistoryPanel, savedAt } from './history-panel'
+ import { McpPanel } from './mcp-panel'
++import { Prerequisites } from './prerequisites'
+ import { ProjectPanel } from './project-panel'
+ import { SIGN_IN_FAILURE_TEXT, SignInPanel } from './sign-in-panel'
+ 
+@@ -225,17 +226,27 @@ export const HarnessView = forwardRef<HTMLHeadingElement, Props>(function Harnes
+                 <Callout tone='default' icon={AlertTriangle}>
+                     The Harness engine is not bundled with this build.
+                 </Callout>
+-            ) : !context ? (
+-                <Callout tone='default' icon={AlertTriangle}>
+-                    Choose a tenant to use the Harness.
+-                </Callout>
+-            ) : !selected ? (
+-                <Callout tone='default' icon={AlertTriangle}>
+-                    <p>Choose a workspace in AI Gateway first; the Harness answers with its inference key.</p>
+-                    <Button type='button' tier='secondary' size='sm' className='mt-2' onClick={() => onNavigate('gateway')}>
+-                        Go to AI Gateway
+-                    </Button>
+-                </Callout>
++            ) : !context || !selected ? (
++                <>
++                    <Prerequisites
++                        tenant={context !== null}
++                        management={tenant?.management.state === 'ready'}
++                        workspace={selected?.workspace.name ?? null}
++                        credential={keyHere || signInHere}
++                        onNavigate={onNavigate}
++                    />
++                    {context ? (
++                        <SignInPanel
++                            context={context}
++                            selected={null}
++                            signIn={signIn}
++                            keyHere={false}
++                            running={live}
++                            dispatch={dispatch}
++                            onMessage={setMessage}
++                        />
++                    ) : null}
++                </>
+             ) : (
+                 <>
+                     {!keyHere && !signInHere ? (
+diff --git a/apps/desktop/src/features/harness/sign-in-panel.tsx b/apps/desktop/src/features/harness/sign-in-panel.tsx
+index 90e15603..b12afcb0 100644
+--- a/apps/desktop/src/features/harness/sign-in-panel.tsx
++++ b/apps/desktop/src/features/harness/sign-in-panel.tsx
+@@ -4,11 +4,12 @@ import type {
+     ContextRef,
+     CredentialSource,
+     HarnessSignInView,
++    Refusal,
+     SelectedWorkspace,
+     SignInFailure,
+     SignInStep,
+ } from '@prisma-airs/desktop-contracts'
+-import type { Dispatch } from '../tenants/dispatch'
++import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../tenants/dispatch'
+ 
+ /** Why company sign-in or its renewal failed, as the operator reads it. */
+ export const SIGN_IN_FAILURE_TEXT: Record<SignInFailure, string> = {
+@@ -35,9 +36,29 @@ const STEP_TEXT: Record<SignInStep, string> = {
+     completing: 'Verifying the sign-in…',
+ }
+ 
++const GENERIC_FAILURE = 'That was not done. Check the values and try again.'
++
++/** Why saving company sign-in settings was refused, where it says more than the general text. */
++export const SAVE_REFUSAL_TEXT: Partial<Record<Refusal, string>> = {
++    invalidInput: 'Issuer and Gateway endpoint must be https URLs without a query string.',
++    busy: 'Sign out of the current company sign-in first.',
++    staleContext: 'The workspace changed; choose it again in AI Gateway.',
++}
++
++/** What the operator reads when saving company sign-in settings did not apply. */
++export function saveFailureText(outcome: DispatchOutcome): string {
++    if (outcome.kind === 'refused') return SAVE_REFUSAL_TEXT[outcome.refusal] ?? outcomeMessage(outcome) ?? GENERIC_FAILURE
++    return outcomeMessage(outcome) ?? GENERIC_FAILURE
++}
++
++/** What company sign-in needs from the identity provider. */
++export const SIGN_IN_NEEDS =
++    'Company sign-in needs the identity provider’s issuer URL, a client ID, the Gateway audience and the Gateway endpoint. The provider must allow loopback redirects to http://127.0.0.1 on any port (path /callback).'
++
+ interface Props {
+     context: ContextRef
+-    selected: SelectedWorkspace
++    /** The chosen Gateway workspace; company sign-in is set up for one. */
++    selected: SelectedWorkspace | null
+     signIn: HarnessSignInView | null
+     /** The workspace key is stored for the chosen workspace. */
+     keyHere: boolean
+@@ -52,19 +73,42 @@ interface Props {
+  * key, or a company sign-in through the browser whose Gateway token is
+  * renewed before it is sent.
+  */
+-export function SignInPanel({ context, selected, signIn, keyHere, running, dispatch, onMessage }: Props) {
++export function SignInPanel({ selected, ...rest }: Props) {
++    return selected ? <WorkspaceSignIn selected={selected} {...rest} /> : <SignInUnavailable />
++}
++
++/** With no workspace chosen, company sign-in is shown but cannot be set up yet. */
++function SignInUnavailable() {
++    const ids = useId()
++    return (
++        <section aria-labelledby={`${ids}-heading`} className='flex flex-col gap-3' data-slot='harness-sign-in-setup'>
++            <h2 id={`${ids}-heading`} className='text-[15px] font-semibold'>
++                Company sign-in (SSO)
++            </h2>
++            <p className='text-academy-ink-faint text-[12px]'>{`Answer with your company’s identity provider instead of a workspace inference key. ${SIGN_IN_NEEDS}`}</p>
++            <Button type='button' tier='secondary' size='sm' className='self-start' disabled aria-describedby={`${ids}-reason`}>
++                Set up company sign-in
++            </Button>
++            <p id={`${ids}-reason`} className='text-academy-ink-faint text-[12px]' data-slot='harness-sign-in-reason'>
++                Choose a Gateway workspace first
++            </p>
++        </section>
++    )
++}
++
++function WorkspaceSignIn({ context, selected, signIn, keyHere, running, dispatch, onMessage }: Props & { selected: SelectedWorkspace }) {
+     const ids = useId()
+     const here = signIn !== null && signIn.workspace.id === selected.workspace.id
+     const [editing, setEditing] = useState(false)
+     const [busy, setBusy] = useState(false)
+     const source: CredentialSource = here && signIn.selected ? 'companySignIn' : 'workspaceKey'
+ 
+-    async function send(intent: Parameters<Dispatch>[0]): Promise<boolean> {
++    async function send(intent: Parameters<Dispatch>[0], failureText: (outcome: DispatchOutcome) => string = () => GENERIC_FAILURE): Promise<boolean> {
+         onMessage(null)
+         setBusy(true)
+         try {
+             const outcome = await dispatch(intent)
+-            if (outcome.kind !== 'admitted') onMessage('That was not done. Check the values and try again.')
++            if (outcome.kind !== 'admitted') onMessage(failureText(outcome))
+             return outcome.kind === 'admitted'
+         } finally {
+             setBusy(false)
+@@ -73,18 +117,27 @@ export function SignInPanel({ context, selected, signIn, keyHere, running, dispa
+ 
+     async function configure(event: FormEvent<HTMLFormElement>) {
+         event.preventDefault()
++        const first = !here
+         const form = new FormData(event.currentTarget)
+         const value = (name: string) => String(form.get(name) ?? '').trim()
+-        const saved = await send({
+-            kind: 'configureHarnessSignIn',
+-            context,
+-            workspace: selected.reference,
+-            endpoint: value('endpoint'),
+-            issuer: value('issuer'),
+-            clientId: value('client'),
+-            audience: value('audience'),
+-        })
+-        if (saved) setEditing(false)
++        const saved = await send(
++            {
++                kind: 'configureHarnessSignIn',
++                context,
++                workspace: selected.reference,
++                endpoint: value('endpoint'),
++                issuer: value('issuer'),
++                clientId: value('client'),
++                audience: value('audience'),
++            },
++            saveFailureText
++        )
++        if (!saved) return
++        setEditing(false)
++        // Newly set up, company sign-in becomes the choice for new
++        // conversations; signing in is still the operator's step. A running
++        // conversation is left alone (changing the credential ends it).
++        if (first && !running) await send({ kind: 'chooseHarnessCredential', context, source: 'companySignIn' })
+     }
+ 
+     const signedIn = here && signIn.account !== null
+@@ -121,10 +174,14 @@ export function SignInPanel({ context, selected, signIn, keyHere, running, dispa
+                     {running ? <p className='text-academy-ink-faint text-[12px]'>Changing the credential ends the running conversation.</p> : null}
+                 </fieldset>
+             ) : null}
++            <h3 className='text-[14px] font-semibold'>Company sign-in (SSO)</h3>
+             {!here && !editing ? (
+-                <Button type='button' tier='tertiary' size='sm' className='self-start' onClick={() => setEditing(true)}>
+-                    Set up company sign-in
+-                </Button>
++                <>
++                    <p className='text-academy-ink-faint text-[12px]'>{SIGN_IN_NEEDS}</p>
++                    <Button type='button' tier='secondary' size='sm' className='self-start' onClick={() => setEditing(true)}>
++                        Set up company sign-in
++                    </Button>
++                </>
+             ) : here && !editing ? (
+                 <div className='flex flex-col gap-2' data-slot='harness-sign-in'>
+                     <dl className='grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]'>
+@@ -182,6 +239,9 @@ export function SignInPanel({ context, selected, signIn, keyHere, running, dispa
+                     <p className='text-academy-ink-faint text-[12px]'>
+                         {`Use your company’s identity provider for ${selected.workspace.name} instead of the workspace key. The Gateway token is a signed JWT verified against the provider’s keys, kept in memory, and renewed before it expires; only the refresh token is kept, in the Keychain.`}
+                     </p>
++                    <p className='text-academy-ink-faint text-[12px]'>
++                        The identity provider must allow loopback redirects to http://127.0.0.1 on any port (path /callback).
++                    </p>
+                     {(
+                         [
+                             ['endpoint', 'Gateway endpoint', here ? signIn.endpoint : '', 'https://'],
+diff --git a/apps/desktop/src/features/library/library-view.test.tsx b/apps/desktop/src/features/library/library-view.test.tsx
+index c54cad83..776b4245 100644
+--- a/apps/desktop/src/features/library/library-view.test.tsx
++++ b/apps/desktop/src/features/library/library-view.test.tsx
+@@ -116,6 +116,20 @@ describe('Case Library', () => {
+         expect(sent(native, 'saveCase')[1]).toMatchObject({ draft: { product: 'skill-scanning', profile: '', appName: '', payload: '{}' } })
+     })
+ 
++    it('names the tenant and counts its saved cases, or says it has none', async () => {
++        const full = scriptedNative(snap(library({ cases: [RUNTIME, SPEC] })))
++        await openLibrary(full)
++        const heading = screen.getByRole('heading', { level: 2, name: `Your cases in ${tenant().label} (2)` })
++        expect(screen.getByRole('table', { name: heading.textContent ?? '' })).toBeInTheDocument()
++        expect(screen.queryByText(/has no saved cases yet/)).toBeNull()
++    })
++
++    it('says an empty tenant has no saved cases above the starters', async () => {
++        await openLibrary(scriptedNative(snap()))
++        expect(screen.getByText(`${tenant().label} has no saved cases yet.`)).toBeInTheDocument()
++        expect(screen.getByRole('heading', { level: 2, name: 'Start from an example' })).toBeInTheDocument()
++    })
++
+     it('loads a Runtime case into the scan form without scanning and only inspects specifications', async () => {
+         const native = scriptedNative(snap(library({ cases: [RUNTIME, SPEC] })))
+         const user = await openLibrary(native)
+diff --git a/apps/desktop/src/features/library/library-view.tsx b/apps/desktop/src/features/library/library-view.tsx
+index 0e18d767..cfc7075c 100644
+--- a/apps/desktop/src/features/library/library-view.tsx
++++ b/apps/desktop/src/features/library/library-view.tsx
+@@ -230,6 +230,9 @@ export const LibraryView = forwardRef<HTMLHeadingElement, Props>(function Librar
+ 
+             {ready && library.cases.length === 0 ? (
+                 <section aria-labelledby={`${ids}-starters`} className='flex flex-col gap-3' data-slot='library-starters'>
++                    <p className='text-academy-ink-soft text-[13px]' data-slot='library-none'>
++                        {tenant.label} has no saved cases yet.
++                    </p>
+                     <h2 id={`${ids}-starters`} className='text-[15px] font-semibold'>
+                         Start from an example
+                     </h2>
+@@ -259,8 +262,12 @@ export const LibraryView = forwardRef<HTMLHeadingElement, Props>(function Librar
+             ) : null}
+ 
+             {ready && library.cases.length > 0 ? (
+-                <table className='w-full border-collapse text-left text-[13px]' data-slot='library-table'>
+-                    <caption className='sr-only'>Cases of {tenant.label}</caption>
++                <h2 id={`${ids}-cases`} className='text-[15px] font-semibold' data-slot='library-count'>
++                    Your cases in {tenant.label} ({library.cases.length})
++                </h2>
++            ) : null}
++            {ready && library.cases.length > 0 ? (
++                <table aria-labelledby={`${ids}-cases`} className='w-full border-collapse text-left text-[13px]' data-slot='library-table'>
+                     <thead>
+                         <tr className='border-academy-rule border-b'>
+                             <th scope='col' className='py-2 pr-3 font-medium'>
+diff --git a/apps/desktop/src/features/tenants/management-credential.test.tsx b/apps/desktop/src/features/tenants/management-credential.test.tsx
+index cd06f297..036dbc78 100644
+--- a/apps/desktop/src/features/tenants/management-credential.test.tsx
++++ b/apps/desktop/src/features/tenants/management-credential.test.tsx
+@@ -80,6 +80,12 @@ describe('management client onboarding', () => {
+         expect(within(section()).getByRole('button', { name: 'Save client' })).toBeDisabled()
+     })
+ 
++    it('points to the Harness for company sign-in (SSO)', async () => {
++        const native = scriptedNative(withTenant(baseSnapshot, tenant(), CONTEXT))
++        await openSettings(native)
++        expect(within(section()).getByText('Company sign-in (SSO) for the Harness is set up per Gateway workspace, in Harness.')).toBeInTheDocument()
++    })
++
+     it('verifies with one management read and reports failures faithfully', async () => {
+         const native = scriptedNative(withTenant(baseSnapshot, tenant({ management: readyManagement }), CONTEXT))
+         let answer: unknown = { kind: 'management', result: { kind: 'verified' } }
+diff --git a/apps/desktop/src/features/tenants/management-credential.tsx b/apps/desktop/src/features/tenants/management-credential.tsx
+index 3abfdc7f..5b254b52 100644
+--- a/apps/desktop/src/features/tenants/management-credential.tsx
++++ b/apps/desktop/src/features/tenants/management-credential.tsx
+@@ -134,6 +134,9 @@ export function ManagementCredentialForm({ tenant, context, dispatch, observe }:
+                     This tenant has no TSG ID. Add one to its profile before configuring a management client.
+                 </Callout>
+             ) : null}
++            <p className='text-academy-ink-faint text-[12px]' data-slot='management-sso-pointer'>
++                Company sign-in (SSO) for the Harness is set up per Gateway workspace, in Harness.
++            </p>
+             <form onSubmit={(e) => void submit(e)} className='flex flex-col gap-3' aria-busy={busy}>
+                 <label htmlFor={`${ids}-client`} className='text-academy-ink text-[13px] font-medium'>
+                     Client ID
+diff --git a/apps/desktop/src/features/workbench/workbench-call.ts b/apps/desktop/src/features/workbench/workbench-call.ts
+index 31b1ee66..f9d22244 100644
+--- a/apps/desktop/src/features/workbench/workbench-call.ts
++++ b/apps/desktop/src/features/workbench/workbench-call.ts
+@@ -61,7 +61,7 @@ export function saveRefusalText(refusal: SaveRefusal): string {
+ }
+ 
+ const DETAIL_TEXT: Record<string, string> = {
+-    notCollection: 'That folder holds no API Client collection (collection.toml, format 1).',
++    notCollection: "That folder isn't empty and has no API Client collection (collection.toml). Choose an empty folder or a collection folder.",
+     badPath: 'Use a path inside the collection: folder/name, no leading dot, slash or "..".',
+     exists: 'Something already exists there; nothing was replaced.',
+     notInRepository: 'Create a collection inside an existing Git repository.',
+diff --git a/apps/desktop/src/features/workbench/workbench-view.tsx b/apps/desktop/src/features/workbench/workbench-view.tsx
+index 67792be0..6695f3bc 100644
+--- a/apps/desktop/src/features/workbench/workbench-view.tsx
++++ b/apps/desktop/src/features/workbench/workbench-view.tsx
+@@ -59,6 +59,8 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
+     const state = snapshot.workbench
+     const collection = state.collection
+     const [message, setMessage] = useState('')
++    // A folder that is not a collection also offers New collection….
++    const [offerNew, setOfferNew] = useState(false)
+     const [tool, setTool] = useState<Tool>('requests')
+     const [doc, setDoc] = useState<DocumentView | null>(null)
+     const [notes, setNotes] = useState<ImportNote[]>([])
+@@ -67,11 +69,18 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
+     const editors = useRef(new Map<string, EditorHandle>())
+     const [closing, setClosing] = useState<Closing | null>(null)
+ 
++    // A refusal stays shown until the next action that succeeds (a
++    // cancelled sheet keeps it), so it is not lost on the next click.
+     const run = async (request: Parameters<WorkbenchCall>[0]) => {
+-        setMessage('')
+         const r = await call(request)
+         const text = resultText(r)
+-        if (text) setMessage(text)
++        if (text) {
++            setMessage(text)
++            setOfferNew(r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
++        } else if (r.kind !== 'cancelled') {
++            setMessage('')
++            setOfferNew(false)
++        }
+         return r
+     }
+ 
+@@ -157,7 +166,7 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
+                     Private API Client data is unavailable ({state.failure}). Drafts cannot be protected until it opens.
+                 </Callout>
+             ) : null}
+-            {message ? (
++            {message && collection ? (
+                 <p role='alert' className='text-[13px]' data-slot='workbench-message'>
+                     {message}
+                 </p>
+@@ -185,7 +194,7 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
+             ) : null}
+             {!collection ? (
+                 state.loaded ? (
+-                    <NoCollection state={state} run={run} />
++                    <NoCollection state={state} run={run} message={message} offerNew={offerNew} />
+                 ) : (
+                     <p role='status' className='text-academy-ink-soft text-[13px]'>
+                         Opening the API Client…
+@@ -275,11 +284,23 @@ export const WorkbenchView = forwardRef<HTMLHeadingElement, Props>(function Work
+ type Run = (request: Parameters<WorkbenchCall>[0]) => ReturnType<WorkbenchCall>
+ type Closing = { kind: 'tab'; id: string; name: string } | { kind: 'collection' }
+ 
+-function NoCollection({ state, run }: { state: WorkbenchState; run: Run }) {
++function NoCollection({ state, run, message, offerNew }: { state: WorkbenchState; run: Run; message: string; offerNew: boolean }) {
+     const [chosen, setChosen] = useState<number[]>([])
+     return (
+         <div className='flex flex-col gap-4' data-slot='workbench-start'>
+             <p className='text-[14px]'>No collection is open.</p>
++            {message ? (
++                <Callout tone='warning' icon={AlertTriangle} role='alert' data-slot='workbench-message'>
++                    <p>{message}</p>
++                    {offerNew ? (
++                        <div className='mt-3 flex flex-wrap gap-2'>
++                            <Button type='button' tier='secondary' onClick={() => void run({ kind: 'createCollection' })}>
++                                New collection…
++                            </Button>
++                        </div>
++                    ) : null}
++                </Callout>
++            ) : null}
+             <div className='flex flex-wrap gap-2'>
+                 <Button type='button' tier='primary' onClick={() => void run({ kind: 'openFolder' })}>
+                     <FolderOpen aria-hidden className='size-4' />
+diff --git a/crates/desktop-core/Cargo.toml b/crates/desktop-core/Cargo.toml
+index 23d860fc..3161c8be 100644
+--- a/crates/desktop-core/Cargo.toml
++++ b/crates/desktop-core/Cargo.toml
+@@ -1,6 +1,6 @@
+ [package]
+ name = "desktop-core"
+-version = "0.2.0"
++version = "2.0.0"
+ description = "Prisma AIRS Desktop v2 application core: native authority, context and outcomes"
+ edition.workspace = true
+ rust-version.workspace = true
+diff --git a/crates/desktop-core/src/authority/workbench_domain.rs b/crates/desktop-core/src/authority/workbench_domain.rs
+index 0b20485c..bf4187ba 100644
+--- a/crates/desktop-core/src/authority/workbench_domain.rs
++++ b/crates/desktop-core/src/authority/workbench_domain.rs
+@@ -879,7 +879,23 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
+     match request {
+         WorkbenchRequest::Load => WorkbenchResult::Done,
+         WorkbenchRequest::OpenFolder => match inner.adapters.folders.choose_folder().await {
+-            Some(folder) => open_at(inner, &root, folder, false).await,
++            Some(folder) => {
++                // D057: an empty folder becomes a new collection in place;
++                // any other folder without collection.toml stays refused.
++                let target = folder.clone();
++                let ready = blocking(Err(ProjectProblem::Io), move || {
++                    if project::empty_folder(&target) {
++                        project::create_collection(&target).map(|_| ())
++                    } else {
++                        Ok(())
++                    }
++                })
++                .await;
++                match ready {
++                    Ok(()) => open_at(inner, &root, folder, false).await,
++                    Err(p) => refused(WorkbenchProblem::Project(p)),
++                }
++            }
+             None => WorkbenchResult::Cancelled,
+         },
+         WorkbenchRequest::CreateCollection => match inner.adapters.folders.choose_new().await {
+diff --git a/crates/desktop-core/src/harness/engine.rs b/crates/desktop-core/src/harness/engine.rs
+index 95ef9289..41eaa649 100644
+--- a/crates/desktop-core/src/harness/engine.rs
++++ b/crates/desktop-core/src/harness/engine.rs
+@@ -103,9 +103,11 @@ mod tests {
+         assert_eq!(p.protocol, super::super::protocol::PROTOCOL);
+         assert_eq!(p.engine_commit, "9331a5839bc6a763d94dee7584746f58bbbe1181");
+         assert_eq!(p.executable, "airs-harness");
++        // The Developer ID signed engine (C26), resealed from the unsigned
++        // f8e49cee… build.
+         assert_eq!(
+             p.binary_sha256,
+-            "f8e49cee8b0905818c9271e91b2ca8f39b67075e602e5db7db683f9d37aee50c"
++            "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5"
+         );
+     }
+ 
+diff --git a/crates/desktop-core/src/workbench/project.rs b/crates/desktop-core/src/workbench/project.rs
+index 80f12a0c..faaee37f 100644
+--- a/crates/desktop-core/src/workbench/project.rs
++++ b/crates/desktop-core/src/workbench/project.rs
+@@ -36,7 +36,8 @@ pub enum ProjectProblem {
+     BadPath,
+     /// Something already exists at the destination.
+     Exists,
+-    /// A new collection must be created inside a Git repository (v1).
++    /// v1 required new collections inside a Git repository. No longer
++    /// produced (D057: Git is optional); kept so the contract is unchanged.
+     NotInRepository,
+     /// The inventory is incomplete; fix its issues before changing files.
+     Incomplete,
+@@ -533,34 +534,57 @@ fn request(catalog: &mut Catalog, walk: &mut Walk, relative: &Path, text: String
+     });
+ }
+ 
+-/// Creates a new collection folder `path` (v1: inside an existing Git
+-/// repository) with a fresh identity and its folder name.
++/// Whether `path` is an existing folder holding nothing but Finder's
++/// `.DS_Store`: a folder that may become a collection in place.
++pub fn empty_folder(path: &Path) -> bool {
++    std::fs::read_dir(path)
++        .is_ok_and(|mut entries| entries.all(|e| e.is_ok_and(|e| e.file_name() == ".DS_Store")))
++}
++
++/// Creates a new collection at `path` with a fresh identity and its folder
++/// name: a new folder, or an existing empty one (see [`empty_folder`])
++/// initialised in place. Git is optional (D057). Anything else already at
++/// `path` is refused (`Exists`).
+ pub fn create_collection(path: &Path) -> Result<String, ProjectProblem> {
+     if path.exists() {
+-        return Err(ProjectProblem::Exists);
++        if !empty_folder(path) {
++            return Err(ProjectProblem::Exists);
++        }
++        let root = path.canonicalize().map_err(|_| ProjectProblem::Io)?;
++        let name = folder_name(&root)?;
++        return init_collection(&root, &name);
+     }
+-    let parent = path
+-        .parent()
++    path.parent()
+         .and_then(|p| p.canonicalize().ok())
+         .ok_or(ProjectProblem::BadPath)?;
+-    if !parent.ancestors().any(|p| p.join(".git").exists()) {
+-        return Err(ProjectProblem::NotInRepository);
+-    }
+-    let name = path
+-        .file_name()
++    let name = folder_name(path)?;
++    std::fs::create_dir(path).map_err(|_| ProjectProblem::Io)?;
++    let root = path.canonicalize().map_err(|_| ProjectProblem::Io)?;
++    init_collection(&root, &name).inspect_err(|_| {
++        // Only the folder made just now is removed (and only while empty).
++        let _ = std::fs::remove_dir(&root);
++    })
++}
++
++/// A collection's name from its folder (visible, non-empty, UTF-8).
++fn folder_name(path: &Path) -> Result<String, ProjectProblem> {
++    path.file_name()
+         .and_then(|n| n.to_str())
+         .filter(|n| !n.starts_with('.') && !n.is_empty())
+-        .ok_or(ProjectProblem::BadPath)?
+-        .to_owned();
++        .map(str::to_owned)
++        .ok_or(ProjectProblem::BadPath)
++}
++
++/// Writes a new `collection.toml` (format 1, fresh identity, `name`) into
++/// the existing folder `root`.
++fn init_collection(root: &Path, name: &str) -> Result<String, ProjectProblem> {
+     let id = new_id().ok_or(ProjectProblem::Io)?;
+-    std::fs::create_dir(path).map_err(|_| ProjectProblem::Io)?;
+-    let root = path.canonicalize().map_err(|_| ProjectProblem::Io)?;
+     let mut doc = DocumentMut::new();
+     doc["format_version"] = toml_edit::value(1);
+     doc["id"] = toml_edit::value(id.as_str());
+-    doc["name"] = toml_edit::value(name.as_str());
++    doc["name"] = toml_edit::value(name);
+     replace(
+-        &root,
++        root,
+         Path::new("collection.toml"),
+         doc.to_string().as_bytes(),
+     )?;
+@@ -711,21 +735,70 @@ mod tests {
+     }
+ 
+     #[test]
+-    fn collections_are_created_inside_repositories_only() {
++    fn collections_are_created_outside_repositories_too() {
+         let d = Dir::new();
+-        assert_eq!(
+-            create_collection(&d.path().join("c")),
+-            Err(ProjectProblem::NotInRepository)
+-        );
+-        std::fs::create_dir(d.path().join(".git")).expect("fixture");
++        assert!(!d.path().ancestors().any(|p| p.join(".git").exists()));
+         let id = create_collection(&d.path().join("c")).expect("fixture");
+         assert_eq!(
+             manifest(&d.path().join("c")).expect("fixture"),
+             (id, "c".to_owned())
+         );
++        // Inside a repository works as before.
++        std::fs::create_dir(d.path().join("repo")).expect("fixture");
++        std::fs::create_dir(d.path().join("repo/.git")).expect("fixture");
++        let id = create_collection(&d.path().join("repo/api")).expect("fixture");
+         assert_eq!(
+-            create_collection(&d.path().join("c")),
+-            Err(ProjectProblem::Exists)
++            manifest(&d.path().join("repo/api")).expect("fixture"),
++            (id, "api".to_owned())
++        );
++    }
++
++    #[test]
++    fn an_existing_empty_folder_becomes_a_collection_in_place() {
++        let d = Dir::new();
++        let empty = d.path().join("Empty API");
++        std::fs::create_dir(&empty).expect("fixture");
++        std::fs::write(empty.join(".DS_Store"), b"finder").expect("fixture");
++        assert!(empty_folder(&empty));
++        let id = create_collection(&empty).expect("fixture");
++        assert_eq!(
++            manifest(&empty).expect("fixture"),
++            (id, "Empty API".to_owned())
++        );
++        assert_eq!(
++            std::fs::read(empty.join(".DS_Store")).expect("fixture"),
++            b"finder"
++        );
++        assert!(discover(&empty).expect("fixture").complete);
++    }
++
++    #[test]
++    fn anything_else_already_there_is_refused_and_left_alone() {
++        let (d, root) = collection();
++        let before = std::fs::read(root.join("collection.toml")).expect("fixture");
++        assert!(!empty_folder(&root));
++        assert_eq!(create_collection(&root), Err(ProjectProblem::Exists));
++        assert_eq!(
++            std::fs::read(root.join("collection.toml")).expect("fixture"),
++            before
++        );
++        let full = d.path().join("notes");
++        std::fs::create_dir(&full).expect("fixture");
++        std::fs::write(full.join("readme.txt"), "x").expect("fixture");
++        assert!(!empty_folder(&full));
++        assert_eq!(create_collection(&full), Err(ProjectProblem::Exists));
++        assert!(!full.join("collection.toml").exists());
++        let hidden = d.path().join("hidden");
++        std::fs::create_dir(&hidden).expect("fixture");
++        std::fs::create_dir(hidden.join(".git")).expect("fixture");
++        assert_eq!(create_collection(&hidden), Err(ProjectProblem::Exists));
++        let file = d.path().join("file.txt");
++        std::fs::write(&file, "x").expect("fixture");
++        assert!(!empty_folder(&file));
++        assert_eq!(create_collection(&file), Err(ProjectProblem::Exists));
++        assert_eq!(
++            create_collection(&d.path().join("missing/c")),
++            Err(ProjectProblem::BadPath)
+         );
+     }
+ }
+diff --git a/crates/desktop-core/tests/workbench_documents/main.rs b/crates/desktop-core/tests/workbench_documents/main.rs
+index b88f6272..dba14f44 100644
+--- a/crates/desktop-core/tests/workbench_documents/main.rs
++++ b/crates/desktop-core/tests/workbench_documents/main.rs
+@@ -777,6 +777,61 @@ async fn the_git_view_is_read_only_and_bounded() {
+     );
+ }
+ 
++#[tokio::test(flavor = "multi_thread")]
++async fn empty_folders_become_collections_and_git_is_optional() {
++    let mut desk = desk().await;
++    let not_collection =
++        json!({"kind": "refused", "problem": {"kind": "project", "detail": "notCollection"}});
++    // Open collection… on an empty folder (Finder's .DS_Store aside)
++    // outside any repository initialises it in place (D057).
++    let empty = temp("empty");
++    std::fs::write(empty.join(".DS_Store"), b"finder").expect("fixture");
++    let name = empty
++        .file_name()
++        .and_then(|n| n.to_str())
++        .expect("fixture")
++        .to_owned();
++    assert_eq!(
++        desk.open(&empty).await,
++        json!({"kind": "opened", "name": name})
++    );
++    assert!(empty.join("collection.toml").exists());
++    assert_eq!(desk.workbench()["collection"]["name"], name.as_str());
++    // A folder with other files and no collection.toml stays refused and
++    // untouched.
++    let full = temp("full");
++    std::fs::write(full.join("notes.txt"), "kept").expect("fixture");
++    assert_eq!(desk.open(&full).await, not_collection);
++    assert!(!full.join("collection.toml").exists());
++    // New collection… outside a repository creates the folder.
++    let parent = temp("plain");
++    desk.adapters.folders.reply_new(Some(parent.join("Fresh")));
++    assert_eq!(
++        desk.wb(json!({"kind": "createCollection"})).await,
++        json!({"kind": "opened", "name": "Fresh"})
++    );
++    // …on an existing empty folder initialises it in place…
++    std::fs::create_dir(parent.join("Waiting")).expect("fixture");
++    desk.adapters
++        .folders
++        .reply_new(Some(parent.join("Waiting")));
++    assert_eq!(
++        desk.wb(json!({"kind": "createCollection"})).await,
++        json!({"kind": "opened", "name": "Waiting"})
++    );
++    // …and anything else already there is refused.
++    desk.adapters.folders.reply_new(Some(full.clone()));
++    assert_eq!(
++        desk.wb(json!({"kind": "createCollection"})).await,
++        json!({"kind": "refused", "problem": {"kind": "project", "detail": "exists"}})
++    );
++    assert_eq!(
++        std::fs::read_dir(&full).expect("fixture").count(),
++        1,
++        "nothing was written"
++    );
++}
++
+ #[tokio::test(flavor = "multi_thread")]
+ async fn reset_removes_the_private_folder_and_keeps_the_operators_collections() {
+     let root = collection();
+diff --git a/crates/xtask/Cargo.toml b/crates/xtask/Cargo.toml
+index 2f125eaf..a307fae3 100644
+--- a/crates/xtask/Cargo.toml
++++ b/crates/xtask/Cargo.toml
+@@ -1,6 +1,6 @@
+ [package]
+ name = "xtask"
+-version = "0.2.0"
++version = "2.0.0"
+ description = "Build-time check, review and artifact controller for Prisma AIRS Desktop v2"
+ edition.workspace = true
+ rust-version.workspace = true
+@@ -46,6 +46,10 @@ required-features = ["test-fixtures"]
+ name = "controlled_live"
+ required-features = ["test-fixtures"]
+ 
++[[test]]
++name = "signed_artifact"
++required-features = ["test-fixtures"]
++
+ [[test]]
+ name = "live_run"
+ path = "tests/live_run/main.rs"
+diff --git a/crates/xtask/src/budgets.rs b/crates/xtask/src/budgets.rs
+index da917e33..63deb0e7 100644
+--- a/crates/xtask/src/budgets.rs
++++ b/crates/xtask/src/budgets.rs
+@@ -9,7 +9,7 @@
+ //! mismatched input fails.
+ 
+ use std::collections::BTreeMap;
+-use std::path::Path;
++use std::path::{Path, PathBuf};
+ 
+ use serde::{Deserialize, Serialize};
+ 
+@@ -121,28 +121,10 @@ fn file_bytes(dir: &Path) -> Result<u64> {
+     Ok(total)
+ }
+ 
+-const MIB: f64 = 1024.0 * 1024.0;
+-
+-/// Builds the complete unsigned production app and DMG, the sealed Harness
+-/// engine included (C19, D046; budgets.json version 5), and records their
+-/// sizes.
+-pub fn footprint(
+-    repo: &Repo,
+-    manifest: &Manifest,
+-    env: &Environment,
+-    subject: Subject,
+-) -> Result<Footprint> {
+-    let Some(chunk) = required(repo, manifest, subject)? else {
+-        return Err(invalid(format!(
+-            "{subject} does not contain the chunk that registered the budgets"
+-        )));
+-    };
+-    let (_, record, sha) = registration(repo, &chunk)?;
+-    let started_utc = now_utc();
+-    if started_utc < record.registered_utc {
+-        return Err(invalid("the clock is before the budget registration"));
+-    }
+-    let target = manifest.target.as_str();
++/// Builds the complete unsigned production app and DMG with the sealed
++/// Harness engine as a bundle resource (C19, D046): the frontend, then
++/// `tauri build` with `tauri.harness.conf.json`. Returns the app and DMG.
++pub fn build_production(repo: &Repo, env: &Environment, target: &str) -> Result<ProductionBuild> {
+     // The sealed engine the production app ships with (C19).
+     crate::harness::unpack(repo)?;
+     let commands: Vec<Vec<String>> = [
+@@ -181,13 +163,58 @@ pub fn footprint(
+     let identifier = plist_value(&app, "CFBundleIdentifier")?;
+     if identifier != crate::native::PRODUCTION_IDENTIFIER {
+         return Err(invalid(format!(
+-            "footprint bundle has identifier {identifier}"
++            "the production bundle has identifier {identifier}"
+         )));
+     }
+     let version = plist_value(&app, "CFBundleShortVersionString")?;
+     let dmg = repo.join(format!(
+         "target/{target}/release/bundle/dmg/{PRODUCT}_{version}_aarch64.dmg"
+     ));
++    Ok(ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    })
++}
++
++/// A production build: the app, its DMG, the bundle identifier and the
++/// commands that built them.
++pub struct ProductionBuild {
++    pub app: PathBuf,
++    pub dmg: PathBuf,
++    pub identifier: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++const MIB: f64 = 1024.0 * 1024.0;
++
++/// Builds the complete unsigned production app and DMG, the sealed Harness
++/// engine included (C19, D046; budgets.json version 5), and records their
++/// sizes.
++pub fn footprint(
++    repo: &Repo,
++    manifest: &Manifest,
++    env: &Environment,
++    subject: Subject,
++) -> Result<Footprint> {
++    let Some(chunk) = required(repo, manifest, subject)? else {
++        return Err(invalid(format!(
++            "{subject} does not contain the chunk that registered the budgets"
++        )));
++    };
++    let (_, record, sha) = registration(repo, &chunk)?;
++    let started_utc = now_utc();
++    if started_utc < record.registered_utc {
++        return Err(invalid("the clock is before the budget registration"));
++    }
++    let target = manifest.target.as_str();
++    let ProductionBuild {
++        app,
++        dmg,
++        identifier,
++        commands,
++    } = build_production(repo, env, target)?;
+     let dmg_bytes = std::fs::read(&dmg).map_err(io_err(&dmg))?;
+     let relative = |p: &Path| {
+         p.strip_prefix(repo.root())
+diff --git a/crates/xtask/src/live_academy.rs b/crates/xtask/src/live_academy.rs
+index 83e551e0..a862928d 100644
+--- a/crates/xtask/src/live_academy.rs
++++ b/crates/xtask/src/live_academy.rs
+@@ -10,7 +10,11 @@
+ //! is the family's `call.*` entries, and a mutation must also be listed in
+ //! its permitted operations. No credential of a learner is ever seen here.
+ 
+-use std::collections::BTreeMap;
++use std::collections::{BTreeMap, BTreeSet};
++
++mod assertions;
++mod contracts;
++use assertions::{Expect, answer, receipt_input, resolve_input, validate_input};
+ 
+ use desktop_core::learner::{LEARNER_PROCEDURES, ProcedureKind};
+ use serde_json::{Value, json};
+@@ -97,7 +101,10 @@ impl Ctx<'_, '_> {
+         let stop = self
+             .run
+             .settle(family, spec, started, inputs, found, None, outcomes)?;
+-        if self.stop.is_none() {
++        if self.stop.is_none()
++            || (stop.as_ref().is_some_and(|s| s.reconcile)
++                && self.stop.as_ref().is_some_and(|s| !s.reconcile))
++        {
+             self.stop = stop;
+         }
+         Ok(())
+@@ -121,7 +128,7 @@ fn state(j: &Value) -> String {
+ fn account_hash(j: &Value) -> Option<String> {
+     j["academy"]["accountId"].as_str().map(|a| {
+         let digest = Sha256::digest(a.as_bytes());
+-        hex::encode(&digest[..8])
++        hex::encode(digest)
+     })
+ }
+ 
+@@ -129,6 +136,14 @@ fn learner(j: &Value) -> Value {
+     j["learner"].clone()
+ }
+ 
++fn public_inputs(run: &Run<'_>, family: &str) -> BTreeMap<String, Value> {
++    let mut inputs = run.inputs(family, &[]);
++    // Per-call receipts record redacted templates and assertion summaries.
++    // An authentication receipt must not serialize the raw program again.
++    inputs.retain(|name, _| !name.starts_with("call."));
++    inputs
++}
++
+ /// Starts the device sign-in and waits for the operator to approve it.
+ async fn sign_in(run: &Run<'_>, desk: &mut Desk, family: &str) -> Result<(Found, Option<String>)> {
+     desk.send_json(json!({"kind": "startAcademySignIn"}))
+@@ -188,7 +203,9 @@ async fn sign_in(run: &Run<'_>, desk: &mut Desk, family: &str) -> Result<(Found,
+     found.operator_step = Some(step);
+     let hash = account_hash(&j);
+     if let Some(h) = &hash {
+-        found = found.with("account_sha256_prefix", json!(h));
++        found = found
++            .with("account_sha256", json!(h))
++            .with("account_sha256_prefix", json!(&h[..16]));
+     }
+     Ok((found, hash))
+ }
+@@ -201,10 +218,12 @@ struct Call {
+     procedure: String,
+     kind: ProcedureKind,
+     input: Option<String>,
++    /// What the hosted answer must hold, beyond answering with data.
++    expect: Vec<Expect>,
+ }
+ 
+ /// Parses the family's `call.*` entries, each `<workflows> <procedure>
+-/// [<input>]`: the workflow IDs (comma-separated, among those the family may
++/// [<input>] ?? <expectation> [ && <expectation>]`: the workflow IDs (comma-separated, among those the family may
+ /// claim) the call is evidence for, the procedure, and its input. A call
+ /// counts only for the workflows it names.
+ fn program(run: &Run<'_>, family: &str) -> std::result::Result<Vec<Call>, String> {
+@@ -213,15 +232,43 @@ fn program(run: &Run<'_>, family: &str) -> std::result::Result<Vec<Call>, String
+     };
+     let allowed = claimable(family);
+     let mut calls = Vec::new();
++    let mut earlier = BTreeSet::new();
++    let mut receipt_labels = BTreeSet::new();
+     for (key, value) in &f.nonsecret {
+         let Some(label) = key.strip_prefix("call.") else {
+             continue;
+         };
++        // Labels become receipt filenames. Keep them single, bounded path
++        // components rather than letting manifest data select a write path.
++        if label.is_empty()
++            || label.len() > 96
++            || !label
++                .bytes()
++                .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_'))
++        {
++            return Err(
++                "a call label must be 1-96 ASCII letters, digits, hyphens or underscores"
++                    .to_owned(),
++            );
++        }
++        if !receipt_labels.insert(label.to_ascii_lowercase()) {
++            return Err("call labels must be unique ignoring case on macOS filesystems".to_owned());
++        }
++        let (value, expect) = match value.split_once(" ?? ") {
++            Some((v, e)) => (v, e),
++            None => (value.as_str(), ""),
++        };
++        let expect = expect
++            .split(" && ")
++            .filter(|e| !e.trim().is_empty())
++            .map(|text| Expect::parse(text, &earlier))
++            .collect::<std::result::Result<Vec<_>, _>>()
++            .map_err(|e| format!("{key}: {e}"))?;
+         let (tags, rest) = value
+             .split_once(' ')
+             .ok_or_else(|| format!("{key} names no workflow and procedure"))?;
+         let mut workflows = Vec::new();
+-        for tag in tags.split(',') {
++        for tag in tags.split(',').filter(|_| tags != "observe") {
+             let w = allowed
+                 .iter()
+                 .find(|w| **w == tag)
+@@ -237,30 +284,84 @@ fn program(run: &Run<'_>, family: &str) -> std::result::Result<Vec<Call>, String
+             .find(|(p, _)| *p == procedure)
+             .map(|(_, k)| *k)
+             .ok_or_else(|| format!("{procedure} is not a learner procedure"))?;
++        if tags == "observe" && kind == ProcedureKind::Mutation {
++            return Err(format!(
++                "{key}: observe is read-only and grants no workflow credit"
++            ));
++        }
+         if kind == ProcedureKind::Mutation && !f.permitted_operations.contains(&procedure) {
+             return Err(format!(
+                 "{procedure} changes learner state but is not a permitted operation of {family}"
+             ));
+         }
+-        if let Some(input) = &input
+-            && serde_json::from_str::<Value>(input).is_err()
+-        {
+-            return Err(format!("{key}: the input is not JSON"));
++        if kind == ProcedureKind::Mutation && !account_designated(run, family) {
++            return Err(format!(
++                "{key}: a mutation requires expected_account_sha256 for the designated test learner"
++            ));
+         }
++        if expect.is_empty() {
++            return Err(format!("{key}: an explicit result expectation is required"));
++        }
++        if procedure == "progress.checkInline" && !expect.iter().any(Expect::is_grading_verdict) {
++            return Err(format!(
++                "{key}: inline grading requires /correct=true or /correct=false, not only a boolean shape"
++            ));
++        }
++        if let Some(input) = &input {
++            let value = serde_json::from_str::<Value>(input)
++                .map_err(|_| format!("{key}: the input is not JSON"))?;
++            validate_input(&value, &earlier).map_err(|e| format!("{key}: {e}"))?;
++        }
++        earlier.insert(label.to_owned());
+         calls.push(Call {
+             label: label.to_owned(),
+             workflows: Box::leak(workflows.into_boxed_slice()),
+             procedure,
+             kind,
+             input,
++            expect,
+         });
+     }
++    contracts::validate(&calls)?;
+     Ok(calls)
+ }
+ 
++/// A successful read is useful evidence, but cannot close an interactive row.
++/// These checkpoints describe ordered minimums, not a substitute for each
++/// call's designated result assertions or the broader native acceptance.
++fn workflow_steps(workflow: &str) -> &'static [&'static str] {
++    match workflow {
++        "W53" => &["exam.start", "exam.submissionState", "certificate.mine"],
++        "W65" => &[
++            "shift.start",
++            "shift.serve",
++            "shift.answer",
++            "shift.decide",
++            "shift.debrief",
++        ],
++        "W66" => &[
++            "certificate.mine",
++            "progress.courseSummary",
++            "progress.resetCourse",
++            "progress.courseSummary",
++            "certificate.mine",
++        ],
++        _ => &[],
++    }
++}
++
++fn account_designated(run: &Run<'_>, family: &str) -> bool {
++    run.nonsecret(family, "expected_account_sha256")
++        .is_some_and(|h| {
++            h.len() == 64
++                && h.bytes()
++                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
++        })
++}
++
+ fn result_found(result: &Value) -> Found {
+     let kind = result["kind"].as_str().unwrap_or("");
+-    let mut found = Found::check(
++    Found::check(
+         kind == "data",
+         "the hosted procedure answered",
+         "the hosted procedure did not answer with data",
+@@ -268,9 +369,28 @@ fn result_found(result: &Value) -> Found {
+     .with("result", json!(kind))
+     .with("http_status", result["httpStatus"].clone())
+     .with("failure", result["failure"].clone())
+-    .with("outcome", result["outcome"].clone());
+-    if kind == "error" && result["outcome"] == "unknown" {
+-        found = found.stopping("a learner mutation may or may not have taken effect", true);
++    .with("outcome", result["outcome"].clone())
++}
++
++fn mutation_found(result: &Value) -> Found {
++    let mut found = result_found(result);
++    if result["outcome"] == "unknown" {
++        found.cleanup = "the learner mutation may have applied; inspect its remote state before any explicit retry".to_owned();
++        found = found.stopping(
++            "a learner mutation may or may not have taken effect; reconciliation required",
++            true,
++        );
++    }
++    found
++}
++
++fn unsettled_call(kind: ProcedureKind, daily_unsettled: bool) -> Found {
++    let reconcile = kind == ProcedureKind::Mutation || daily_unsettled;
++    let mut found =
++        Found::failed("the learner call could not be observed or did not settle within its bound")
++            .stopping("the learner call did not settle", reconcile);
++    if reconcile {
++        found.cleanup = "a dispatched mutation or unfinished Daily run may remain; inspect remote state before retrying".to_owned();
+     }
+     found
+ }
+@@ -294,6 +414,47 @@ fn leak(name: String) -> &'static str {
+     Box::leak(name.into_boxed_str())
+ }
+ 
++async fn avatar_change(desk: &mut Desk) -> Found {
++    let learner = match desk.json() {
++        Ok(snapshot) => learner(&snapshot),
++        Err(_) => {
++            return Found::failed("the learner could not be read before avatar upload")
++                .stopping("avatar upload was not dispatched", false);
++        }
++    };
++    let uploaded = match desk
++        .academy(json!({"kind":"uploadAvatar","learner":learner}))
++        .await
++    {
++        Ok(result) => result,
++        Err(_) => return unsettled_call(ProcedureKind::Mutation, false),
++    };
++    let found = mutation_found(&uploaded);
++    if found.outcome != "passed" {
++        // An uncertain upload must not be followed by another mutation.
++        return found;
++    }
++    let removed = match call(desk, "settings.removeAvatar", ProcedureKind::Mutation, None).await {
++        Ok(result) => result,
++        Err(_) => return unsettled_call(ProcedureKind::Mutation, false),
++    };
++    let mut found = mutation_found(&removed)
++        .with("upload", uploaded["kind"].clone())
++        .with("remove", removed["kind"].clone());
++    if found.outcome == "passed" {
++        found.detail =
++            "a synthetic avatar was bounded, re-encoded and uploaded, then removed".to_owned();
++        found.cleanup = "removed with settings.removeAvatar".to_owned();
++    } else {
++        found.cleanup = "avatar upload was confirmed but removal was not; inspect the test account before retrying".to_owned();
++        found = found.stopping(
++            "avatar cleanup was not confirmed; reconciliation required",
++            true,
++        );
++    }
++    found
++}
++
+ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared> {
+     let mut ctx = Ctx {
+         run,
+@@ -326,7 +487,7 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+         sign_in_family,
+         SIGN_IN,
+         started,
+-        ctx.run.inputs(sign_in_family, &[]),
++        public_inputs(ctx.run, sign_in_family),
+         found,
+     )?;
+     if !signed_in {
+@@ -340,6 +501,35 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+         return Ok(finish(ctx, families));
+     }
+ 
++    // A browser can silently approve as its existing account. A designated
++    // identity must therefore be checked against the core's signed-in identity,
++    // before any learner program or optional avatar mutation is dispatched.
++    for family in families {
++        if let Some(expected) = ctx.run.nonsecret(family, "expected_account_sha256")
++            && (!account_designated(ctx.run, family) || account.as_deref() != Some(&expected))
++        {
++            let found = Found::blocked(
++                "the signed-in Academy account does not match the designated learner",
++            )
++            .stopping(
++                "unexpected Academy account; no learner program was sent",
++                false,
++            );
++            ctx.settle(
++                family,
++                Spec {
++                    id: leak(format!("{family}-account-binding")),
++                    workflows: &[],
++                },
++                now_utc(),
++                BTreeMap::new(),
++                found,
++            )?;
++            desk.send_json(json!({"kind":"signOutAcademy"})).await?;
++            return Ok(finish(ctx, families));
++        }
++    }
++
+     if wants("L11") {
+         let started = now_utc();
+         let me = call(&mut desk, "desktop.me", ProcedureKind::Query, None).await?;
+@@ -361,7 +551,13 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+         )
+         .with("desktop.me", me["kind"].clone())
+         .with("desktop.access", access["kind"].clone());
+-        ctx.settle("L11", ADMISSION, started, ctx.run.inputs("L11", &[]), found)?;
++        ctx.settle(
++            "L11",
++            ADMISSION,
++            started,
++            public_inputs(ctx.run, "L11"),
++            found,
++        )?;
+     }
+ 
+     for family in ["L12", "L13", "L14"] {
+@@ -388,14 +584,29 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+                         &format!("{family} designates no call.* procedures"),
+                     )?;
+                 }
+-                for Call {
+-                    label,
+-                    workflows,
+-                    procedure,
+-                    kind,
+-                    input,
+-                } in calls
++                let mut answers: BTreeMap<String, Value> = BTreeMap::new();
++                let mut failed_workflows = BTreeSet::new();
++                let mut daily_unsettled = false;
++                let mut planned: BTreeMap<&str, usize> = BTreeMap::new();
++                for workflow in calls
++                    .iter()
++                    .flat_map(|c| c.workflows.iter().copied())
++                    .filter(|w| !workflow_steps(w).is_empty())
+                 {
++                    *planned.entry(workflow).or_default() += 1;
++                }
++                let mut coverage: BTreeMap<&str, Vec<String>> =
++                    planned.keys().map(|w| (*w, Vec::new())).collect();
++                for designated in calls {
++                    let cleanup = contracts::cleanup(&designated);
++                    let Call {
++                        label,
++                        workflows,
++                        procedure,
++                        kind,
++                        input,
++                        expect,
++                    } = designated;
+                     if ctx.stop.is_some() {
+                         break;
+                     }
+@@ -406,22 +617,175 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+                     let started = now_utc();
+                     let mut inputs = BTreeMap::new();
+                     inputs.insert("procedure".to_owned(), json!(procedure));
+-                    inputs.insert("input".to_owned(), json!(input));
++                    // Record the designated template, never values copied out of
++                    // a protected hosted answer into the outgoing request.
++                    inputs.insert("input".to_owned(), receipt_input(&input));
++                    if kind == ProcedureKind::Mutation
++                        && !cleanup
++                        && workflows.iter().any(|w| failed_workflows.contains(w))
++                    {
++                        failed_workflows.extend(workflows.iter().copied());
++                        ctx.settle(
++                            family,
++                            spec,
++                            started,
++                            inputs,
++                            Found::blocked(
++                                "an earlier checkpoint of this workflow failed; mutation not sent",
++                            ),
++                        )?;
++                        continue;
++                    }
++                    let resolved = input
++                        .as_deref()
++                        .map(|text| {
++                            let value = serde_json::from_str(text).expect("program validated JSON");
++                            resolve_input(value, &answers).map(|value| value.to_string())
++                        })
++                        .transpose();
++                    let input = match resolved {
++                        Ok(input) if expect.iter().all(|e| e.ready(&answers)) => input,
++                        _ => {
++                            failed_workflows.extend(workflows.iter().copied());
++                            let mut found = Found::blocked(
++                                "an earlier validated result is unavailable; call not sent",
++                            );
++                            if cleanup && daily_unsettled {
++                                found.cleanup = "hand-off dependency unavailable; the spent Daily run needs reconciliation or the server stale sweep".to_owned();
++                                found = found.stopping("Daily hand-off could not be dispatched; reconcile the active run", true);
++                            }
++                            ctx.settle(family, spec, started, inputs, found)?;
++                            if ctx.stop.is_some() {
++                                break;
++                            }
++                            continue;
++                        }
++                    };
+                     // Charged before it is sent: an exhausted budget sends nothing.
+                     if let Err(e) = ctx.run.guard.spend(family, "calls", 1) {
+-                        let found = Found::blocked(e.clone())
+-                            .stopping(format!("unexpected cost: {e}"), false);
++                        failed_workflows.extend(workflows.iter().copied());
++                        let mut found = Found::blocked(e.clone())
++                            .stopping(format!("unexpected cost: {e}"), daily_unsettled);
++                        if daily_unsettled {
++                            found.cleanup = "budget exhausted after Daily start; no extra call was sent; reconcile the active run or allow Academy's stale sweep".to_owned();
++                        }
+                         ctx.settle(family, spec, started, inputs, found)?;
+                         break;
+                     }
+-                    let result = call(&mut desk, &procedure, kind, input.as_deref()).await?;
+-                    let mut found = result_found(&result);
+-                    if kind == ProcedureKind::Mutation {
++                    let result = match call(&mut desk, &procedure, kind, input.as_deref()).await {
++                        Ok(result) => result,
++                        Err(_error) => {
++                            failed_workflows.extend(workflows.iter().copied());
++                            let found = unsettled_call(kind, daily_unsettled);
++                            ctx.settle(family, spec, started, inputs, found)?;
++                            break;
++                        }
++                    };
++                    if procedure == "shift.start"
++                        && (result["kind"] == "data" || result["outcome"] == "unknown")
++                    {
++                        // Track the effect even when its answer fails assertions
++                        // and cannot be used as a dependency for later calls.
++                        daily_unsettled = true;
++                    }
++                    let mut found = if kind == ProcedureKind::Mutation {
++                        mutation_found(&result)
++                    } else {
++                        result_found(&result)
++                    };
++                    if found.outcome == "passed" {
++                        if let Some(got) = answer(&result) {
++                            let observed: Vec<Value> =
++                                expect.iter().map(|e| e.observe(&got, &answers)).collect();
++                            let passed = observed.iter().all(|o| o["passed"] == true);
++                            found = Found::check(
++                                passed,
++                                "the hosted procedure answered and its result held",
++                                "the hosted answer did not hold its designated expectations",
++                            )
++                            .with("assertions", json!(observed));
++                            if passed {
++                                answers.insert(label.clone(), got);
++                                for workflow in workflows {
++                                    if let Some(steps) = coverage.get_mut(workflow) {
++                                        steps.push(procedure.clone());
++                                    }
++                                }
++                            }
++                        } else {
++                            found = Found::failed(
++                                "the hosted data response has no valid SuperJSON answer",
++                            );
++                        }
++                    }
++                    if kind == ProcedureKind::Mutation && found.stop.is_none() {
+                         found.cleanup =
+                             "synthetic coursework on a test account (owner-designated)".to_owned();
+                     }
++                    if found.outcome != "passed" {
++                        failed_workflows.extend(workflows.iter().copied());
++                    }
++                    if cleanup {
++                        if found.outcome == "passed" {
++                            daily_unsettled = false;
++                            found.cleanup =
++                                "the same Daily run was handed off at a completed stage boundary"
++                                    .to_owned();
++                        } else {
++                            found.cleanup = "hand-off was not confirmed; the spent Daily run may remain active until Academy's stale sweep; reconciliation required".to_owned();
++                            found = found.stopping(
++                                "Daily hand-off was not confirmed; reconcile the active run",
++                                true,
++                            );
++                        }
++                    }
+                     ctx.settle(family, spec, started, inputs, found)?;
+                 }
++                if daily_unsettled && !ctx.stop.as_ref().is_some_and(|s| s.reconcile) {
++                    let mut found = Found::failed(
++                        "a Daily run started or may have started without a confirmed hand-off",
++                    )
++                    .stopping("unsettled Daily run; reconciliation required", true);
++                    found.cleanup = "no additional calls were sent; inspect the active test-learner run or allow Academy's stale sweep".to_owned();
++                    ctx.settle(
++                        family,
++                        Spec {
++                            id: leak(format!("{family}-daily-reconciliation")),
++                            workflows: &["W65"],
++                        },
++                        now_utc(),
++                        BTreeMap::new(),
++                        found,
++                    )?;
++                }
++                for (workflow, completed) in coverage {
++                    let required = workflow_steps(workflow);
++                    let mut remaining = required.iter();
++                    let mut next = remaining.next();
++                    for procedure in &completed {
++                        if next.is_some_and(|n| *n == procedure) {
++                            next = remaining.next();
++                        }
++                    }
++                    let found = Found::check(next.is_none() && !failed_workflows.contains(workflow)
++                        && completed.len() == planned[workflow],
++                        "the interactive workflow's ordered checkpoints passed their result assertions",
++                        "the interactive workflow is incomplete; successful reads do not close it")
++                        .with("required_procedures", json!(required))
++                        .with("planned_calls",json!(planned[workflow]))
++                        .with("validated_calls",json!(completed.len()))
++                        .with("validated_procedures", json!(completed));
++                    ctx.settle(
++                        family,
++                        Spec {
++                            id: leak(format!("{family}-workflow-{workflow}")),
++                            workflows: Box::leak(vec![workflow].into_boxed_slice()),
++                        },
++                        now_utc(),
++                        BTreeMap::new(),
++                        found,
++                    )?;
++                }
+             }
+         }
+     }
+@@ -437,7 +801,11 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+                     .any(|o| o == "settings.removeAvatar")
+             })
+             .unwrap_or(false);
+-        let found = if !permitted {
++        let found = if !account_designated(ctx.run, "L13") {
++            Found::blocked(
++                "an avatar mutation requires expected_account_sha256 for the designated test learner",
++            )
++        } else if !permitted {
+             Found::blocked(
+                 "an avatar upload needs settings.removeAvatar among L13's permitted operations, to undo it",
+             )
+@@ -445,27 +813,7 @@ pub(crate) async fn run(run: &mut Run<'_>, families: &[String]) -> Result<Shared
+             // The upload and its removal, charged before either is sent.
+             Found::blocked(e.clone()).stopping(format!("unexpected cost: {e}"), false)
+         } else {
+-            let learner = learner(&desk.json()?);
+-            let uploaded = desk
+-                .academy(json!({"kind": "uploadAvatar", "learner": learner}))
+-                .await?;
+-            let removed = call(
+-                &mut desk,
+-                "settings.removeAvatar",
+-                ProcedureKind::Mutation,
+-                None,
+-            )
+-            .await?;
+-            let mut found = Found::check(
+-                uploaded["kind"] == "data" && removed["kind"] == "data",
+-                "a synthetic avatar was bounded, re-encoded and uploaded, then removed",
+-                "the avatar upload or its removal did not complete",
+-            )
+-            .with("upload", uploaded["kind"].clone())
+-            .with("upload_failure", uploaded["failure"].clone())
+-            .with("remove", removed["kind"].clone());
+-            found.cleanup = "removed with settings.removeAvatar".to_owned();
+-            found
++            avatar_change(&mut desk).await
+         };
+         ctx.settle("L13", AVATAR, started, BTreeMap::new(), found)?;
+     }
+diff --git a/crates/xtask/src/signing.rs b/crates/xtask/src/signing.rs
+index 5d215dc9..88d10ead 100644
+--- a/crates/xtask/src/signing.rs
++++ b/crates/xtask/src/signing.rs
+@@ -602,3 +602,84 @@ mod tests {
+         let _ = std::fs::remove_dir_all(&dir);
+     }
+ }
++
++pub const BUILD_SCHEMA: &str = "airs-v2/release-build/1";
++
++/// The unsigned release build C26 signs: what was built, from which source.
++#[derive(Debug, Serialize, Deserialize)]
++pub struct BuildRecord {
++    pub schema: String,
++    pub built_utc: String,
++    /// The repository's source fingerprint the build was made from.
++    pub source_fingerprint: String,
++    pub cargo_lock_sha256: String,
++    pub identifier: String,
++    pub app: String,
++    pub app_tree_sha256: String,
++    pub executable_sha256: String,
++    /// The bundled engine: it must be the compiled pin (signed at sealing).
++    pub engine_sha256: String,
++    pub dmg: String,
++    pub dmg_sha256: String,
++    pub commands: Vec<Vec<String>>,
++}
++
++/// Builds the production app and DMG with the sealed (signed) engine and
++/// records them as `evidence/C26/release-build.json`. Refuses a build whose
++/// bundled engine is not the compiled pin or whose signature does not verify.
++pub fn release_build(
++    repo: &crate::Repo,
++    manifest: &crate::manifest::Manifest,
++    env: &crate::env::Environment,
++) -> Result<BuildRecord> {
++    let built = crate::budgets::build_production(repo, env, manifest.target.as_str())?;
++    let pin = desktop_core::harness::engine::pin();
++    let engine = built
++        .app
++        .join("Contents/Resources/harness")
++        .join(&pin.executable);
++    let engine_bytes = std::fs::read(&engine).map_err(io_err(&engine))?;
++    let engine_sha256 = sha256_hex(&engine_bytes);
++    if engine_sha256 != pin.binary_sha256 {
++        return Err(invalid(format!(
++            "the bundled engine {engine_sha256} is not the compiled pin {}",
++            pin.binary_sha256
++        )));
++    }
++    verify(&engine)?;
++    let executable = built
++        .app
++        .join("Contents/MacOS")
++        .join(crate::native::plist_value(
++            &built.app,
++            "CFBundleExecutable",
++        )?);
++    let lock = repo.join("Cargo.lock");
++    let relative = |p: &Path| {
++        p.strip_prefix(repo.root())
++            .unwrap_or(p)
++            .display()
++            .to_string()
++    };
++    let record = BuildRecord {
++        schema: BUILD_SCHEMA.to_owned(),
++        built_utc: now_utc(),
++        source_fingerprint: crate::fingerprint::source(repo)?,
++        cargo_lock_sha256: sha256_hex(&std::fs::read(&lock).map_err(io_err(&lock))?),
++        identifier: built.identifier,
++        app: relative(&built.app),
++        app_tree_sha256: crate::fingerprint::tree_hash(&built.app)?,
++        executable_sha256: sha256_hex(&std::fs::read(&executable).map_err(io_err(&executable))?),
++        engine_sha256,
++        dmg: relative(&built.dmg),
++        dmg_sha256: sha256_hex(&std::fs::read(&built.dmg).map_err(io_err(&built.dmg))?),
++        commands: built.commands,
++    };
++    write_json(
++        &repo
++            .evidence_dir(crate::Subject::Chunk(26))
++            .join("release-build.json"),
++        &record,
++    )?;
++    Ok(record)
++}
+diff --git a/crates/xtask/tests/live_run/academy.rs b/crates/xtask/tests/live_run/academy.rs
+index 9745a4d5..fe9c3499 100644
+--- a/crates/xtask/tests/live_run/academy.rs
++++ b/crates/xtask/tests/live_run/academy.rs
+@@ -5,6 +5,7 @@
+ use std::sync::{Arc, Mutex};
+ 
+ use serde_json::{Value, json};
++use sha2::{Digest, Sha256};
+ 
+ use crate::common::{
+     Browser, Fixture, assert_no_secret, designate, manifest, outcomes, raw, receipt, secrets,
+@@ -26,6 +27,24 @@ struct Academy {
+     denied: bool,
+     revoked: usize,
+     uploads: usize,
++    progress_units: usize,
++    reset_ignored: bool,
++    certificates_lost: bool,
++    exam_started: bool,
++    shift_stage: usize,
++    empty_certificates: bool,
++    wrong_exam_id: bool,
++    wrong_settled_id: bool,
++    empty_debrief: bool,
++    shift_outcome: Option<&'static str>,
++    daily_refused: bool,
++    inline_correct: bool,
++    start_invalid: bool,
++    lost_start: bool,
++    serve_unexpected: bool,
++    dropped_procedure: Option<&'static str>,
++    hung_procedure: Option<&'static str>,
++    avatar_presign: Option<&'static str>,
+ }
+ 
+ fn in_secs(secs: i64) -> String {
+@@ -114,7 +133,40 @@ impl Academy {
+             p if p.starts_with("/api/trpc/") => {
+                 let procedure = p.trim_start_matches("/api/trpc/");
+                 let account = Self::account(seen);
++                let rpc: Value = query
++                    .get("input")
++                    .and_then(|s| serde_json::from_str(s).ok())
++                    .or_else(|| serde_json::from_slice(&seen.body).ok())
++                    .unwrap_or(Value::Null);
++                let input = &rpc["json"];
++                if self.dropped_procedure == Some(procedure)
++                    || self.hung_procedure == Some(procedure)
++                {
++                    // Apply first, then lose or withhold the reply: the client
++                    // cannot treat an unobserved mutation as a known rejection.
++                    match procedure {
++                        "exam.start" => self.exam_started = true,
++                        "progress.resetCourse" => self.progress_units = 0,
++                        "shift.start" => self.shift_stage = 1,
++                        "shift.serve" => self.shift_stage = 2,
++                        _ => {}
++                    }
++                    return if self.hung_procedure == Some(procedure) {
++                        Reply::Hang
++                    } else {
++                        Reply::Close
++                    };
++                }
+                 match procedure {
++                    "courses.list" => {
++                        data(json!([{"id":COURSE, "slug":COURSE, "title":"Runtime Security"}]))
++                    }
++                    "units.get" if input["unitId"] == "unit-1" => {
++                        data(json!({"id":"unit-1", "kind":"content", "title":"Scanning"}))
++                    }
++                    "exam.eligibility" => data(json!({"eligible":true})),
++                    "settings.get" => data(json!({"theme":"system"})),
++                    "settings.removeAvatar" => data(json!({"removed":true})),
+                     "desktop.me" => data(
+                         json!({"accountId": account, "displayName": "Synthetic Learner",
+                         "serverTime": in_secs(0)}),
+@@ -156,10 +208,115 @@ impl Academy {
+                         "steps": [{"id": "s1", "prompt": "SYNTHETIC-STEP"}],
+                         "lease": {"access": "restricted", "issuedAt": in_secs(0), "expiresAt": in_secs(600)}}),
+                     ),
++                    "settings.avatarUploadUrl" if self.avatar_presign == Some("rejected") => raw(
++                        403,
++                        &json!({"error":{"json":{"message":"avatar upload refused","code":-32003,"data":{"code":"FORBIDDEN","httpStatus":403}}}}),
++                    ),
++                    "settings.avatarUploadUrl" if self.avatar_presign == Some("notSent") => {
++                        // A same-origin URL without its required signed query
++                        // is refused locally, before any PUT can be sent.
++                        data(json!({"uploadUrl":format!("{}/upload/avatar.jpg",self.origin)}))
++                    }
+                     "settings.avatarUploadUrl" => data(json!({"uploadUrl":
+                         format!("{}/upload/avatars/{account}.jpg?sig=s", self.origin), "key": "avatars/x.jpg"})),
+                     "settings.confirmAvatar" => data(json!({"account": {}})),
+-                    _ => data(json!({"ok": true})),
++                    "progress.checkInline"
++                        if input["lessonId"] == "lesson-1" && input["questionId"] == "q-1" =>
++                    {
++                        data(json!({"correct": self.inline_correct, "explanation": "synthetic"}))
++                    }
++                    "certificate.mine" => data(
++                        if self.empty_certificates
++                            || (self.certificates_lost && self.progress_units == 0)
++                        {
++                            json!([])
++                        } else {
++                            json!([{"id":"protected-certificate-id", "name":"Private Learner"}])
++                        },
++                    ),
++                    "progress.courseSummary" if input["courseId"] == COURSE => {
++                        data(json!({"hasProgress": self.progress_units > 0,
++                        "units":self.progress_units, "quizzes":0, "labs":0, "objectives":0}))
++                    }
++                    "progress.resetCourse" if input["courseId"] == COURSE => {
++                        let cleared = self.progress_units;
++                        if !self.reset_ignored {
++                            self.progress_units = 0;
++                        }
++                        data(
++                            json!({"cleared":{"units":cleared, "quizzes":0, "labs":0, "objectives":0, "exams":0}}),
++                        )
++                    }
++                    "exam.start" => {
++                        self.exam_started = true;
++                        data(
++                            json!({"attemptId":ATTEMPT, "deadline":in_secs(600), "timeLimitSeconds":600, "questions":[]}),
++                        )
++                    }
++                    "exam.submissionState" if input["attemptId"] == ATTEMPT => data(
++                        json!({"attemptId":if self.wrong_exam_id {"different-attempt"} else {ATTEMPT},
++                        "status":if self.exam_started { "in-progress" } else { "not-started" }}),
++                    ),
++                    "shift.start" if self.daily_refused => raw(
++                        409,
++                        &json!({"error":{"json":{"message":"daily attempt already used","code":-32009,"data":{"code":"CONFLICT","httpStatus":409}}}}),
++                    ),
++                    "shift.start" => {
++                        self.shift_stage = 1;
++                        if self.lost_start {
++                            return Reply::Close;
++                        }
++                        data(
++                            json!({"shiftId":ATTEMPT, "alertsAnswered":0, "atBoundary":self.start_invalid}),
++                        )
++                    }
++                    "shift.serve" if self.shift_stage == 1 && input["shiftId"] == ATTEMPT => {
++                        self.shift_stage = 2;
++                        data(
++                            json!({"shift":{"shiftId":ATTEMPT, "alertOrder":if self.serve_unexpected {1} else {0}}, "breachResolved":false}),
++                        )
++                    }
++                    "shift.answer"
++                        if self.shift_stage == 2
++                            && input["shiftId"] == ATTEMPT
++                            && input["order"] == 0 =>
++                    {
++                        let outcome = self.shift_outcome.unwrap_or("incorrect");
++                        let boundary = !["ungraded", "breached"].contains(&outcome);
++                        self.shift_stage = if boundary { 3 } else { 2 };
++                        data(
++                            json!({"outcome":outcome, "next":if boundary {"boundary"} else {"alert"}}),
++                        )
++                    }
++                    "shift.decide"
++                        if self.shift_stage == 3
++                            && input["shiftId"] == ATTEMPT
++                            && input["choice"] == "hand_off" =>
++                    {
++                        self.shift_stage = 4;
++                        data(
++                            json!({"shiftId":if self.wrong_settled_id {"different-shift"} else {ATTEMPT}, "status":"handed_off"}),
++                        )
++                    }
++                    "shift.debrief" => {
++                        let themes = if self.shift_stage == 4
++                            && input["shiftId"] == ATTEMPT
++                            && !self.empty_debrief
++                        {
++                            json!([{"theme":"synthetic missed objective"}])
++                        } else {
++                            json!([])
++                        };
++                        data(json!({"themes":themes, "links":[], "fallback":false}))
++                    }
++                    "shift.decide" => raw(
++                        400,
++                        &json!({"error":{"json":{"message":"stage is not complete","code":-32600,"data":{"code":"BAD_REQUEST","httpStatus":400}}}}),
++                    ),
++                    _ => raw(
++                        404,
++                        &json!({"error":{"message":"procedure or input not modeled"}}),
++                    ),
+                 }
+             }
+             _ => raw(404, &json!({})),
+@@ -167,6 +324,14 @@ impl Academy {
+     }
+ }
+ 
++fn bound(mut value: Value) -> Value {
++    let hash = hex::encode(Sha256::digest(b"0b7c9d2e-4f1a-4c3b-9e8d-1a2b3c4d5e6f"));
++    for family in ["L12", "L13", "L14"] {
++        value["families"][family]["nonsecret"]["expected_account_sha256"] = json!(hash);
++    }
++    value
++}
++
+ fn scope(origin: &str) -> Value {
+     let mut value = manifest();
+     designate(
+@@ -178,9 +343,9 @@ fn scope(origin: &str) -> Value {
+         &mut value,
+         "L12",
+         json!({
+-        "nonsecret": {"call.01-catalog": "W50 courses.list",
+-                      "call.02-unit": "W50 units.get {\"json\":{\"unitId\":\"unit-1\"}}",
+-                      "call.03-check": "W51 progress.checkInline {\"json\":{\"unitId\":\"unit-1\",\"answer\":\"a\"}}"},
++        "nonsecret": {"call.01-catalog": "W50 courses.list ?? :nonempty-array",
++                      "call.02-unit": "W50 units.get {\"json\":{\"unitId\":\"unit-1\"}} ?? /id=\"unit-1\"",
++                      "call.03-check": "W51 progress.checkInline {\"json\":{\"lessonId\":\"lesson-1\",\"questionId\":\"q-1\",\"answer\":\"a\"}} ?? /correct=false"},
+         "permitted_operations": ["progress.checkInline"],
+         "budget": {"calls": 10}}),
+     );
+@@ -188,8 +353,12 @@ fn scope(origin: &str) -> Value {
+         &mut value,
+         "L13",
+         json!({
+-        "nonsecret": {"call.01-eligibility": "W53 exam.eligibility {\"json\":{\"certificationId\":\"cert-1\"}}"},
+-        "permitted_operations": ["settings.removeAvatar"],
++        "nonsecret": {"call.00-a-start": "W53 exam.start {\"json\":{\"consent\":true}} ?? /attemptId:nonempty-string && /deadline:nonempty-string && /timeLimitSeconds:positive-number",
++                      "call.00-b-state": "W53 exam.submissionState {\"json\":{\"attemptId\":{\"$call\":\"00-a-start\",\"pointer\":\"/attemptId\"}}} ?? /attemptId=@00-a-start/attemptId && /status=\"in-progress\"",
++                      "call.01-eligibility": "W53 exam.eligibility {\"json\":{\"certificationId\":\"cert-1\"}} ?? /eligible=true",
++                      "call.02-certs": "W53 certificate.mine ?? :array",
++                      "call.03-certs-again": "W53 certificate.mine ?? =@02-certs"},
++        "permitted_operations": ["exam.start", "settings.removeAvatar"],
+         "disposable_prefix": "c25-", "cleanup": ["remove the avatar"],
+         "budget": {"calls": 10}}),
+     );
+@@ -198,10 +367,10 @@ fn scope(origin: &str) -> Value {
+         "L14",
+         json!({
+         "nonsecret": {"course_id": COURSE, "attempt_id": ATTEMPT, "base_version": "2", "access_change": "designated",
+-                      "call.01-attempt": format!("W56 desktop.attempt.get {{\"json\":{{\"attemptId\":\"{ATTEMPT}\"}}}}")},
++                      "call.01-attempt": format!("W56 desktop.attempt.get {{\"json\":{{\"attemptId\":\"{ATTEMPT}\"}}}} ?? /attemptId=\"{ATTEMPT}\"")},
+         "budget": {"calls": 5}}),
+     );
+-    value
++    bound(value)
+ }
+ 
+ #[tokio::test(flavor = "multi_thread")]
+@@ -271,6 +440,17 @@ async fn the_academy_families_share_one_operator_sign_in_and_judge_only_the_core
+     assert_eq!(academy.lock().expect("academy").uploads, 1);
+     // Each call counts only for the workflows its entry names, and was
+     // charged before it was sent.
++    // A call's own result is asserted and shown, not only that it answered.
++    let check = receipt(&repo, "L12", "L12-call-03-check");
++    assert_eq!(
++        check.observed["assertions"][0]["actual"]["value"],
++        json!(false)
++    );
++    assert!(check.detail.contains("its result held"), "{}", check.detail);
++    assert_eq!(
++        receipt(&repo, "L13", "L13-call-03-certs-again").outcome,
++        "passed"
++    );
+     assert_eq!(
+         receipt(&repo, "L12", "L12-call-01-catalog").workflows,
+         vec!["W50"]
+@@ -293,8 +473,8 @@ async fn the_academy_families_share_one_operator_sign_in_and_judge_only_the_core
+     );
+     assert_eq!(
+         receipt(&repo, "L13", "L13-avatar").consumption["calls"]["used"],
+-        json!(3),
+-        "one call and the avatar's upload and removal"
++        json!(7),
++        "five calls and the avatar's upload and removal"
+     );
+     assert_no_secret(
+         &repo,
+@@ -368,10 +548,10 @@ async fn an_exhausted_call_budget_sends_nothing_and_an_untagged_call_is_refused(
+     value["families"]["L12"]["nonsecret"] = json!({"call.01-untagged": "exam.eligibility"});
+     value["families"]["L13"]["budget"] = json!({"calls": 1});
+     value["families"]["L13"]["nonsecret"] = json!({
+-        "call.01-catalog": "W53 certifications.list",
+-        "call.02-eligibility": "W53 exam.eligibility {\"json\":{\"certificationId\":\"cert-1\"}}"});
++        "call.01-settings": "W54 settings.get ?? /theme=\"system\"",
++        "call.02-settings-again": "W54 settings.get ?? /theme=\"system\""});
+     let (repo, record) = fixture
+-        .run(value, &["L12", "L13"], &secrets(&[]), operator)
++        .run(bound(value), &["L12", "L13"], &secrets(&[]), operator)
+         .await;
+     let record = record.expect("run");
+     assert!(!record.passed());
+@@ -385,10 +565,10 @@ async fn an_exhausted_call_budget_sends_nothing_and_an_untagged_call_is_refused(
+     );
+     // L13's second call is refused by its exhausted budget, unsent.
+     assert_eq!(
+-        receipt(&repo, "L13", "L13-call-01-catalog").outcome,
++        receipt(&repo, "L13", "L13-call-01-settings").outcome,
+         "passed"
+     );
+-    let refused = receipt(&repo, "L13", "L13-call-02-eligibility");
++    let refused = receipt(&repo, "L13", "L13-call-02-settings-again");
+     assert_eq!(refused.outcome, "blocked");
+     assert!(
+         refused.detail.contains("budget exhausted"),
+@@ -402,6 +582,976 @@ async fn an_exhausted_call_budget_sends_nothing_and_an_untagged_call_is_refused(
+             .filter(|r| r.request_line.contains(&format!("/api/trpc/{name}")))
+             .count()
+     };
+-    assert_eq!(calls("certifications.list"), 1);
++    assert_eq!(calls("settings.get"), 1);
+     assert_eq!(calls("exam.eligibility"), 0);
+ }
++
++#[tokio::test(flavor = "multi_thread")]
++async fn an_answer_that_does_not_hold_its_expectation_fails_the_check() {
++    let mut fixture = Fixture::new();
++    let academy = Arc::new(Mutex::new(Academy::default()));
++    let server = fixture
++        .serve(crate::common::routed(&academy, Academy::route))
++        .await;
++    let origin = format!("https://localhost:{}", server.port);
++    academy.lock().expect("academy").origin = origin.clone();
++    fixture.academy = Some(origin.clone());
++    let acting = Arc::clone(&academy);
++    let operator = Browser::new(move |_, url| {
++        if url.is_some_and(|u| u.path() == "/activate") {
++            acting.lock().expect("academy").approved += 1;
++        }
++    });
++    let mut value = scope(&origin);
++    value["families"]["L12"]["nonsecret"] = json!({
++        "call.01-graded": "W51 progress.checkInline {\"json\":{\"lessonId\":\"lesson-1\",\"questionId\":\"q-1\",\"answer\":\"a\"}} ?? /correct=true",
++        "call.02-kind": "W50 courses.list ?? /missing:array"});
++    let (repo, record) = fixture
++        .run(bound(value), &["L12"], &secrets(&[]), operator)
++        .await;
++    assert!(!record.expect("run").passed());
++    let graded = receipt(&repo, "L12", "L12-call-01-graded");
++    assert_eq!(graded.outcome, "failed");
++    assert!(graded.detail.contains("did not hold"), "{}", graded.detail);
++    assert_eq!(
++        graded.observed["assertions"][0]["actual"]["value"],
++        json!(false)
++    );
++    assert_eq!(receipt(&repo, "L12", "L12-call-02-kind").outcome, "failed");
++}
++
++fn reset_program() -> Value {
++    json!({
++        "call.01-certificates": "W66 certificate.mine ?? :nonempty-array",
++        "call.02-before": "W66 progress.courseSummary {\"json\":{\"courseId\":\"runtime-security\"}} ?? /hasProgress=true && /units:positive-number && /quizzes:number && /labs:number && /objectives:number",
++        "call.03-reset": "W66 progress.resetCourse {\"json\":{\"courseId\":\"runtime-security\"}} ?? /cleared/units=@02-before/units && /cleared/quizzes=@02-before/quizzes && /cleared/labs=@02-before/labs && /cleared/objectives=@02-before/objectives",
++        "call.04-after": "W66 progress.courseSummary {\"json\":{\"courseId\":\"runtime-security\"}} ?? /hasProgress=false && /units=0 && /quizzes=0 && /labs=0 && /objectives=0",
++        "call.05-certificates-after": "W66 certificate.mine ?? =@01-certificates"
++    })
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn unasserted_calls_shape_only_grading_and_forward_references_are_refused_unsent() {
++    for (entry, reason) in [
++        ("W50 courses.list", "explicit result expectation"),
++        (
++            "W51 progress.checkInline ?? /correct:bool",
++            "inline grading requires",
++        ),
++        ("W50 courses.list ?? =@02-future", "earlier call"),
++        (
++            "W50 units.get {\"json\":{\"unitId\":{\"$call\":\"02-future\",\"pointer\":\"/id\"}}} ?? :object",
++            "earlier call",
++        ),
++    ] {
++        let mut fixture = Fixture::new();
++        let academy = Arc::new(Mutex::new(Academy::default()));
++        let server = fixture
++            .serve(crate::common::routed(&academy, Academy::route))
++            .await;
++        let origin = format!("https://localhost:{}", server.port);
++        academy.lock().expect("academy").origin = origin.clone();
++        fixture.academy = Some(origin.clone());
++        let acting = Arc::clone(&academy);
++        let operator = Browser::new(move |_, url| {
++            if url.is_some_and(|u| u.path() == "/activate") {
++                acting.lock().expect("academy").approved += 1;
++            }
++        });
++        let mut value = scope(&origin);
++        value["families"]["L12"]["nonsecret"] = json!({"call.01-invalid":entry});
++        let (repo, record) = fixture
++            .run(bound(value), &["L12"], &secrets(&[]), operator)
++            .await;
++        assert!(!record.expect("run").passed(), "{entry}");
++        assert_eq!(receipt(&repo, "L12", "L12-calls").outcome, "blocked");
++        assert!(
++            receipt(&repo, "L12", "L12-calls").detail.contains(reason),
++            "{entry}"
++        );
++        assert!(
++            !server
++                .seen()
++                .iter()
++                .any(|r| ["courses.list", "progress.checkInline", "units.get"]
++                    .iter()
++                    .any(|p| r.request_line.contains(&format!("/api/trpc/{p}")))),
++            "{entry}"
++        );
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn reset_qualification_rejects_unchanged_progress_lost_certificates_and_an_empty_baseline() {
++    for (units, ignored, lost, empty_certificates, failed_check) in [
++        (3, false, false, false, None),
++        (3, true, false, false, Some("L13-call-04-after")),
++        (
++            3,
++            false,
++            true,
++            false,
++            Some("L13-call-05-certificates-after"),
++        ),
++        (0, false, false, false, Some("L13-call-02-before")),
++        (3, false, false, true, Some("L13-call-01-certificates")),
++    ] {
++        let mut fixture = Fixture::new();
++        let academy = Arc::new(Mutex::new(Academy {
++            progress_units: units,
++            reset_ignored: ignored,
++            certificates_lost: lost,
++            empty_certificates,
++            ..Academy::default()
++        }));
++        let server = fixture
++            .serve(crate::common::routed(&academy, Academy::route))
++            .await;
++        let origin = format!("https://localhost:{}", server.port);
++        academy.lock().expect("academy").origin = origin.clone();
++        fixture.academy = Some(origin.clone());
++        let acting = Arc::clone(&academy);
++        let operator = Browser::new(move |_, url| {
++            if url.is_some_and(|u| u.path() == "/activate") {
++                acting.lock().expect("academy").approved += 1;
++            }
++        });
++        let mut value = scope(&origin);
++        value["families"]["L13"]["nonsecret"] = reset_program();
++        value["families"]["L13"]["permitted_operations"] =
++            json!(["progress.resetCourse", "settings.removeAvatar"]);
++        let (repo, record) = fixture
++            .run(bound(value), &["L13"], &secrets(&[]), operator)
++            .await;
++        assert_eq!(record.expect("run").passed(), failed_check.is_none());
++        let workflow = receipt(&repo, "L13", "L13-workflow-W66");
++        assert_eq!(
++            workflow.outcome,
++            if failed_check.is_none() {
++                "passed"
++            } else {
++                "failed"
++            }
++        );
++        if let Some(check) = failed_check {
++            assert_eq!(receipt(&repo, "L13", check).outcome, "failed");
++        }
++        if units == 0 || empty_certificates {
++            assert!(
++                !server
++                    .seen()
++                    .iter()
++                    .any(|r| r.request_line.contains("/api/trpc/progress.resetCourse"))
++            );
++            assert_eq!(
++                receipt(&repo, "L13", "L13-call-03-reset").outcome,
++                "blocked"
++            );
++        }
++        // Even short certificate data is fingerprinted, never copied to disk.
++        assert_no_secret(
++            &repo,
++            &[
++                "Private Learner",
++                "protected-certificate-id",
++                "access-1",
++                "refresh-1",
++            ],
++        );
++    }
++}
++
++fn daily_program() -> Value {
++    json!({
++        "call.01-start": "W65 shift.start {\"json\":{\"daily\":true}} ?? /shiftId:nonempty-string && /alertsAnswered=0 && /atBoundary=false",
++        "call.02-serve": "W65 shift.serve {\"json\":{\"shiftId\":{\"$call\":\"01-start\",\"pointer\":\"/shiftId\"}}} ?? /shift/shiftId=@01-start/shiftId && /shift/alertOrder=0 && /breachResolved=false",
++        "call.03-answer": "W65 shift.answer {\"json\":{\"shiftId\":{\"$call\":\"01-start\",\"pointer\":\"/shiftId\"},\"order\":{\"$call\":\"02-serve\",\"pointer\":\"/shift/alertOrder\"},\"values\":[\"0\"]}} ?? /outcome in [\"correct\",\"incorrect\"] && /next=\"boundary\"",
++        "call.04-decide": "W65 shift.decide {\"json\":{\"shiftId\":{\"$call\":\"01-start\",\"pointer\":\"/shiftId\"},\"choice\":\"hand_off\"}} ?? /shiftId=@01-start/shiftId && /status=\"handed_off\"",
++        "call.05-debrief": "W65 shift.debrief {\"json\":{\"shiftId\":{\"$call\":\"01-start\",\"pointer\":\"/shiftId\"}}} ?? /themes:nonempty-array && /links:array && /fallback=false"
++    })
++}
++
++async fn exercise_program(
++    initial: Academy,
++    family: &str,
++    program: Value,
++    permitted: &[&str],
++) -> (xtask::Repo, xtask::live_run::RunRecord, Vec<Seen>) {
++    exercise_program_budget(initial, family, program, permitted, 10).await
++}
++
++async fn exercise_program_budget(
++    initial: Academy,
++    family: &str,
++    program: Value,
++    permitted: &[&str],
++    calls_budget: u64,
++) -> (xtask::Repo, xtask::live_run::RunRecord, Vec<Seen>) {
++    let mut fixture = Fixture::new();
++    let short_settle = initial.hung_procedure.is_some();
++    let academy = Arc::new(Mutex::new(initial));
++    let server = fixture
++        .serve(crate::common::routed(&academy, Academy::route))
++        .await;
++    let origin = format!("https://localhost:{}", server.port);
++    academy.lock().expect("academy").origin = origin.clone();
++    fixture.academy = Some(origin.clone());
++    let acting = Arc::clone(&academy);
++    let operator = Browser::new(move |_, url| {
++        if url.is_some_and(|u| u.path() == "/activate") {
++            acting.lock().expect("academy").approved += 1;
++        }
++    });
++    let mut value = scope(&origin);
++    value["families"][family]["nonsecret"] = program;
++    value["families"][family]["permitted_operations"] = json!(permitted);
++    value["families"][family]["budget"] = json!({"calls":calls_budget});
++    let mut evidence = fixture.evidence();
++    if short_settle && let xtask::live_run::Evidence::Fixture(targets) = &mut evidence {
++        targets.settle = Some(std::time::Duration::from_secs(3));
++    }
++    let repo = xtask::Repo::new(crate::common::scratch());
++    let manifest = serde_json::from_value(bound(value)).expect("manifest");
++    let record = xtask::live_run::run(
++        &repo,
++        &manifest,
++        &"f".repeat(64),
++        &secrets(&[]),
++        operator,
++        evidence,
++        &[family.to_owned()],
++    )
++    .await;
++    (repo, record.expect("run"), server.seen())
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn wrong_exam_identity_fails_and_the_state_read_uses_the_started_attempt() {
++    let program = scope("https://localhost")["families"]["L13"]["nonsecret"].clone();
++    let (repo, record, requests) = exercise_program(
++        Academy {
++            wrong_exam_id: true,
++            ..Academy::default()
++        },
++        "L13",
++        program,
++        &["exam.start", "settings.removeAvatar"],
++    )
++    .await;
++    assert!(!record.passed());
++    assert_eq!(
++        receipt(&repo, "L13", "L13-call-00-b-state").outcome,
++        "failed"
++    );
++    let sent = requests
++        .iter()
++        .find(|r| r.request_line.contains("/api/trpc/exam.submissionState"))
++        .expect("state read");
++    let (_, _, query) = crate::common::parts(sent);
++    let input: Value = serde_json::from_str(&query["input"]).expect("input");
++    assert_eq!(input["json"]["attemptId"], ATTEMPT);
++    assert_no_secret(&repo, &[ATTEMPT]);
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn wrong_shift_settlement_unknown_debrief_ungraded_breached_and_duplicate_daily_fail() {
++    for (initial, failed_check) in [
++        (
++            Academy {
++                wrong_settled_id: true,
++                ..Academy::default()
++            },
++            "L12-call-04-decide",
++        ),
++        (
++            Academy {
++                empty_debrief: true,
++                ..Academy::default()
++            },
++            "L12-call-05-debrief",
++        ),
++        (
++            Academy {
++                shift_outcome: Some("ungraded"),
++                ..Academy::default()
++            },
++            "L12-call-03-answer",
++        ),
++        (
++            Academy {
++                shift_outcome: Some("breached"),
++                ..Academy::default()
++            },
++            "L12-call-03-answer",
++        ),
++        (
++            Academy {
++                daily_refused: true,
++                ..Academy::default()
++            },
++            "L12-call-01-start",
++        ),
++    ] {
++        let (repo, record, requests) = exercise_program(
++            initial,
++            "L12",
++            daily_program(),
++            &["shift.start", "shift.serve", "shift.answer", "shift.decide"],
++        )
++        .await;
++        assert!(!record.passed());
++        assert_eq!(
++            receipt(&repo, "L12", failed_check).outcome,
++            if failed_check == "L12-call-04-decide" {
++                "needs-reconciliation"
++            } else {
++                "failed"
++            }
++        );
++        assert_eq!(receipt(&repo, "L12", "L12-workflow-W65").outcome, "failed");
++        if failed_check == "L12-call-03-answer" {
++            assert!(
++                requests
++                    .iter()
++                    .any(|r| r.request_line.contains("/api/trpc/shift.decide")),
++                "a designated hand-off is attempted without assuming a boundary"
++            );
++        }
++        if failed_check == "L12-call-03-answer" {
++            let cleanup = receipt(&repo, "L12", "L12-call-04-decide");
++            assert_eq!(cleanup.outcome, "needs-reconciliation");
++            assert!(cleanup.cleanup.contains("stale sweep"));
++            assert!(record.stopped.as_ref().is_some_and(|stop| stop.reconcile));
++        }
++        if failed_check == "L12-call-01-start" {
++            assert!(
++                !requests
++                    .iter()
++                    .any(|r| r.request_line.contains("/api/trpc/shift.serve"))
++            );
++        }
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn weak_interactive_assertions_are_refused_before_any_program_call() {
++    let mut exam = scope("https://localhost")["families"]["L13"]["nonsecret"].clone();
++    exam["call.00-b-state"] = json!("W53 exam.submissionState ?? :object");
++    let mut reset = reset_program();
++    reset["call.04-after"] = json!(
++        "W66 progress.courseSummary {\"json\":{\"courseId\":\"runtime-security\"}} ?? :object"
++    );
++    let mut shift = daily_program();
++    shift["call.05-debrief"] = json!(
++        "W65 shift.debrief {\"json\":{\"shiftId\":{\"$call\":\"01-start\",\"pointer\":\"/shiftId\"}}} ?? /themes:array"
++    );
++    for (family, program) in [("L13", exam), ("L13", reset), ("L12", shift)] {
++        let (repo, record, requests) = exercise_program(
++            Academy::default(),
++            family,
++            program,
++            &[
++                "exam.start",
++                "progress.resetCourse",
++                "shift.start",
++                "shift.serve",
++                "shift.answer",
++                "shift.decide",
++                "settings.removeAvatar",
++            ],
++        )
++        .await;
++        assert!(!record.passed());
++        let check = receipt(&repo, family, &format!("{family}-calls"));
++        assert_eq!(check.outcome, "blocked");
++        assert!(
++            check.detail.contains("required outcome assertions"),
++            "{}",
++            check.detail
++        );
++        assert!(!requests.iter().any(|r| {
++            ["exam.start", "progress.resetCourse", "shift.start"]
++                .iter()
++                .any(|p| r.request_line.contains(&format!("/api/trpc/{p}")))
++        }));
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn correct_grading_passes_and_a_failed_query_dependency_is_never_sent() {
++    let (repo,record,_) = exercise_program(Academy { inline_correct:true, ..Academy::default() },"L12",
++        json!({"call.01-grade":"W51 progress.checkInline {\"json\":{\"lessonId\":\"lesson-1\",\"questionId\":\"q-1\",\"answer\":\"SYNTHETIC-PRIVATE-ANSWER\"}} ?? /correct=true"}), &["progress.checkInline"]).await;
++    assert!(record.passed());
++    assert_no_secret(&repo, &["SYNTHETIC-PRIVATE-ANSWER"]);
++    assert_eq!(receipt(&repo, "L12", "L12-call-01-grade").outcome, "passed");
++    let (repo,record,requests)=exercise_program(Academy::default(),"L12",json!({
++        "call.01-wrong":"W50 units.get {\"json\":{\"unitId\":\"unit-1\"}} ?? /id=\"different-unit\"",
++        "call.02-never":"W50 units.get {\"json\":{\"unitId\":{\"$call\":\"01-wrong\",\"pointer\":\"/id\"}}} ?? /id:nonempty-string"
++    }),&["read"]).await;
++    assert!(!record.passed());
++    assert_eq!(
++        receipt(&repo, "L12", "L12-call-02-never").outcome,
++        "blocked"
++    );
++    assert_eq!(
++        requests
++            .iter()
++            .filter(|r| r.request_line.contains("/api/trpc/units.get"))
++            .count(),
++        1
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn diagnostic_observations_are_read_only_and_never_claim_a_workflow() {
++    let (repo, record, _) = exercise_program(
++        Academy::default(),
++        "L12",
++        json!({
++            "call.01-observe":"observe certificate.mine ?? :array"
++        }),
++        &["read"],
++    )
++    .await;
++    assert!(record.passed());
++    assert!(
++        receipt(&repo, "L12", "L12-call-01-observe")
++            .workflows
++            .is_empty()
++    );
++    let (repo,record,requests)=exercise_program(Academy::default(),"L12",json!({
++        "call.01-observe":"observe progress.resetCourse {\"json\":{\"courseId\":\"runtime-security\"}} ?? :object"
++    }),&["progress.resetCourse"]).await;
++    assert!(!record.passed());
++    assert!(
++        receipt(&repo, "L12", "L12-calls")
++            .detail
++            .contains("observe is read-only")
++    );
++    assert!(
++        !requests
++            .iter()
++            .any(|r| r.request_line.contains("/api/trpc/progress.resetCourse"))
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn sign_in_and_failed_receipts_never_echo_private_expectation_literals() {
++    let (repo,record,_)=exercise_program(Academy::default(),"L12",json!({
++        "call.01-membership":"observe settings.get ?? /theme in [\"system\",\"PRIVATE-PREFERENCE\"]",
++        "call.02-equality":"observe settings.get ?? /theme=\"PRIVATE-EQUALITY\""
++    }),&["read"]).await;
++    assert!(!record.passed());
++    assert_no_secret(&repo, &["PRIVATE-PREFERENCE", "PRIVATE-EQUALITY"]);
++    let sign_in = receipt(&repo, "L12", "L11-device-sign-in");
++    assert!(!sign_in.inputs.keys().any(|k| k.starts_with("call.")));
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn call_labels_cannot_select_receipt_paths() {
++    for label in [
++        "01/nested".to_owned(),
++        "..".to_owned(),
++        "".to_owned(),
++        "a".repeat(97),
++    ] {
++        let key = format!("call.{label}");
++        let (repo, record, requests) = exercise_program(
++            Academy::default(),
++            "L12",
++            json!({key:"W50 courses.list ?? :nonempty-array"}),
++            &["read"],
++        )
++        .await;
++        assert!(!record.passed());
++        let blocked = receipt(&repo, "L12", "L12-calls");
++        assert_eq!(blocked.outcome, "blocked");
++        assert!(blocked.detail.contains("1-96 ASCII"));
++        assert!(
++            !requests
++                .iter()
++                .any(|r| r.request_line.contains("/api/trpc/courses.list"))
++        );
++    }
++    let (repo, record, requests) = exercise_program(
++        Academy::default(),
++        "L12",
++        json!({
++            "call.Start":"W50 courses.list ?? :nonempty-array",
++            "call.start":"W50 courses.list ?? :nonempty-array"
++        }),
++        &["read"],
++    )
++    .await;
++    assert!(!record.passed());
++    assert!(
++        receipt(&repo, "L12", "L12-calls")
++            .detail
++            .contains("unique ignoring case")
++    );
++    assert!(
++        !requests
++            .iter()
++            .any(|r| r.request_line.contains("/api/trpc/courses.list"))
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn a_read_timeout_stops_without_claiming_a_remote_mutation() {
++    let (repo, record, requests) = exercise_program(
++        Academy {
++            hung_procedure: Some("courses.list"),
++            ..Academy::default()
++        },
++        "L13",
++        json!({"call.01-catalog":"observe courses.list ?? :nonempty-array"}),
++        &["settings.removeAvatar"],
++    )
++    .await;
++    assert!(!record.passed());
++    assert!(record.stopped.as_ref().is_some_and(|stop| !stop.reconcile));
++    let read = receipt(&repo, "L13", "L13-call-01-catalog");
++    assert_eq!(read.outcome, "failed");
++    assert!(read.detail.contains("did not settle"));
++    assert_eq!(read.cleanup, "nothing created");
++    assert_eq!(
++        requests
++            .iter()
++            .filter(|r| r.request_line.contains("/api/trpc/courses.list"))
++            .count(),
++        1
++    );
++    assert!(!requests.iter().any(|r| {
++        r.request_line
++            .contains("/api/trpc/settings.avatarUploadUrl")
++            || r.request_line.contains("/api/trpc/settings.removeAvatar")
++    }));
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn a_known_avatar_upload_refusal_never_removes_the_existing_avatar() {
++    for outcome in ["rejected", "notSent"] {
++        let (repo, record, requests) = exercise_program(
++            Academy {
++                avatar_presign: Some(outcome),
++                ..Academy::default()
++            },
++            "L13",
++            json!({"call.01-observe":"observe settings.get ?? /theme=\"system\""}),
++            &["settings.removeAvatar"],
++        )
++        .await;
++        assert!(!record.passed());
++        assert!(record.stopped.is_none(), "{outcome}");
++        let avatar = receipt(&repo, "L13", "L13-avatar");
++        assert_eq!(avatar.outcome, "failed", "{outcome}");
++        assert_eq!(avatar.observed["outcome"], outcome);
++        assert_eq!(
++            requests
++                .iter()
++                .filter(|r| r
++                    .request_line
++                    .contains("/api/trpc/settings.avatarUploadUrl"))
++                .count(),
++            1
++        );
++        assert!(
++            !requests.iter().any(|r| {
++                r.request_line.starts_with("PUT ")
++                    || r.request_line.contains("/api/trpc/settings.confirmAvatar")
++                    || r.request_line.contains("/api/trpc/settings.removeAvatar")
++            }),
++            "{outcome}"
++        );
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn every_unobserved_mutation_stops_for_reconciliation_before_later_changes() {
++    for (procedure, hang) in [
++        ("exam.start", false),
++        ("progress.resetCourse", false),
++        ("settings.confirmAvatar", false),
++        ("settings.removeAvatar", false),
++        ("exam.start", true),
++        ("shift.serve", true),
++    ] {
++        let mut initial = Academy {
++            progress_units: 3,
++            ..Academy::default()
++        };
++        if hang {
++            initial.hung_procedure = Some(procedure);
++        } else {
++            initial.dropped_procedure = Some(procedure);
++        }
++        let (family, program, permitted, check) = match procedure {
++            "exam.start" => (
++                "L13",
++                scope("https://localhost")["families"]["L13"]["nonsecret"].clone(),
++                vec!["exam.start", "settings.removeAvatar"],
++                "L13-call-00-a-start",
++            ),
++            "progress.resetCourse" => (
++                "L13",
++                reset_program(),
++                vec!["progress.resetCourse", "settings.removeAvatar"],
++                "L13-call-03-reset",
++            ),
++            "shift.serve" => (
++                "L12",
++                daily_program(),
++                vec!["shift.start", "shift.serve", "shift.answer", "shift.decide"],
++                "L12-call-02-serve",
++            ),
++            _ => (
++                "L13",
++                json!({"call.01-observe":"observe settings.get ?? /theme=\"system\""}),
++                vec!["settings.removeAvatar"],
++                "L13-avatar",
++            ),
++        };
++        let (repo, record, requests) = exercise_program(initial, family, program, &permitted).await;
++        assert!(!record.passed());
++        assert!(record.stopped.as_ref().is_some_and(|stop| stop.reconcile));
++        let mutation = receipt(&repo, family, check);
++        assert_eq!(mutation.outcome, "needs-reconciliation", "{procedure}");
++        assert!(mutation.cleanup.contains("inspect") || mutation.cleanup.contains("remote"));
++        if hang {
++            assert!(mutation.detail.contains("did not settle"));
++        } else if check != "L13-avatar" {
++            assert_eq!(mutation.observed["outcome"], "unknown");
++        }
++        assert_eq!(
++            requests
++                .iter()
++                .filter(|r| r.request_line.contains(&format!("/api/trpc/{procedure}")))
++                .count(),
++            1,
++            "never replay {procedure}"
++        );
++        if procedure == "progress.resetCourse" {
++            assert_eq!(
++                requests
++                    .iter()
++                    .filter(|r| r.request_line.contains("/api/trpc/progress.courseSummary"))
++                    .count(),
++                1
++            );
++        }
++        if ["exam.start", "progress.resetCourse"].contains(&procedure) {
++            assert!(!requests.iter().any(|r| {
++                r.request_line
++                    .contains("/api/trpc/settings.avatarUploadUrl")
++            }));
++        }
++        if procedure != "settings.removeAvatar" {
++            assert!(
++                !requests
++                    .iter()
++                    .any(|r| r.request_line.contains("/api/trpc/settings.removeAvatar"))
++            );
++        }
++        if procedure == "shift.serve" {
++            assert!(
++                !requests
++                    .iter()
++                    .any(|r| r.request_line.contains("/api/trpc/shift.answer"))
++            );
++            assert!(
++                !requests
++                    .iter()
++                    .any(|r| r.request_line.contains("/api/trpc/shift.decide"))
++            );
++        }
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn an_unsettled_daily_is_reconciled_when_budget_or_cleanup_dependencies_stop_the_run() {
++    let permitted = ["shift.start", "shift.serve", "shift.answer", "shift.decide"];
++    let (repo, record, requests) =
++        exercise_program_budget(Academy::default(), "L12", daily_program(), &permitted, 1).await;
++    assert!(!record.passed());
++    assert!(record.stopped.as_ref().is_some_and(|stop| stop.reconcile));
++    let refused = receipt(&repo, "L12", "L12-call-02-serve");
++    assert_eq!(refused.outcome, "needs-reconciliation");
++    assert_eq!(refused.consumption["calls"]["used"], 1);
++    assert!(refused.cleanup.contains("no extra call"));
++    assert_eq!(
++        requests
++            .iter()
++            .filter(|r| r.request_line.contains("/api/trpc/shift.start"))
++            .count(),
++        1
++    );
++    for name in [
++        "shift.serve",
++        "shift.answer",
++        "shift.decide",
++        "shift.debrief",
++    ] {
++        assert!(
++            !requests
++                .iter()
++                .any(|r| r.request_line.contains(&format!("/api/trpc/{name}")))
++        );
++    }
++
++    let mut program = daily_program();
++    program["call.04-decide"] = json!(format!(
++        "{} && /shiftId=@02-serve/shift/shiftId",
++        program["call.04-decide"].as_str().expect("call")
++    ));
++    for initial in [
++        Academy {
++            serve_unexpected: true,
++            ..Academy::default()
++        },
++        Academy {
++            start_invalid: true,
++            ..Academy::default()
++        },
++        Academy {
++            lost_start: true,
++            ..Academy::default()
++        },
++    ] {
++        let (repo, record, requests) =
++            exercise_program_budget(initial, "L12", program.clone(), &permitted, 5).await;
++        assert!(!record.passed());
++        assert!(record.stopped.as_ref().is_some_and(|stop| stop.reconcile));
++        let stop = record.stopped.as_ref().expect("stop");
++        let cleanup = receipt(&repo, "L12", &stop.check);
++        assert_eq!(cleanup.outcome, "needs-reconciliation");
++        if stop.check == "L12-call-04-decide" {
++            assert!(cleanup.detail.contains("call not sent"));
++            assert!(cleanup.cleanup.contains("dependency unavailable"));
++        } else {
++            assert_eq!(stop.check, "L12-call-01-start");
++            assert_eq!(cleanup.observed["outcome"], "unknown");
++        }
++        assert!(
++            !requests
++                .iter()
++                .any(|r| r.request_line.contains("/api/trpc/shift.decide"))
++        );
++        assert!(
++            !requests
++                .iter()
++                .any(|r| r.request_line.contains("/api/trpc/shift.answer"))
++        );
++        assert_eq!(
++            requests
++                .iter()
++                .filter(|r| r.request_line.contains("/api/trpc/shift.start"))
++                .count(),
++            1
++        );
++    }
++    // A later budget refusal must fail the workflow, but a confirmed
++    // hand-off must not be reported as an active, unreconciled Daily run.
++    let mut program = daily_program();
++    program["call.06-history"] = json!("W65 shift.history ?? :array");
++    let (repo, record, requests) =
++        exercise_program_budget(Academy::default(), "L12", program, &permitted, 5).await;
++    assert!(!record.passed());
++    assert!(record.stopped.as_ref().is_some_and(|stop| !stop.reconcile));
++    assert_eq!(
++        receipt(&repo, "L12", "L12-call-04-decide").outcome,
++        "passed"
++    );
++    assert_eq!(receipt(&repo, "L12", "L12-workflow-W65").outcome, "failed");
++    assert!(
++        !requests
++            .iter()
++            .any(|r| r.request_line.contains("/api/trpc/shift.history"))
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn destructive_procedures_cannot_bypass_contracts_by_changing_workflow_tags() {
++    for (family, workflow, procedure, input) in [
++        (
++            "L12",
++            "W51",
++            "progress.resetCourse",
++            json!({"json":{"courseId":COURSE}}),
++        ),
++        (
++            "L13",
++            "W54",
++            "progress.resetCourse",
++            json!({"json":{"courseId":COURSE}}),
++        ),
++        ("L13", "W54", "exam.start", json!({"json":{"consent":true}})),
++        ("L12", "W52", "shift.start", json!({"json":{"daily":true}})),
++        (
++            "L13",
++            "W54",
++            "shift.serve",
++            json!({"json":{"shiftId":ATTEMPT}}),
++        ),
++        (
++            "L13",
++            "W54",
++            "shift.answer",
++            json!({"json":{"shiftId":ATTEMPT,"order":0,"values":["0"]}}),
++        ),
++        (
++            "L13",
++            "W54",
++            "shift.decide",
++            json!({"json":{"shiftId":ATTEMPT,"choice":"hand_off"}}),
++        ),
++    ] {
++        let (repo, record, requests) = exercise_program(
++            Academy::default(),
++            family,
++            json!({"call.01-bypass":format!("{workflow} {procedure} {input} ?? :object")}),
++            &[procedure],
++        )
++        .await;
++        assert!(!record.passed());
++        let check = receipt(&repo, family, &format!("{family}-calls"));
++        assert!(
++            check
++                .detail
++                .contains("requires its interactive workflow contract"),
++            "{}",
++            check.detail
++        );
++        assert!(
++            !requests
++                .iter()
++                .any(|r| r.request_line.contains(&format!("/api/trpc/{procedure}")))
++        );
++    }
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn daily_incident_uses_the_started_run_and_served_order_for_its_interactive_checkpoints() {
++    let mut fixture = Fixture::new();
++    let academy = Arc::new(Mutex::new(Academy::default()));
++    let server = fixture
++        .serve(crate::common::routed(&academy, Academy::route))
++        .await;
++    let origin = format!("https://localhost:{}", server.port);
++    academy.lock().expect("academy").origin = origin.clone();
++    fixture.academy = Some(origin.clone());
++    let acting = Arc::clone(&academy);
++    let operator = Browser::new(move |_, url| {
++        if url.is_some_and(|u| u.path() == "/activate") {
++            acting.lock().expect("academy").approved += 1;
++        }
++    });
++    let mut value = scope(&origin);
++    value["families"]["L12"]["permitted_operations"] =
++        json!(["shift.start", "shift.serve", "shift.answer", "shift.decide"]);
++    let mut private_program = daily_program();
++    private_program["call.03-answer"] = json!(
++        private_program["call.03-answer"]
++            .as_str()
++            .expect("call")
++            .replace("[\"0\"]", "[\"SYNTHETIC-PRIVATE-CHOICE\"]")
++    );
++    value["families"]["L12"]["nonsecret"] = private_program;
++    let (repo, record) = fixture
++        .run(bound(value), &["L12"], &secrets(&[]), operator)
++        .await;
++    assert!(record.expect("run").passed());
++    assert_eq!(receipt(&repo, "L12", "L12-workflow-W65").outcome, "passed");
++    let request = server
++        .seen()
++        .into_iter()
++        .find(|r| r.request_line.contains("/api/trpc/shift.answer"))
++        .expect("answer sent");
++    let sent: Value = serde_json::from_slice(&request.body).expect("JSON input");
++    assert_eq!(sent["json"]["shiftId"], ATTEMPT);
++    assert_eq!(sent["json"]["order"], 0);
++    assert_eq!(sent["json"]["values"][0], "SYNTHETIC-PRIVATE-CHOICE");
++    assert_no_secret(&repo, &["SYNTHETIC-PRIVATE-CHOICE"]);
++    assert_no_secret(&repo, &[ATTEMPT, "access-1", "refresh-1"]);
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn reads_do_not_close_interactive_rows_and_a_failed_dependency_is_never_sent() {
++    let mut fixture = Fixture::new();
++    let academy = Arc::new(Mutex::new(Academy::default()));
++    let server = fixture
++        .serve(crate::common::routed(&academy, Academy::route))
++        .await;
++    let origin = format!("https://localhost:{}", server.port);
++    academy.lock().expect("academy").origin = origin.clone();
++    fixture.academy = Some(origin.clone());
++    let acting = Arc::clone(&academy);
++    let operator = Browser::new(move |_, url| {
++        if url.is_some_and(|u| u.path() == "/activate") {
++            acting.lock().expect("academy").approved += 1;
++        }
++    });
++    let mut value = scope(&origin);
++    value["families"]["L13"]["nonsecret"] = json!({
++        "call.01-read": "W53 exam.eligibility ?? /eligible=true",
++        "call.02-failed": "W53 certificate.mine ?? =[]",
++        "call.03-never": "W53 exam.submissionState {\"json\":{\"attemptId\":{\"$call\":\"02-failed\",\"pointer\":\"/0/id\"}}} ?? /status=\"in-progress\""
++    });
++    let (repo, record) = fixture
++        .run(bound(value), &["L13"], &secrets(&[]), operator)
++        .await;
++    assert!(!record.expect("run").passed());
++    let blocked = receipt(&repo, "L13", "L13-calls");
++    assert_eq!(blocked.outcome, "blocked");
++    assert!(blocked.detail.contains("ordered interactive checkpoints"));
++    assert!(
++        !server
++            .seen()
++            .iter()
++            .any(|r| r.request_line.contains("/api/trpc/exam.submissionState"))
++    );
++}
++
++#[tokio::test(flavor = "multi_thread")]
++async fn an_unexpected_or_undesignated_account_cannot_run_a_mutating_program() {
++    for mismatch in [true, false] {
++        let mut fixture = Fixture::new();
++        let academy = Arc::new(Mutex::new(Academy::default()));
++        let server = fixture
++            .serve(crate::common::routed(&academy, Academy::route))
++            .await;
++        let origin = format!("https://localhost:{}", server.port);
++        academy.lock().expect("academy").origin = origin.clone();
++        fixture.academy = Some(origin.clone());
++        let acting = Arc::clone(&academy);
++        let operator = Browser::new(move |_, url| {
++            if url.is_some_and(|u| u.path() == "/activate") {
++                acting.lock().expect("academy").approved += 1;
++            }
++        });
++        let mut value = scope(&origin);
++        if mismatch {
++            value["families"]["L12"]["nonsecret"]["expected_account_sha256"] =
++                json!("a".repeat(64));
++        } else {
++            value["families"]["L12"]["nonsecret"]
++                .as_object_mut()
++                .expect("fields")
++                .remove("expected_account_sha256");
++        }
++        let (repo, record) = fixture.run(value, &["L12"], &secrets(&[]), operator).await;
++        let record = record.expect("run");
++        assert!(!record.passed());
++        let check = if mismatch {
++            "L12-account-binding"
++        } else {
++            "L12-calls"
++        };
++        assert_eq!(receipt(&repo, "L12", check).outcome, "blocked");
++        assert!(!server.seen().iter().any(|r| {
++            ["courses.list", "units.get", "progress.checkInline"]
++                .iter()
++                .any(|p| r.request_line.contains(&format!("/api/trpc/{p}")))
++        }));
++        assert!(crate::common::within(|| academy.lock().expect("academy").revoked >= 1).await);
++    }
++}
+diff --git a/docs/architecture/live-manifest.template.json b/docs/architecture/live-manifest.template.json
+index 58d27df1..77c8ac0f 100644
+--- a/docs/architecture/live-manifest.template.json
++++ b/docs/architecture/live-manifest.template.json
+@@ -224,12 +224,13 @@
+     },
+     "L12": {
+       "status": "blocked",
+-      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent). call.<NN>-<label> = '<workflows> <procedure> [<SuperJSON input>]', the workflows (comma-separated, among W50,W51,W52,W65) the call is evidence for (e.g. W50 units.get {\"json\":{...}}); a mutation must also be in permitted_operations",
++      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent). call.<NN>-<label> = '<workflows> <procedure> [<SuperJSON input>]', the workflows (comma-separated, among W50,W51,W52,W65) the call is evidence for (e.g. W50 units.get {\"json\":{...}}); a mutation must also be in permitted_operations. Every call requires ?? <expectation>; grading requires /correct=true or false. Earlier validated result references and interactive checkpoint requirements: docs/planning/academy-2.1-follow-up.md. Query-only observe entries earn no workflow credit; exam.start, progress.resetCourse and shift.start/serve/answer/decide must claim their corresponding W53/W66/W65 interactive workflow; other permitted mutations still require explicit result expectations. See the linked follow-up for the full <workflow> <procedure> [<input>] ?? <expectation> grammar.",
+       "environment": "",
+       "credentials": {},
+       "nonsecret": {
+         "academy_origin": "",
+-        "call.01-label": ""
++        "call.01-label": "",
++        "expected_account_sha256": ""
+       },
+       "permitted_operations": [],
+       "disposable_prefix": null,
+@@ -239,12 +240,13 @@
+     },
+     "L13": {
+       "status": "blocked",
+-      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent; the avatar upload and removal count two). call.<NN>-<label> as L12, workflows among W52,W53,W54,W65,W66; list settings.removeAvatar in permitted_operations to exercise the avatar upload and its removal",
++      "reason": "not yet designated by the owner. budget keys: calls (charged before each call is sent; the avatar upload and removal count two). call.<NN>-<label> as L12, workflows among W52,W53,W54,W65,W66; list settings.removeAvatar in permitted_operations to exercise the avatar upload and its removal. Every call requires ?? <expectation>; grading requires /correct=true or false. Earlier validated result references and interactive checkpoint requirements: docs/planning/academy-2.1-follow-up.md. Query-only observe entries earn no workflow credit; exam.start, progress.resetCourse and shift.start/serve/answer/decide must claim their corresponding W53/W66/W65 interactive workflow; other permitted mutations still require explicit result expectations. See the linked follow-up for the full <workflow> <procedure> [<input>] ?? <expectation> grammar.",
+       "environment": "",
+       "credentials": {},
+       "nonsecret": {
+         "academy_origin": "",
+-        "call.01-label": ""
++        "call.01-label": "",
++        "expected_account_sha256": ""
+       },
+       "permitted_operations": [],
+       "disposable_prefix": null,
+@@ -254,7 +256,7 @@
+     },
+     "L14": {
+       "status": "blocked",
+-      "reason": "not yet designated by the owner. budget keys: calls (for call.* entries, workflows among W55,W56). access_change = designated when the operator can withdraw the test learner's course access during the run",
++      "reason": "not yet designated by the owner. budget keys: calls (for call.* entries, workflows among W55,W56). access_change = designated when the operator can withdraw the test learner's course access during the run. Every call requires ?? <expectation>; grading requires /correct=true or false. Earlier validated result references and interactive checkpoint requirements: docs/planning/academy-2.1-follow-up.md. Query-only observe entries earn no workflow credit; exam.start, progress.resetCourse and shift.start/serve/answer/decide must claim their corresponding W53/W66/W65 interactive workflow; other permitted mutations still require explicit result expectations. See the linked follow-up for the full <workflow> <procedure> [<input>] ?? <expectation> grammar.",
+       "environment": "",
+       "credentials": {},
+       "nonsecret": {
+@@ -264,7 +266,8 @@
+         "base_version": "",
+         "access_change": "",
+         "operator_timeout_secs": "",
+-        "call.01-label": ""
++        "call.01-label": "",
++        "expected_account_sha256": ""
+       },
+       "permitted_operations": [],
+       "disposable_prefix": null,
+diff --git a/packages/desktop-contracts/package.json b/packages/desktop-contracts/package.json
+index c715de17..b39df70f 100644
+--- a/packages/desktop-contracts/package.json
++++ b/packages/desktop-contracts/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "@prisma-airs/desktop-contracts",
+-  "version": "0.2.0",
++  "version": "2.0.0",
+   "private": true,
+   "license": "Apache-2.0",
+   "type": "module",
+diff --git a/resources/harness/darwin-arm64.tar.gz b/resources/harness/darwin-arm64.tar.gz
+index 4953b221..2c1cad55 100644
+--- a/resources/harness/darwin-arm64.tar.gz
++++ b/resources/harness/darwin-arm64.tar.gz
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:f4a9348ee97eb723039de1039a0b53710843dad56b3b47fe3d0be1a186f4bc97
+-size 113493748
++oid sha256:10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173
++size 113497192
+diff --git a/resources/harness/pin.json b/resources/harness/pin.json
+index 4e7fa8ad..95c8cebd 100644
+--- a/resources/harness/pin.json
++++ b/resources/harness/pin.json
+@@ -1,14 +1,22 @@
+ {
+   "archive": "resources/harness/darwin-arm64.tar.gz",
+-  "archiveBytes": 113493748,
+-  "archiveSha256": "f4a9348ee97eb723039de1039a0b53710843dad56b3b47fe3d0be1a186f4bc97",
+-  "binarySha256": "f8e49cee8b0905818c9271e91b2ca8f39b67075e602e5db7db683f9d37aee50c",
++  "archiveBytes": 113497192,
++  "archiveSha256": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
++  "binarySha256": "383bcfb5f8d36d2367793a594ceeaf89a5c0fd618d6436397e9c2e22a682c1c5",
+   "engineCommit": "9331a5839bc6a763d94dee7584746f58bbbe1181",
+   "executable": "airs-harness",
+   "files": 1618,
+   "protocol": "airs-desktop/1",
+-  "resourcesSha256": "63a82156ca324efe1d1d298c23e04f9741229579df4d0c18443ef37f38292f0b",
++  "resourcesSha256": "1c0a1eb83c82ffe4b2dc22f8ec4c6bc6a61fecc326ca70969de9c14ca62b3ac4",
+   "runtimeVersion": "0.1.7-desktop.2",
++  "signing": {
++    "identity": "Developer ID Application: Calvin Remsburg (G5QLZ5A8TA)",
++    "options": "runtime",
++    "signedUtc": "2026-10-25T21:23:45Z",
++    "teamIdentifier": "G5QLZ5A8TA",
++    "timestamp": true,
++    "unsignedBinarySha256": "f8e49cee8b0905818c9271e91b2ca8f39b67075e602e5db7db683f9d37aee50c"
++  },
+   "source": {
+     "buildInfoSha256": "a22d963e7bedf212c3190ef78ebc4d885e99cac87e87a53ed297f694b692cbc6",
+     "v1Archive": "packaging/harness/darwin-arm64.tar.gz",
+diff --git a/tools/native-acceptance/acceptance_c19.py b/tools/native-acceptance/acceptance_c19.py
+index 71b1d6a0..91460bda 100644
+--- a/tools/native-acceptance/acceptance_c19.py
++++ b/tools/native-acceptance/acceptance_c19.py
+@@ -194,7 +194,7 @@ def run():
+     tree, heading = open_harness(app)
+     tree, shown = c8.text(app, f"Engine {PIN['runtimeVersion']} · {PIN['engineCommit'][:12]} · airs-desktop/1", 10)
+     obs["offer"] = {"heading": heading, "engine_line": shown,
+-                    "needs_tenant": app.has_text(tree, "Choose a tenant to use the Harness."),
++                    "needs_tenant": app.has_text(tree, "A tenant chosen") and fx.App.node(tree, "AXButton", "Go to Settings") is not None,
+                     "start_disabled": not enabled(tree, "Start conversation")}
+     obs["tree_offer"] = save_tree("offer", tree)
+     # A tenant, its management client, a chosen workspace and its key.
+diff --git a/tools/native-acceptance/acceptance_c20.py b/tools/native-acceptance/acceptance_c20.py
+index 118b2402..189a3d76 100644
+--- a/tools/native-acceptance/acceptance_c20.py
++++ b/tools/native-acceptance/acceptance_c20.py
+@@ -214,7 +214,7 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
+                          ("Client ID", CLIENT), ("Gateway audience", AUDIENCE)):
+         app.type_into("AXTextField", label, value)
+     app.ax("press", "AXButton", "Save company sign-in")
+-    tree, refused = c8.text(app, "That was not done. Check the values and try again.", 10)
++    tree, refused = c8.text(app, "Issuer and Gateway endpoint must be https URLs without a query string.", 10)
+     app.type_into("AXTextField", "Identity provider", issuer)
+     app.ax("press", "AXButton", "Save company sign-in")
+     tree, saved = c8.text(app, "Sign in with your browser", 10)
+@@ -331,7 +331,7 @@ def exercise(app, work, endpoint, mgmt, prepared, v1_before):
+     c19.open_harness(app)
+     tree, local = app.wait_for(lambda t: app.has_text(t, "AI Gateway’s workspaces are not available")
+                                and fx.App.node(t, "AXButton", f"Open {title}") is not None, 20)
+-    offline = {"listed": local, "chooser_shown": app.has_text(tree, "Choose a workspace in AI Gateway first")}
++    offline = {"listed": local, "chooser_shown": app.has_text(tree, "A Gateway workspace chosen")}
+     app.ax("press", "AXButton", f"Open {title}")
+     tree, offline["opened"] = app.wait_for(lambda t: any(n.get("role") == "AXList" and n.get("label") == "Saved messages" for n in t), 10)
+     offline["not_continuable"] = app.has_text(tree, "it can be read and exported here but not continued")
+diff --git a/tools/native-acceptance/fixture_app.py b/tools/native-acceptance/fixture_app.py
+index 88db6cd4..e4a8fbd0 100644
+--- a/tools/native-acceptance/fixture_app.py
++++ b/tools/native-acceptance/fixture_app.py
+@@ -244,7 +244,7 @@ class App:
+             tree, ok = self.wait_for(ready, 20)
+             if ok:
+                 return tree
+-        raise RuntimeError(f"Settings did not open with its tenant form [tree: {self.dump_tree('settings')}]")
++        raise RuntimeError("Settings did not open with its tenant form")
+ 
+     def open_runtime(self):
+         self.ax("press", "AXButton", "Runtime Security")

@@ -1,0 +1,105 @@
+{
+  "host": "worf-vm",
+  "source_head": "2e4439fa",
+  "events": [
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-02",
+        "list-windows",
+        "--app",
+        "Prisma AIRS Desktop Fixture"
+      ],
+      "result": {
+        "command": "list-windows",
+        "data": [],
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-02",
+        "list-windows",
+        "--app",
+        "Prisma AIRS Desktop Fixture"
+      ],
+      "result": {
+        "command": "list-windows",
+        "data": [
+          {
+            "accessible": true,
+            "app_name": "Prisma AIRS Desktop Fixture",
+            "bounds": {
+              "height": 820.0,
+              "width": 1280.0,
+              "x": 320.0,
+              "y": 95.0
+            },
+            "id": "w-6471",
+            "is_focused": false,
+            "minimized": false,
+            "pid": 46214,
+            "process_instance": "macos-proc-v1:1793801847:785368",
+            "title": "Prisma AIRS Desktop (Fixture)",
+            "visible": true
+          }
+        ],
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-02",
+        "--headed",
+        "focus-window",
+        "--window-id",
+        "w-6471"
+      ],
+      "result": {
+        "command": "focus-window",
+        "data": {
+          "focused": {
+            "accessible": true,
+            "app_name": "Prisma AIRS Desktop Fixture",
+            "bounds": {
+              "height": 820.0,
+              "width": 1280.0,
+              "x": 320.0,
+              "y": 95.0
+            },
+            "id": "w-6471",
+            "is_focused": true,
+            "minimized": false,
+            "pid": 46214,
+            "process_instance": "macos-proc-v1:1793801847:785368",
+            "title": "Prisma AIRS Desktop (Fixture)",
+            "visible": true
+          }
+        },
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "transport": "System Events",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "transport": "System Events",
+      "exit_code": 0,
+      "stderr": ""
+    }
+  ],
+  "status": "passed",
+  "pid": 46214,
+  "actual_typing_confirmed": true,
+  "finished_utc": "2026-11-04T14:17:29Z"
+}

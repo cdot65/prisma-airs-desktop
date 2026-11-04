@@ -1,0 +1,121 @@
+   Compiling yasna v0.6.0
+   Compiling pem v4.0.0
+   Compiling desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+   Compiling rcgen v0.14.10
+   Compiling xtask v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 18.46s
+     Running `target/debug/examples/p11_affected check C46/check/1 C46/check/4`
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "check-20261104T145708Z-95bd4f",
+  "subject": "P11",
+  "kind": "check",
+  "started_utc": "2026-11-04T14:57:08Z",
+  "finished_utc": "2026-11-04T14:57:17Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/admin/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/admin/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "node",
+      "path": "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "fd0de1c521a16c150c6462727d78c4a69821f457d37212a4ef44bba97b4008c2"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/.tools/bin:/Users/admin/.cargo/bin:/Users/admin/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "bd839448f6e71b47881994d2bf55df896cc8abad6f69331f05afa3ddbfe4a066",
+    "dependencies": "2c489f82dc23ebf9680a9cb5977071253b226b29c8f019f1fb43db4ff3384326",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "inputs_after": {
+    "source": "bd839448f6e71b47881994d2bf55df896cc8abad6f69331f05afa3ddbfe4a066",
+    "dependencies": "2c489f82dc23ebf9680a9cb5977071253b226b29c8f019f1fb43db4ff3384326",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "commands": [
+    {
+      "label": "C46/check/1",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 745,
+      "output_sha256": "d8760763be63067f00789fcf42648cb7e89259b37690e733415676ec0b8b6596",
+      "log": "logs/C46-check-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/check/4",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "typecheck"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 3242,
+      "output_sha256": "fcb9fd535a43a3b9710c61c151abc7c03917305b215cbfdc75a0c0a6a159c01b",
+      "log": "logs/C46-check-4.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "artifacts": []
+}

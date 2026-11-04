@@ -1,0 +1,526 @@
+
+> @prisma-airs/desktop@1.0.0 test /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+> vitest run --config vitest.config.ts src/v2/v2-shell.test.tsx -t 'keeps Settings Add outside inert shell ancestors'
+
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+stderr | src/v2/v2-shell.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+ ❯ src/v2/v2-shell.test.tsx (29 tests | 2 failed | 27 skipped) 163ms
+   × v2 shell > keeps Settings Add outside inert shell ancestors in prismaAirs 114ms
+     → expected <div …(3)>…(2)</div> to be null
+   × v2 shell > keeps Settings Add outside inert shell ancestors in gruvbox 49ms
+     → expected <div …(3)>…(2)</div> to be null
+   ↓ v2 shell > renders the sidebar from the Rust catalogue with the menu shortcuts and marks an unavailable destination
+   ↓ v2 shell > dispatches navigate for the sidebar, the native menu and Home cards, never local state
+   ↓ v2 shell > reports a refused navigation on the status surface as a warn toast
+   ↓ v2 shell > opens the palette from the sidebar, lists destinations, tenants and actions, and dispatches on Enter
+   ↓ v2 shell > switches tenants from the rail switcher with one selectTenant intent and lists Add a tenant
+   ↓ v2 shell > picks the nth tenant with ⌃n while the menu is open, as its hints say (C35)
+   ↓ v2 shell > dispatches the appearance and show-the-calls preferences from the rail toggle and the header switch
+   ↓ v2 shell > applies the dark theme attribute the tokens key on
+   ↓ v2 shell > shows the read status from the observed overview, never a timer of its own
+   ↓ v2 shell > keeps one topmost modal: the palette over the switcher, Escape closes only the top, focus returns
+   ↓ v2 shell > expires toasts after their lifetime, or keeps them under Reduce Motion
+   ↓ v2 shell > keeps an unconfirmed delivery inline with Retry, never auto-resending, and retries only on the click
+   ↓ v2 shell > opens the tenant switcher from the native ⌘T command without switching, and returns focus to the trigger on Escape
+   ↓ v2 shell > keeps destination names when the rail is collapsed and does not restart a toast deadline on re-render
+   ↓ v2 shell > hands focus to the tenant list when ⌘T replaces an open palette, and Escape returns it to the trigger
+   ↓ v2 shell > routes appearance through the same recovery path from the rail and the native menu
+   ↓ v2 shell > focuses the tenant list after ⌘T even when focus inside an inert rail is refused, as WebKit does
+   ↓ v2 shell > renders the tenant popup outside the rail with a usable width; Settings has no interface switch (C44)
+   ↓ v2 shell > makes toast controls inert and hidden while a modal is topmost, usable again after
+   ↓ v2 shell > bounds the tenant popup to the viewport and lets the keyboard reach the last of twenty tenants
+   ↓ v2 shell > names the intended tenant in a refused switch; a late refusal of a read for a tenant no longer shown is never surfaced (I2)
+   ↓ v2 shell > tells two tenants with the same label and region apart by TSG, and names the current tenant on the trigger away from Home
+   ↓ v2 shell > identifies identically named tenants in the palette by environment and TSG, and ArrowDown moves the current row
+   ↓ v2 shell > reports the Harness credential the Harness would use for the selected workspace: SSO only for that workspace, else the key, else none (R1)
+   ↓ v2 shell > follows an OS appearance change while the preference is system: the toggle updates without a new snapshot and its next click picks the opposite (R2)
+   ↓ v2 shell > opens the Gateway workspace choice from the tenant menu, and gates the row while no tenant is active (R3)
+   ↓ v2 shell > lets Tab reach the palette’s "Ask the Harness instead" fallback, Enter opens the Harness once, and Escape returns focus to the search button (R4)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/v2/v2-shell.test.tsx > v2 shell > keeps Settings Add outside inert shell ancestors in prismaAirs
+ FAIL  src/v2/v2-shell.test.tsx > v2 shell > keeps Settings Add outside inert shell ancestors in gruvbox
+AssertionError: expected <div …(3)>…(2)</div> to be null
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+<div
+  aria-hidden="true"
+  class="flex min-w-0 flex-grow flex-col"
+  inert=""
+>
+  <header
+    class="flex shrink-0 items-center"
+    data-desktop-theme=""
+    data-slot="app-header"
+    data-v2-header=""
+    style="height: var(--v2-header); gap: 14px; padding: 0px 20px 0px 44px; border-bottom: 1px solid var(--v2-rule); background: var(--v2-bg);"
+  >
+    <div
+      class="flex min-w-0 items-baseline gap-2"
+    >
+      <h1
+        class="min-w-0 truncate text-[18px] font-bold"
+        data-slot="page-heading"
+        id="page-heading"
+        tabindex="-1"
+      >
+        <span
+          data-slot="header-title"
+        >
+          Settings
+        </span>
+      </h1>
+    </div>
+    <button
+      class="ml-auto flex h-8 min-h-0 w-[260px] shrink-0 items-center gap-2 rounded-[7px] px-2.5 text-[13px]"
+      data-slot="palette-trigger"
+      data-v2-search=""
+      style="border: 0px; background: var(--v2-inset); color: var(--v2-faint);"
+      type="button"
+    >
+      <svg
+        aria-hidden="true"
+        fill="none"
+        height="14"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="1.8"
+        style="flex-shrink: 0;"
+        viewBox="0 0 24 24"
+        width="14"
+      >
+        <path
+          d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-5-5"
+        />
+      </svg>
+      <span
+        class="flex-grow truncate text-left"
+      >
+        Search or go to…
+      </span>
+      <kbd
+        aria-label="Command K"
+        class="text-[12px]"
+      >
+        ⌘K
+      </kbd>
+    </button>
+    <button
+      aria-checked="true"
+      aria-controls="explain-drawer"
+      aria-describedby="v2-show-calls-hint"
+      aria-label="Show the calls"
+      class="flex h-8 min-h-0 shrink-0 items-center rounded-[7px] px-2 text-[12px]"
+      role="switch"
+      style="gap: 7px; border: 0px; background: transparent; color: var(--v2-soft);"
+      title="Shows each request this app sends to the public APIs as you work."
+      type="button"
+    >
+      <span
+        aria-hidden="true"
+        class="relative inline-block h-4 w-[26px] rounded-full"
+        style="background: var(--v2-acc); box-shadow: inset 0 0 0 1px var(--v2-acc);"
+      >
+        <span
+          class="absolute top-0.5 size-3 rounded-full"
+          style="left: 12px; background: var(--v2-acc-ink);"
+        />
+      </span>
+      <span
+        data-v2-label="true"
+      >
+        Explain
+      </span>
+      <span
+        class="sr-only"
+        id="v2-show-calls-hint"
+      >
+        Shows each request this app sends to the public APIs as you work.
+      </span>
+    </button>
+  </header>
+  <div
+    class="relative flex min-h-0 flex-grow"
+  >
+    <main
+      aria-labelledby="page-heading"
+      class="flex min-w-0 flex-grow flex-col"
+      data-desktop-theme=""
+      data-slot="app-main"
+      data-v2-page=""
+    >
+      <section
+        aria-label="Settings"
+        class="flex flex-col gap-4"
+        data-slot="settings"
+      >
+        <div
+          class="flex min-w-0 flex-wrap items-center "
+          data-slot="page-intro"
+          style="gap: 10px 16px;"
+        >
+          <div
+            class="min-w-0 text-[14px]"
+            data-slot="page-description"
+            style="flex: 1 1 20rem; max-width: 52rem; color: var(--v2-soft); overflow-wrap: anywhere;"
+          >
+            Personalize the desktop, manage tenant connections and review local diagnostics.
+          </div>
+        </div>
+        <div
+          class="settings-grid"
+        >
+          <fieldset
+            aria-busy="false"
+            aria-labelledby="_r_0_"
+            class="settings-card"
+          >
+            <legend
+              id="_r_0_"
+            >
+              Appearance
+            </legend>
+            <p
+              class="settings-description"
+            >
+              Desktop preferences do not change your Academy account settings.
+            </p>
+            <div
+              class="settings-fields"
+            >
+              <label
+                class="settings-field"
+              >
+                Appearance
+                <select … />
+              </label>
+              <label
+                class="settings-field"
+              >
+                Theme
+                <select … />
+              </label>
+            </div>
+          </fieldset>
+          <fieldset
+            aria-busy="false"
+            aria-labelledby="_r_1_"
+            class="settings-card"
+            data-slot="academy-account"
+          >
+            <legend
+              class="text-academy-ink px-1 text-[15px] font-semibold"
+              id="_r_1_"
+            >
+              Academy account
+            </legend>
+            <p
+              class="text-academy-ink-soft text-[13px]"
+            >
+              Your Academy learner account is separate from AIRS tenants; switching tenants does not change it.
+            </p>
+            <div
+              aria-live="polite"
+              class="flex flex-col gap-3"
+              role="status"
+            >
+              <div
+                class="flex flex-col items-start gap-3"
+              >
+                <p … />
+                <button … />
+              </div>
+            </div>
+          </fieldset>
+          <fieldset
+            aria-labelledby="_r_2_"
+            class="settings-card"
+            data-slot="diagnostics"
+          >
+            <legend
+              class="text-academy-ink px-1 text-[15px] font-semibold"
+              id="_r_2_"
+            >
+              Diagnostics
+            </legend>
+            <p
+              class="text-academy-ink-soft max-w-prose text-[13px]"
+            >
+              Kept only on this device for 
+              14
+               days and never sent anywhere: the kind of each request and why one was refused, storage and reset outcomes, and where the app stopped unexpectedly. Prompts, responses, keys, tokens and names are never kept.
+            </p>
+            <p
+              class="text-academy-ink text-[13px]"
+              data-slot="diagnostics-count"
+            >
+              0
+               event
+              s
+               kept.
+            </p>
+            <div
+              class="flex flex-wrap gap-2"
+            >
+              <button
+                aria-disabled="false"
+                class="rounded-academy-md inline-flex items-center justify-center whitespace-nowrap transition-[background,color,border-color,filter,transform,box-shadow] duration-[var(--academy-dur-1)] disabled:pointer-events-none border-academy-rule-strong text-academy-ink border bg-transparent font-medium hover:bg-academy-paper-deep active:scale-[0.97] disabled:border-academy-rule disabled:text-academy-ink-faint disabled:bg-transparent min-h-11 min-w-11 gap-2 px-4 py-2 text-[13px]"
+                data-slot="ax-button"
+                data-tier="secondary"
+                type="button"
+              >
+                Export diagnostics…
+              </button>
+              <button
+                aria-disabled="false"
+                class="rounded-academy-md inline-flex items-center justify-center whitespace-nowrap transition-[background,color,border-color,filter,transform,box-shadow] duration-[var(--academy-dur-1)] disabled:pointer-events-none text-academy-ink-soft font-medium hover:text-academy-ink hover:bg-academy-bg-inset disabled:text-academy-ink-faint disabled:bg-transparent min-h-11 min-w-11 gap-2 px-4 py-2 text-[13px]"
+                data-slot="ax-button"
+                data-tier="tertiary"
+                type="button"
+              >
+                Clear diagnostics
+              </button>
+            </div>
+          </fieldset>
+        </div>
+        <section
+          aria-labelledby="_r_3_"
+          class="flex flex-col gap-3"
+          data-slot="tenants"
+        >
+          <div
+            class="flex flex-wrap items-baseline gap-3"
+          >
+            <h2
+              class="text-[16px] font-semibold"
+              id="_r_3_"
+            >
+              Tenants
+            </h2>
+            <p
+              class="settings-description"
+            >
+              Active tenant: 
+              <strong>
+                Northwind Health
+              </strong>
+            </p>
+          </div>
+          <div
+            class="settings-grid"
+          >
+            <section
+              aria-labelledby="_r_4_-heading"
+              class="settings-card"
+              data-slot="scan-key"
+            >
+              <h3
+                class="text-academy-ink text-[14px] font-semibold"
+                id="_r_4_-heading"
+              >
+                Scan key
+              </h3>
+              <div
+                aria-live="polite"
+                class="rounded-academy-lg flex gap-3 border p-4 bg-academy-paper-deep border-academy-rule"
+                data-slot="scan-status"
+                data-tone="default"
+                role="status"
+              >
+                <svg … />
+                <div … />
+              </div>
+              <form
+                aria-busy="false"
+                class="flex flex-col gap-3"
+              >
+                <label … />
+                <input … />
+                <p … />
+                <fieldset … />
+                <div … />
+              </form>
+            </section>
+            <section
+              aria-labelledby="_r_7_-heading"
+              class="settings-card"
+              data-slot="management-credential"
+            >
+              <h3
+                class="text-academy-ink text-[14px] font-semibold"
+                id="_r_7_-heading"
+              >
+                Management client
+              </h3>
+              <div
+                aria-live="polite"
+                class="rounded-academy-lg flex gap-3 border p-4 bg-academy-paper-deep border-academy-rule"
+                data-slot="management-status"
+                data-tone="default"
+                role="status"
+              >
+                <svg … />
+                <div … />
+              </div>
+              <p
+                class="text-academy-ink-faint text-[12px]"
+                data-slot="management-sso-pointer"
+              >
+                Company sign-in (SSO) for the Harness is set up per Gateway workspace, in Harness.
+              </p>
+              <form
+                aria-busy="false"
+                class="flex flex-col gap-3"
+              >
+                <label … />
+                <input … />
+                <label … />
+                <input … />
+                <p … />
+                <fieldset … />
+                <div … />
+              </form>
+            </section>
+            <section
+              aria-labelledby="_r_8_"
+              class="settings-card"
+              data-slot="endpoint"
+            >
+              <h3
+                class="text-academy-ink text-[14px] font-semibold"
+                id="_r_8_"
+              >
+                Scan destination
+              </h3>
+              <p
+                class="text-academy-ink-soft text-[13px]"
+              >
+                Scan requests and the scan key go only to 
+                <span … />
+                .
+              </p>
+              <div>
+                <button … />
+              </div>
+            </section>
+            <section
+              aria-labelledby="_r_9_"
+              class="settings-card"
+              data-slot="update-tenant"
+            >
+              <h3
+                id="_r_9_"
+              >
+                Update Tenant
+              </h3>
+              <label
+                class="settings-field"
+              >
+                Tenant
+                <select … />
+              </label>
+              <p
+                class="settings-description"
+              >
+                TSG 1762204418 · 
+                Europe (Germany) region
+              </p>
+              <div
+                class="flex flex-wrap gap-2"
+              >
+                <button … />
+                <button … />
+              </div>
+            </section>
+            <section
+              aria-labelledby="_r_a_"
+              class="settings-card"
+              data-slot="add-tenant"
+            >
+              <h3
+                id="_r_a_"
+              >
+                Add Tenant
+              </h3>
+              <p
+                class="settings-description"
+              >
+                Connect a tenant with its TSG ID, management client and scan region. OAuth authentication is required before it is added; a Scan Key can be configured later.
+              </p>
+              <div>
+                <button … />
+              </div>
+              <div
+                class="fixed inset-0 z-50 grid place-items-start justify-center"
+                data-desktop-theme=""
+                data-v2-scrim=""
+                style="padding-top: 4vh;"
+              >
+                <div … />
+              </div>
+            </section>
+            <section
+              aria-labelledby="_r_b_"
+              class="settings-card"
+              data-slot="reset"
+            >
+              <h3
+                class="text-academy-ink text-[14px] font-semibold"
+                id="_r_b_"
+              >
+                Reset local data
+              </h3>
+              <p
+                class="text-academy-ink-soft text-[13px]"
+              >
+                Removes this app’s tenant profiles, preferences and stored credentials. Other applications are not changed.
+              </p>
+              <div
+                class="flex flex-wrap gap-2"
+              >
+                <button … />
+              </div>
+            </section>
+          </div>
+        </section>
+      </section>
+      <p
+        aria-live="polite"
+        class="mt-4 text-[13px]"
+        data-slot="shell-status"
+        role="status"
+        style="color: var(--v2-soft);"
+      />
+    </main>
+  </div>
+</div>
+
+ ❯ src/v2/v2-shell.test.tsx:48:66
+     46|         expect(dialog).not.toBeNull()
+     47|         expect(dialog).toHaveAttribute('aria-modal', 'true')
+     48|         expect(dialog?.closest('[inert], [aria-hidden="true"]')).toBeN…
+       |                                                                  ^
+     49|         const host = dialog?.closest('[data-slot="desktop-modal-host"]…
+     50|         expect(host).toHaveAttribute('data-desktop-theme')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 27 skipped (29)
+   Start at  14:39:27
+   Duration  2.09s (transform 899ms, setup 104ms, collect 1.43s, tests 163ms, environment 233ms, prepare 47ms)
+
+/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @prisma-airs/desktop@1.0.0 test: `vitest run --config vitest.config.ts src/v2/v2-shell.test.tsx -t 'keeps Settings Add outside inert shell ancestors'`
+Exit status 1

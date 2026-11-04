@@ -1,0 +1,63 @@
+{
+  "schema": "airs-desktop/vm-ignored-input-setup-completion/1",
+  "started_utc": "2026-11-04T14:21:44.068081+00:00",
+  "finished_utc": "2026-11-04T14:21:44.565741+00:00",
+  "input_receipt": {
+    "path": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/.evidence-private/vm-input-setup-01/receipt.json",
+    "sha256": "8df63acf8fe00ed17e3287b513f64ae735576746126ee899f7b1c17bc5bdea1b"
+  },
+  "status": "prepared",
+  "head": "2e4439fa04a56c822a44286359b294587428e161",
+  "lfs_setup": {
+    "argv": [
+      "git",
+      "lfs",
+      "install",
+      "--local",
+      "--skip-smudge",
+      "--skip-repo"
+    ],
+    "previous_exit_code": 0,
+    "scope": "repository-local filters only, no hooks/global config"
+  },
+  "stat_normalization": {
+    "argv": [
+      "git",
+      "add",
+      "--renormalize",
+      "--",
+      "resources/harness/darwin-arm64.tar.gz"
+    ],
+    "exit_code": 0,
+    "index_blob_before": "2c1cad552712939c5f8a9844280f49f1e8439a73",
+    "index_blob_after": "2c1cad552712939c5f8a9844280f49f1e8439a73",
+    "raw_archive_sha256_before": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173",
+    "raw_archive_sha256_after": "10729706be0bf2ec2bae1d21155fe866b047960e73881583397887c083fce173"
+  },
+  "non_evidence_source_status": [],
+  "raw_status": "?? docs/planning/evidence/P11/vm-readiness-01/app-output.log\n?? docs/planning/evidence/P11/vm-readiness-01/candidate-processes.json\n?? docs/planning/evidence/P11/vm-readiness-01/receipt.json\n?? docs/planning/evidence/P11/vm-readiness-01/swift-after.json\n?? docs/planning/evidence/P11/vm-readiness-01/swift-before.json\n?? docs/planning/evidence/P11/vm-readiness-02/candidate-processes.json\n?? docs/planning/evidence/P11/vm-readiness-02/receipt.json\n?? docs/planning/evidence/P11/vm-readiness-02/typed-tree.json\n",
+  "pinned_wrapper_sha256": "fd0de1c521a16c150c6462727d78c4a69821f457d37212a4ef44bba97b4008c2",
+  "academy_tree_sha256": "73e1c80889af89311b374808fce1f99386ced2fe95bc3a54429c40a72ce5530d",
+  "application_input_comparison": {
+    "reference": "Kirk docs/planning/evidence/P11/native-build-03/receipt.json application_inputs_after",
+    "reference_count": 660,
+    "vm_count": 660,
+    "missing": [],
+    "added": [],
+    "changed": [
+      {
+        "path": "crates/desktop-core/tests/setup_warning_recheck.rs",
+        "kirk_sha256": "e9133b4869104afc448a5701685b4b72dffd1405ed687284f370cec04fa906f5",
+        "vm_sha256": "e4aef28bf18b15f77d3fac003fbd65c2b6379cd97ee58e8ed43fda1a1f5fc7e5"
+      }
+    ]
+  },
+  "not_executed": [
+    "dependency install",
+    "Rust build/check/test",
+    "frontend build/test",
+    "native/UI",
+    "application launch"
+  ],
+  "bundle_or_target_modified": false
+}

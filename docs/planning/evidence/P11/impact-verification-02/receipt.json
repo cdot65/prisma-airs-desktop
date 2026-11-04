@@ -1,0 +1,88 @@
+{
+  "host": "worf-vm",
+  "started_utc": "2026-11-04T15:08:23.574287+00:00",
+  "labels": {
+    "check": [
+      "C46/check/1",
+      "C46/check/4"
+    ],
+    "test": [
+      "C46/frontend/1",
+      "C46/frontend/2",
+      "C46/frontend/3",
+      "C46/frontend/4",
+      "C46/frontend/5",
+      "C47/fixture",
+      "C47/frontend/2",
+      "C47/frontend/3",
+      "C47/frontend/4",
+      "C48/frontend/1",
+      "C48/frontend/2",
+      "C49/frontend/1"
+    ]
+  },
+  "commands": [
+    {
+      "kind": "check",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--example",
+        "p11_affected",
+        "--",
+        "check",
+        "C46/check/1",
+        "C46/check/4"
+      ],
+      "exit_code": 0,
+      "raw": {
+        "path": "docs/planning/evidence/P11/runs/check-20261104T150824Z-592ce0/run.json",
+        "sha256": "b56e3143d7f0f6cd0331708f2ad7f96d40c9c8dd71d63a99ea8699501a46ab56"
+      },
+      "log_sha256": "1283272db4e0ab625cb551b80545777c17ba6be38c44d5e1a06ace57aade276b",
+      "raw_status": "passed",
+      "tests_passed": 0,
+      "tests_failed": 0
+    },
+    {
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--example",
+        "p11_affected",
+        "--",
+        "test",
+        "C46/frontend/1",
+        "C46/frontend/2",
+        "C46/frontend/3",
+        "C46/frontend/4",
+        "C46/frontend/5",
+        "C47/fixture",
+        "C47/frontend/2",
+        "C47/frontend/3",
+        "C47/frontend/4",
+        "C48/frontend/1",
+        "C48/frontend/2",
+        "C49/frontend/1"
+      ],
+      "exit_code": 0,
+      "raw": {
+        "path": "docs/planning/evidence/P11/runs/test-20261104T150831Z-4e9ebe/run.json",
+        "sha256": "437f9ba2005e1b90f9b8af348c5bdd44f7f197212a844666afb95512c90b1a1f"
+      },
+      "log_sha256": "405a6e3bb8190a3a997a9ad48748a6e499a45db10f884e909c3669738a6574a9",
+      "raw_status": "passed",
+      "tests_passed": 379,
+      "tests_failed": 0
+    }
+  ],
+  "reason": "Bounded frontend cross-consumer recheck after the first integration run found eager-review test readiness. Runtime Modal fix is unchanged; all Rust test commands remain retained.",
+  "finished_utc": "2026-11-04T15:09:26.883281+00:00"
+}

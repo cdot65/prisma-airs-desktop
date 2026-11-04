@@ -1,0 +1,248 @@
+{
+  "schema": "airs-desktop/p11-native-observations/1",
+  "subject": "P11",
+  "complete": false,
+  "argv": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "tools/native-acceptance/acceptance_p11_resume.py",
+    "--previous",
+    "docs/planning/evidence/P11/native-attempt-06-vm/observations.json",
+    "--work",
+    "/var/folders/p7/f_99nxmj7s16qrxbl0cbpz4r0000gn/T/airs-p11-owned-j9e8xcq6",
+    "--prepare",
+    "docs/planning/evidence/P11/native-prepare.json",
+    "--out",
+    "docs/planning/evidence/P11/native-attempt-07-vm"
+  ],
+  "argv_source": "sys.executable + sys.argv",
+  "started_utc": "2026-11-04T15:53:04Z",
+  "finished_utc": "2026-11-04T15:56:17Z",
+  "performed_by": "Codex /root; all native execution on worf-vm admin501 via SSH, owned startup-window activation via agent-desktop; orchestrator sha256 34b0de4931d6659af08f6f8db332c3224ca7b921b3ddf49faf6c1238396ddbd1",
+  "host": "macOS-26.6.2-arm64-arm-64bit",
+  "execution_id": "native-attempt-07-vm",
+  "status": "failed",
+  "exit_code": 1,
+  "executable_sha256": "099669efc96b8b54bc300dda33295be6271e81b59b9d11128434330e8073434d",
+  "bundle_sha256": "eb9f93a1a4394574ca36e0c0affdd2c9206dfb5b3496649368cb24079394c7f5",
+  "helper_closure": {
+    "docs/planning/evidence/P09/native-controller/native_requirements.py": "292cbe4a98ead78199b7a339e9797cdfbe5595138941ac0390c8a68a534301cf",
+    "tools/native-acceptance/academy_catalog.py": "bac6894b5338f89b317a866e85d7691a4496eb2804fd20ba09414eadfb09a84a",
+    "tools/native-acceptance/academy_server.py": "00ee3c3820e921fda723eef0db59baad3c621bb70cb67b8ff14377a6b3215af8",
+    "tools/native-acceptance/acceptance_c01.py": "f278d1ad79699e4d04888bcf2e950f06e0759c50649622c9810a33009ff36b93",
+    "tools/native-acceptance/acceptance_c08.py": "cf323772231f27117787d2f0719b86eb3b5555cd5b786d516d56b0c5cdba1e83",
+    "tools/native-acceptance/acceptance_c09.py": "322ddb02f1aeee3f9da89f7805b489c0715f61f59d59b627a955bdca4dc5d5c8",
+    "tools/native-acceptance/acceptance_c15.py": "1e4777d0dbe871df2242e52e93c56c1584db0feb0b4fb57f0528b44118da825a",
+    "tools/native-acceptance/acceptance_c28.py": "083301c3379d7910fbbe29675f844ab9a08917d41218cdc15ac54c086850a9a6",
+    "tools/native-acceptance/acceptance_c29.py": "b54d6f905f8785bd729dc11088c4938883160ea49de6fc59ded02a94a3a62eb6",
+    "tools/native-acceptance/acceptance_c31.py": "f22b11082166a4f54ea40fb83748e2f47eacedd32ca0276c2e0fda8b15ab21da",
+    "tools/native-acceptance/acceptance_c41.py": "0b4e3a03aed357106f8db0045cea9df212ba108bb2b0fa667bb1704fa804b150",
+    "tools/native-acceptance/acceptance_p11.py": "c7fb1d6f747b47cd2b8f1facba3434e058324a4cd2f8601563caafc0f41cd6a3",
+    "tools/native-acceptance/acceptance_p11_api.py": "bcf93c6c13ecfa04e877eebc51bf30424c806688ef4c3aff04129a4e830eebb8",
+    "tools/native-acceptance/acceptance_p11_resume.py": "6a4d4402e84876706b8b1363fcbc99eb7c49c6c5d3a873010c61c95c2bd8bd91",
+    "tools/native-acceptance/acceptance_p11_settings.py": "813fdb5fdaa28944632faf13f9aa16f0232ed31f5c57e4630062d4216d0f3bc1",
+    "tools/native-acceptance/acceptance_p11_setup.py": "b643b9c61d5bab44050ad889c47c647bf30d885b49888e09e8810798bc3a4255",
+    "tools/native-acceptance/acceptance_p11_shell.py": "1465da7a37c0f911d8b0d879620e99b26d472767f629f83678357763f8d28138",
+    "tools/native-acceptance/administration_coverage.py": "15b46c82124be3eca7099492f7f6d671da026e30e00384b4a8d63c69c2fbc900",
+    "tools/native-acceptance/ax.swift": "e6a9a88485339f89ff2b77cc999b0a16ef92e7ea3fbf5c10a44bd84ece054f80",
+    "tools/native-acceptance/ax_colors.swift": "891961e71df402ff863f83775f568c76ed045fd0b852c8b9cd97013b9e773eec",
+    "tools/native-acceptance/c01_ax_driver.js": "df07cd6079ff49f1357d6f599426c8988787dcc48bc5aa1814b30f5b3fb560eb",
+    "tools/native-acceptance/candidate_process.py": "63cdc26265437457525b33ed9b738e807356f24e225708c47fa8b387a6ae884e",
+    "tools/native-acceptance/fixture_app.py": "f0e31bb5d164a76322caa53f3852811da9f0fabe329e06672c9983c49ec10402",
+    "tools/native-acceptance/mgmt_server.py": "fcacfbcf156b0a7905e583a955691ae8b67f45f36dabb0bda0bcb745511cc6ec",
+    "tools/native-acceptance/native_sheets.py": "698e2d0b5ccf439c146aca79041135729c8b02f0810184ba3aa342959cad6e6a",
+    "tools/native-acceptance/scan_server.py": "29b8141fcdebc2a951a068df36bb1507ee05d9cdeed26045c4630e068c973185",
+    "tools/native-acceptance/type_private_stdin.swift": "8fef292b1bbbe8570c57a420f64f3d01c52475fa279eae481b5e4c80e43837da",
+    "tools/native-acceptance/v2_setup.py": "c3c1d05bee6c0076836d261f0c6abe23ce5346a5151d3a2bdad559049fd23cea",
+    "tools/p10/candidate.py": "bf74e7ba2df4b657bbbcdf8abb9407c766b22b846f642190b777e79d3ce2abb9",
+    "tools/p10/native.py": "836d8a7ddcb8d96c9a42caf0b873b6ef51c8349d756d0fe2666d86e90dd04301"
+  },
+  "binding": {
+    "prepare": {
+      "path": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/docs/planning/evidence/P11/native-prepare.json",
+      "sha256": "fd694cbc4caca9c6d8e753ade3d5453c3974861d4b05d04ce0fc867eba464431"
+    },
+    "bundle": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+    "executable_sha256": "099669efc96b8b54bc300dda33295be6271e81b59b9d11128434330e8073434d",
+    "bundle_sha256": "eb9f93a1a4394574ca36e0c0affdd2c9206dfb5b3496649368cb24079394c7f5",
+    "helper_closure": {
+      "docs/planning/evidence/P09/native-controller/native_requirements.py": "292cbe4a98ead78199b7a339e9797cdfbe5595138941ac0390c8a68a534301cf",
+      "tools/native-acceptance/academy_catalog.py": "bac6894b5338f89b317a866e85d7691a4496eb2804fd20ba09414eadfb09a84a",
+      "tools/native-acceptance/academy_server.py": "00ee3c3820e921fda723eef0db59baad3c621bb70cb67b8ff14377a6b3215af8",
+      "tools/native-acceptance/acceptance_c01.py": "f278d1ad79699e4d04888bcf2e950f06e0759c50649622c9810a33009ff36b93",
+      "tools/native-acceptance/acceptance_c08.py": "cf323772231f27117787d2f0719b86eb3b5555cd5b786d516d56b0c5cdba1e83",
+      "tools/native-acceptance/acceptance_c09.py": "322ddb02f1aeee3f9da89f7805b489c0715f61f59d59b627a955bdca4dc5d5c8",
+      "tools/native-acceptance/acceptance_c15.py": "1e4777d0dbe871df2242e52e93c56c1584db0feb0b4fb57f0528b44118da825a",
+      "tools/native-acceptance/acceptance_c28.py": "083301c3379d7910fbbe29675f844ab9a08917d41218cdc15ac54c086850a9a6",
+      "tools/native-acceptance/acceptance_c29.py": "b54d6f905f8785bd729dc11088c4938883160ea49de6fc59ded02a94a3a62eb6",
+      "tools/native-acceptance/acceptance_c31.py": "f22b11082166a4f54ea40fb83748e2f47eacedd32ca0276c2e0fda8b15ab21da",
+      "tools/native-acceptance/acceptance_c41.py": "0b4e3a03aed357106f8db0045cea9df212ba108bb2b0fa667bb1704fa804b150",
+      "tools/native-acceptance/acceptance_p11.py": "c7fb1d6f747b47cd2b8f1facba3434e058324a4cd2f8601563caafc0f41cd6a3",
+      "tools/native-acceptance/acceptance_p11_api.py": "bcf93c6c13ecfa04e877eebc51bf30424c806688ef4c3aff04129a4e830eebb8",
+      "tools/native-acceptance/acceptance_p11_resume.py": "6a4d4402e84876706b8b1363fcbc99eb7c49c6c5d3a873010c61c95c2bd8bd91",
+      "tools/native-acceptance/acceptance_p11_settings.py": "813fdb5fdaa28944632faf13f9aa16f0232ed31f5c57e4630062d4216d0f3bc1",
+      "tools/native-acceptance/acceptance_p11_setup.py": "b643b9c61d5bab44050ad889c47c647bf30d885b49888e09e8810798bc3a4255",
+      "tools/native-acceptance/acceptance_p11_shell.py": "1465da7a37c0f911d8b0d879620e99b26d472767f629f83678357763f8d28138",
+      "tools/native-acceptance/administration_coverage.py": "15b46c82124be3eca7099492f7f6d671da026e30e00384b4a8d63c69c2fbc900",
+      "tools/native-acceptance/ax.swift": "e6a9a88485339f89ff2b77cc999b0a16ef92e7ea3fbf5c10a44bd84ece054f80",
+      "tools/native-acceptance/ax_colors.swift": "891961e71df402ff863f83775f568c76ed045fd0b852c8b9cd97013b9e773eec",
+      "tools/native-acceptance/c01_ax_driver.js": "df07cd6079ff49f1357d6f599426c8988787dcc48bc5aa1814b30f5b3fb560eb",
+      "tools/native-acceptance/candidate_process.py": "63cdc26265437457525b33ed9b738e807356f24e225708c47fa8b387a6ae884e",
+      "tools/native-acceptance/fixture_app.py": "f0e31bb5d164a76322caa53f3852811da9f0fabe329e06672c9983c49ec10402",
+      "tools/native-acceptance/mgmt_server.py": "fcacfbcf156b0a7905e583a955691ae8b67f45f36dabb0bda0bcb745511cc6ec",
+      "tools/native-acceptance/native_sheets.py": "698e2d0b5ccf439c146aca79041135729c8b02f0810184ba3aa342959cad6e6a",
+      "tools/native-acceptance/scan_server.py": "29b8141fcdebc2a951a068df36bb1507ee05d9cdeed26045c4630e068c973185",
+      "tools/native-acceptance/type_private_stdin.swift": "8fef292b1bbbe8570c57a420f64f3d01c52475fa279eae481b5e4c80e43837da",
+      "tools/native-acceptance/v2_setup.py": "c3c1d05bee6c0076836d261f0c6abe23ce5346a5151d3a2bdad559049fd23cea",
+      "tools/p10/candidate.py": "bf74e7ba2df4b657bbbcdf8abb9407c766b22b846f642190b777e79d3ce2abb9",
+      "tools/p10/native.py": "836d8a7ddcb8d96c9a42caf0b873b6ef51c8349d756d0fe2666d86e90dd04301"
+    },
+    "native_inventory_sha256": "9334060f0bcee9d616588608403378eabcb30811030ef367b2bad71b781858c0",
+    "conditions": {
+      "platform": "macOS-26.6.2-arm64-arm-64bit",
+      "hostname": "worf-vm"
+    }
+  },
+  "artifact_sha256": {
+    "docs/planning/evidence/P11/native-attempt-07-vm/resume-preconditions.json": "43783788004b3f18df55082c30c8483f55ccc32393ee61d8458c1769fb61ff18",
+    "docs/planning/evidence/P11/native-attempt-07-vm/endpoint-history-offsets.json": "4a134c5393afbb52ad6ad51f1640798d4cc11d77cb4a5bcabffbfea8400f98c6",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-first-use-carry.json": "8c77d274e4504bf4f514fb6328df97371b11b4af94f888b98975384467452b13",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json": "ad97565f5828629d55042179a12fc91792ebe58f6cca00f73d84832b3eea9d0f",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-resume-builtin-precondition.json": "e4a3dbd2cd0003b94638e722dd2adb22817ca77fff98ae73ea7573dceff6a1f6",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-url-selected-token.png": "fca8eb29978b800fd7f18e25c94e074f30d4668f3fddca316e637b3adb551f7b",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-json-body-selection.png": "df9c99dff06667c0ede1519f02fb53ed291269a4654e5bab87d3dfb0c1515c7e",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-native-dead-key-marked.png": "b511f2d629d31a4001995d8c1fa8a32f3b442bcb3a419d547af041789f85bf95",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-pretty-exact-tokens.png": "cbdcd706676e6854debbd1bf91a09f0e0d12be32c91c4b0fe4b22b25150c7ef4",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-raw-response.json": "91f637c0f9d7386c6354af059a3b5b163c1d1a8a2fb314da68eaf291abb2c3a9",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-invalid-truncated.json": "eb72144588e807707df5632e3e87b6db899041f6f68873d939035fa8a61006fc",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-scrolling-tab-focus.png": "fd62c443fba6fc8221ecc272216df4c21078aae9f395267dc7b1aa7ea8be8973",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-history-footer-identity.png": "6260210ae235f8b8459a2103fcf9745b2632ec99f8f4d9a2d186238b00486ea7",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-current-collection-footer.png": "7ff87014614b9053ad4563e0f78a0b434345ed9285a7720fbf2b4236a5743516",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-footer-scoped.json": "6106b7ee5cb3ccf164df13b6f117a176178e6103f8b76ff1972b0d428658e154",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-response-saved.json": "28ecdb7ecb0ca26689ff897a12eb2ffe1f9784938996a619c3426a4993fd5d5c",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-missing-custom-recovery.png": "5ec8a60b6cd94d4424fd6398e9be7cffe59bf67d63dac929df6f4e4dbc969bcc",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-missing-custom.json": "6c8d70d1dd626a50d301dbd2c1c7c5536d1b6b5ad913fe130cac7742475b75ad",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c48-recovered-custom.json": "c8574538b5b799a8c531b709ac5294fb0d017f7c9dd613b300ad7ba9805999ee",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c49-source-boundary-requirements.json": "4f63f04c33d15862391bfb561f5355887837a0bd94838b1a8de0c47481b77e41",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c49-settings-cards-100-percent.png": "677005f47f2d19edd348673b214ce4a6e23c1ac9d99d84f091065bc4e8a33a7e",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c49-settings-cards.json": "1ead98005556fdeab8693fd0d986eb1fdf047e123a061030db068605aa439fb6",
+    "docs/planning/evidence/P11/native-attempt-07-vm/c49-keyboard-200-percent.json": "bd712ac963e619e83dd79a7c818601155d844fd5da9775683a086db5902de68a",
+    "docs/planning/evidence/P11/native-attempt-07-vm/captures/c49-settings-keyboard-200-percent.png": "804329c62800c54edb25ab6d71b573f9ee093a9c9483a8c895c339671e3db89a"
+  },
+  "checks": [
+    {
+      "id": "C48-N01",
+      "facts": {
+        "url_segment_copy_exact": true,
+        "caret_insertion_at_selection_end": true,
+        "native_body_copy_exact": true,
+        "native_dead_key_composition_committed": true,
+        "invalid_json_editable": true,
+        "url_save_admitted_once": true,
+        "body_save_admitted_once": true,
+        "saved_url_template_exact": true,
+        "saved_body_bytes_exact": true,
+        "sent_body_bytes_exact": true,
+        "pretty_large_integer_and_escape_exact": true,
+        "response_copy_bytes_exact": true,
+        "invalid_preview_kept": true,
+        "truncated_copy_is_original_preview": true
+      },
+      "evidence": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-raw-response.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-invalid-truncated.json"
+      ],
+      "visual": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-url-selected-token.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-json-body-selection.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-native-dead-key-marked.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-pretty-exact-tokens.png"
+      ]
+    },
+    {
+      "id": "C48-N02",
+      "facts": {
+        "tabs_in_one_row": true,
+        "selected_tab_visible": true,
+        "focused_tab_visible": true,
+        "late_background_result_preserves_current_footer": true,
+        "history_footer_names_record": true,
+        "active_cancel_retained_in_history": true,
+        "replaced_collection_footer_is_scoped": true,
+        "separate_save_state_present": true
+      },
+      "evidence": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-footer-scoped.json"
+      ],
+      "visual": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-scrolling-tab-focus.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-history-footer-identity.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-current-collection-footer.png"
+      ]
+    },
+    {
+      "id": "C48-N03",
+      "facts": {
+        "first_use_scm193": true,
+        "builtin_choice_survives_restart": true,
+        "explicit_closed_choice_survives_restart": true,
+        "custom_choice_survives_restart": true,
+        "no_request_replayed_on_restart": true,
+        "missing_root_offers_recovery_without_creation_or_fallback": true,
+        "replaced_identity_refused": true,
+        "redirected_root_refused": true,
+        "native_suggestion_hyphenated": true,
+        "default_response_filename_and_bytes_exact": true,
+        "explicit_filename_directory_and_bytes_exact": true,
+        "all_endpoint_authorization_headers_absent": true
+      },
+      "evidence": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-first-use-carry.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-response-saved.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-missing-custom.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-recovered-custom.json"
+      ],
+      "visual": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-missing-custom-recovery.png"
+      ]
+    },
+    {
+      "id": "C49-N01",
+      "facts": {
+        "expected_settings_and_tenant_cards_present": true,
+        "independent_appearance_theme_controls_present": true,
+        "changed_card_controls_keyboard_reachable_inside_narrow_window_at_requested_200_percent": true
+      },
+      "evidence": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/c49-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c49-settings-cards.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c49-keyboard-200-percent.json"
+      ],
+      "visual": [
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c49-settings-cards-100-percent.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c49-settings-keyboard-200-percent.png"
+      ]
+    }
+  ],
+  "errors": [],
+  "log": [
+    {
+      "action": "owned-window-resize",
+      "pid": 59448,
+      "requested": [
+        1100,
+        800
+      ],
+      "measured": [
+        320,
+        95,
+        1100,
+        800
+      ],
+      "utc": "2026-11-04T15:55:45Z"
+    }
+  ],
+  "meaning": "Actual fixture AX/keyboard/geometry observations. Pixels and production-interface results need separate bound review; no unrun assertion is a pass."
+}

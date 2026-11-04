@@ -1,0 +1,22 @@
+{
+  "frontend": [
+    "src/v2/workbench/api-client.test.tsx",
+    "src/v2/workbench/request-presentation.test.ts",
+    "src/modules/workbench/document-save.test.tsx",
+    "src/v2/workbench/workbench.test.tsx"
+  ],
+  "rust": [
+    "workbench_documents",
+    "refinement_startup_",
+    "workbench_execution",
+    "refinement_response_suggestions_",
+    "workbench::profile::tests::an_existing_profile_has_an_uninitialized_collection_choice"
+  ],
+  "not_claimed_by_native": [
+    "exhaustive asynchronous bridge ordering and previous-collection isolation",
+    "startup preference migration and all private-profile failure cases",
+    "byte preservation for every payload, limit and save-conflict case",
+    "AX selection offsets or general third-party input-method qualification",
+    "visual token, selection, caret or scrolling correctness without root capture review"
+  ]
+}

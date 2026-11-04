@@ -1,0 +1,390 @@
+{
+  "schema": "airs-v2/run/1",
+  "run_id": "test-20261104T145718Z-86db66",
+  "subject": "P11",
+  "kind": "test",
+  "started_utc": "2026-11-04T14:57:18Z",
+  "finished_utc": "2026-11-04T14:57:53Z",
+  "toolchain": [
+    {
+      "name": "rustc",
+      "path": "/Users/admin/.cargo/bin/rustc",
+      "version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "cargo",
+      "path": "/Users/admin/.cargo/bin/cargo",
+      "version": "cargo 1.99.0 (5f94df478 2026-08-27)",
+      "sha256": "f7c7e11eb2e07f006e532a8aaac77b32f4527d305ac386c0c633ca6133d35ca9"
+    },
+    {
+      "name": "node",
+      "path": "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+      "version": "v24.21.0",
+      "sha256": "e4b5a3af0e05c75de2eae013904145f40fe7fc2a6e6f17510128bf45cca4e79b"
+    },
+    {
+      "name": "pnpm",
+      "path": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/.tools/bin/pnpm",
+      "version": "10.6.5",
+      "sha256": "fd0de1c521a16c150c6462727d78c4a69821f457d37212a4ef44bba97b4008c2"
+    },
+    {
+      "name": "rustc-toolchain",
+      "path": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/rustc",
+      "version": "",
+      "sha256": "dd6f58440b3418aa9157ae3f05d71eecff741ca41bc4eec120e7e8f2d933b9a0"
+    },
+    {
+      "name": "cargo-toolchain",
+      "path": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin/cargo",
+      "version": "",
+      "sha256": "fc7aa5077deca8abc0651f329e8ec1d968f520e996a93b428f9935014362b382"
+    }
+  ],
+  "env": {
+    "CARGO_TERM_COLOR": "never",
+    "CI": "1",
+    "COREPACK_ENABLE_AUTO_PIN": "0",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "HOME": "<preserved>",
+    "LANG": "en_US.UTF-8",
+    "LC_ALL": "C.UTF-8",
+    "LOGNAME": "<preserved>",
+    "NO_COLOR": "1",
+    "PATH": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/.tools/bin:/Users/admin/.cargo/bin:/Users/admin/.nvm/versions/node/v24.21.0/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "SOURCEMAPS": "0",
+    "TMPDIR": "<preserved>",
+    "USER": "<preserved>",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "VITE_BASE_PATH": "/"
+  },
+  "inputs_before": {
+    "source": "bd839448f6e71b47881994d2bf55df896cc8abad6f69331f05afa3ddbfe4a066",
+    "dependencies": "2c489f82dc23ebf9680a9cb5977071253b226b29c8f019f1fb43db4ff3384326",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "inputs_after": {
+    "source": "bd839448f6e71b47881994d2bf55df896cc8abad6f69331f05afa3ddbfe4a066",
+    "dependencies": "2c489f82dc23ebf9680a9cb5977071253b226b29c8f019f1fb43db4ff3384326",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "commands": [
+    {
+      "label": "C46/frontend/1",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/wizard/wizard.test.tsx",
+        "src/v2/wizard/wizard-boards.test.tsx",
+        "src/contracts/refinement-contract.test.ts",
+        "src/contracts/setup-warning-contract.test.ts",
+        "src/v2/inbox/setup-warning.test.tsx",
+        "src/v2/settings/setup-warning-history.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4825,
+      "output_sha256": "b02e31a10b19a778c45359574a3439f6761b06da66db02c417a9c0fcbd80383d",
+      "log": "logs/C46-frontend-1.log",
+      "tests": {
+        "passed": 41,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/frontend/2",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/settings/management-credential.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2470,
+      "output_sha256": "b2a6f966ac09308c4c0e4e8f05e767cf0ebc488d52bc974ce673dca1cd666ecc",
+      "log": "logs/C46-frontend-2.log",
+      "tests": {
+        "passed": 6,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/frontend/3",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/inbox/inbox.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 4232,
+      "output_sha256": "427390f797a896c03cc70a8c56f72e022942cf2f53b0e2d0728d1a6d090a6596",
+      "log": "logs/C46-frontend-3.log",
+      "tests": {
+        "passed": 26,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/frontend/4",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/modules/diagnostics/diagnostics-panel.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2144,
+      "output_sha256": "3be23f5f50ed461a9921b17b4e8439ac9d4b6fba975ccb69ee6912492f4bb0df",
+      "log": "logs/C46-frontend-4.log",
+      "tests": {
+        "passed": 3,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/frontend/5",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/admin/administration.test.tsx",
+        "src/v2/home.test.tsx",
+        "src/v2/v2-shell.test.tsx",
+        "-t",
+        "renders the inventory|opens a card|opens the Gateway workspace"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 2457,
+      "output_sha256": "fd4df89aeaa3ce779a142535868c3c4b1863cc53b5bd47ccf59634ecd8dbac30",
+      "log": "logs/C46-frontend-5.log",
+      "tests": {
+        "passed": 3,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C47/fixture",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/shell-refinement.test.tsx",
+        "src/v2/v2-shell.test.tsx",
+        "src/v2/modal.test.tsx",
+        "src/v2/home.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 5201,
+      "output_sha256": "88cabfc0b3cf08bd84b79f25a83fc54b7e64de655d095be7618abedc8ad68019",
+      "log": "logs/C47-fixture.log",
+      "tests": {
+        "passed": 52,
+        "failed": 0
+      },
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C47/frontend/2",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/modules/sessions/sessions-view.test.tsx",
+        "src/v2/admin/administration.test.tsx",
+        "src/v2/harness/harness.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": 1,
+      "duration_ms": 10692,
+      "output_sha256": "0fb21d6b3b02cf30836ae83f9ba933cafb5fadd224000db816c124f18bd3de60",
+      "log": "logs/C47-frontend-2.log",
+      "tests": {
+        "passed": 104,
+        "failed": 1
+      },
+      "status": "failed",
+      "note": "exit status Some(1)"
+    },
+    {
+      "label": "C47/frontend/3",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/academy/academy.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "C47/frontend/4",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/workbench.test.tsx",
+        "-t",
+        "C33 boards|call record contract|v2 Test Cases|Show the calls"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "C48/frontend/1",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx",
+        "src/v2/workbench/request-presentation.test.ts",
+        "src/modules/workbench/document-save.test.tsx"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "C48/frontend/2",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/workbench.test.tsx",
+        "-t",
+        "announces request identity"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    },
+    {
+      "label": "C49/frontend/1",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-airs/desktop",
+        "exec",
+        "vitest",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/shell/appearance.test.ts",
+        "src/shell/palette-contrast.test.ts",
+        "src/v2/settings/refinement-settings.test.tsx",
+        "src/modules/tenants/credential-entry.test.tsx",
+        "src/modules/tenants/reset.test.tsx",
+        "src/modules/academy/academy-account.test.tsx",
+        "src/shell/academy-theme-boundary.test.ts"
+      ],
+      "cwd": ".",
+      "exit_code": null,
+      "duration_ms": 0,
+      "output_sha256": "",
+      "log": "",
+      "tests": null,
+      "status": "blocked",
+      "note": "an earlier command failed"
+    }
+  ],
+  "status": "failed",
+  "failure": "C47/frontend/2 exit status Some(1)",
+  "artifacts": []
+}

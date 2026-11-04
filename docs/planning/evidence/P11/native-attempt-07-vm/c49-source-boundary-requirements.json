@@ -1,0 +1,22 @@
+{
+  "frontend": [
+    "src/v2/settings/refinement-settings.test.tsx",
+    "src/modules/tenants/credential-entry.test.tsx",
+    "src/v2/settings/management-credential.test.tsx",
+    "src/shell/appearance.test.ts",
+    "src/shell/palette-contrast.test.ts",
+    "src/v2/academy/academy.test.tsx"
+  ],
+  "rust": [
+    "refinement_metadata",
+    "color_theme",
+    "ui_v2_setup_reads",
+    "ui_v2_onboarding"
+  ],
+  "not_claimed_by_native": [
+    "secret clearing occurs before awaiting dispatch",
+    "stale context and cross-profile authority are rejected",
+    "failed persistence and cancellation roll back safely",
+    "measured palette contrast and Academy earned-skin authority"
+  ]
+}

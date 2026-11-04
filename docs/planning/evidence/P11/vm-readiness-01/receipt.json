@@ -1,0 +1,660 @@
+{
+  "host": "worf-vm",
+  "session": "p11-vm-probe-01",
+  "bundle_sha256": "87f125920c50de555ecbb58141d3bd4e4c285a0cab2d8e1ebb4246b2263a09be",
+  "executable_sha256": "3239facd680ed48306306d6fc8931b9bbe164a73a59042eaf841c92c48d405a8",
+  "actions": [
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-01",
+        "list-apps",
+        "--app",
+        "Prisma AIRS"
+      ],
+      "result": {
+        "command": "list-apps",
+        "data": {
+          "apps": [
+            {
+              "bundle_id": "io.cdot.airs-desktop.fixture",
+              "name": "Prisma AIRS Desktop Fixture",
+              "pid": 45997,
+              "presentation": "foreground",
+              "process_instance": "macos-proc-v1:1793801590:548680"
+            }
+          ]
+        },
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-01",
+        "list-windows",
+        "--app",
+        "Prisma AIRS Desktop Fixture"
+      ],
+      "result": {
+        "command": "list-windows",
+        "data": [
+          {
+            "accessible": true,
+            "app_name": "Prisma AIRS Desktop Fixture",
+            "bounds": {
+              "height": 820.0,
+              "width": 1280.0,
+              "x": 320.0,
+              "y": 95.0
+            },
+            "id": "w-6463",
+            "is_focused": false,
+            "minimized": false,
+            "pid": 45997,
+            "process_instance": "macos-proc-v1:1793801590:548680",
+            "title": "Prisma AIRS Desktop (Fixture)",
+            "visible": true
+          }
+        ],
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-01",
+        "--headed",
+        "focus-window",
+        "--window-id",
+        "w-6463"
+      ],
+      "result": {
+        "command": "focus-window",
+        "data": {
+          "focused": {
+            "accessible": true,
+            "app_name": "Prisma AIRS Desktop Fixture",
+            "bounds": {
+              "height": 820.0,
+              "width": 1280.0,
+              "x": 320.0,
+              "y": 95.0
+            },
+            "id": "w-6463",
+            "is_focused": true,
+            "minimized": false,
+            "pid": 45997,
+            "process_instance": "macos-proc-v1:1793801590:548680",
+            "title": "Prisma AIRS Desktop (Fixture)",
+            "visible": true
+          }
+        },
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/agent-desktop",
+        "--session",
+        "p11-vm-probe-01",
+        "snapshot",
+        "--app",
+        "Prisma AIRS Desktop Fixture",
+        "--window-id",
+        "w-6463",
+        "--max-depth",
+        "30",
+        "--timeout-ms",
+        "10000",
+        "--wait-for",
+        "heading:Welcome to Prisma AIRS Desktop",
+        "--wait-timeout",
+        "15000"
+      ],
+      "result": {
+        "command": "snapshot",
+        "data": {
+          "app": "Prisma AIRS Desktop Fixture",
+          "complete": true,
+          "elapsed_ms": 2249,
+          "matched_selector": "heading:Welcome to Prisma AIRS Desktop",
+          "ref_count": 13,
+          "snapshot_id": "s3ioyet5jfi43r",
+          "tree": {
+            "children": [
+              {
+                "available_actions": [
+                  "SetFocus"
+                ],
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "available_actions": [
+                          "RightClick",
+                          "ScrollTo",
+                          "SetFocus"
+                        ],
+                        "children": [
+                          {
+                            "available_actions": [
+                              "RightClick",
+                              "ScrollTo",
+                              "SetFocus"
+                            ],
+                            "children": [
+                              {
+                                "available_actions": [
+                                  "RightClick",
+                                  "ScrollTo"
+                                ],
+                                "children": [
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo"
+                                    ],
+                                    "name": "Prisma AIRS",
+                                    "role": "statictext",
+                                    "value": "Prisma AIRS"
+                                  },
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo"
+                                    ],
+                                    "name": "Setup \u00b7 about 5 minutes",
+                                    "role": "statictext",
+                                    "value": "Setup \u00b7 about 5 minutes"
+                                  },
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo",
+                                      "Select"
+                                    ],
+                                    "children": [
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo",
+                                              "SetFocus"
+                                            ],
+                                            "name": "1 Welcome",
+                                            "ref_id": "@s3ioyet5jfi43r:e2",
+                                            "role": "button"
+                                          }
+                                        ],
+                                        "role": "group"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "2 Tenant",
+                                            "ref_id": "@s3ioyet5jfi43r:e3",
+                                            "role": "button",
+                                            "states": [
+                                              "disabled"
+                                            ]
+                                          }
+                                        ],
+                                        "role": "group",
+                                        "value": "2 Tenant"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "3 Products",
+                                            "ref_id": "@s3ioyet5jfi43r:e4",
+                                            "role": "button",
+                                            "states": [
+                                              "disabled"
+                                            ]
+                                          }
+                                        ],
+                                        "role": "group",
+                                        "value": "3 Products"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "4 Verify",
+                                            "ref_id": "@s3ioyet5jfi43r:e5",
+                                            "role": "button",
+                                            "states": [
+                                              "disabled"
+                                            ]
+                                          }
+                                        ],
+                                        "role": "group",
+                                        "value": "4 Verify"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "5 Starter cases Optional",
+                                            "ref_id": "@s3ioyet5jfi43r:e6",
+                                            "role": "button",
+                                            "states": [
+                                              "disabled"
+                                            ]
+                                          }
+                                        ],
+                                        "role": "group",
+                                        "value": "5 Starter cases Optional"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "6 Academy Optional",
+                                            "ref_id": "@s3ioyet5jfi43r:e7",
+                                            "role": "button",
+                                            "states": [
+                                              "disabled"
+                                            ]
+                                          }
+                                        ],
+                                        "role": "group",
+                                        "value": "6 Academy Optional"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "Click",
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "7 Done",
+                                            "ref_id": "@s3ioyet5jfi43r:e8",
+                                            "role": "button",
+                                            "states": [
+                                              "disabled"
+                                            ]
+                                          }
+                                        ],
+                                        "role": "group",
+                                        "value": "7 Done"
+                                      }
+                                    ],
+                                    "ref_id": "@s3ioyet5jfi43r:e1",
+                                    "role": "list"
+                                  },
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo"
+                                    ],
+                                    "name": "Secrets go straight to secure storage. Tenant calls go only to your own tenant. Joining the Academy is optional and sends your account details and progress to Academy.",
+                                    "role": "statictext",
+                                    "value": "Secrets go straight to secure storage. Tenant calls go only to your own tenant. Joining the Academy is optional and sends your account details and progress to Academy."
+                                  },
+                                  {
+                                    "available_actions": [
+                                      "Click",
+                                      "RightClick",
+                                      "ScrollTo",
+                                      "SetFocus"
+                                    ],
+                                    "name": "Dark appearance",
+                                    "ref_id": "@s3ioyet5jfi43r:e9",
+                                    "role": "button"
+                                  }
+                                ],
+                                "description": "Setup steps",
+                                "name": "Setup steps",
+                                "role": "navigation"
+                              },
+                              {
+                                "available_actions": [
+                                  "RightClick",
+                                  "ScrollTo"
+                                ],
+                                "children": [
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo"
+                                    ],
+                                    "children": [
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "Welcome to Prisma AIRS Desktop",
+                                            "role": "statictext",
+                                            "value": "Welcome to Prisma AIRS Desktop"
+                                          }
+                                        ],
+                                        "name": "Welcome to Prisma AIRS Desktop",
+                                        "native_id": {
+                                          "kind": "ax_dom_identifier",
+                                          "value": "_r_0_"
+                                        },
+                                        "role": "heading",
+                                        "states": [
+                                          "focused"
+                                        ],
+                                        "value": "1"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "This app is built entirely on Palo Alto Networks\u2019 own public APIs: the same programmatic interfaces any application builder can use. Everything you will see here, from reading a tenant\u2019s security posture to scanning a prompt, is an API call you could make yourself. It exists to show how much those interfaces make possible.",
+                                            "role": "statictext",
+                                            "value": "This app is built entirely on Palo Alto Networks\u2019 own public APIs: the same programmatic interfaces any application builder can use. Everything you will see here, from reading a tenant\u2019s security posture to scanning a prompt, is an API call you could make yourself. It exists to show how much those interfaces make possible."
+                                          }
+                                        ],
+                                        "role": "group"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "name": "We will walk you through it: connect a tenant with the credentials an integration would use, pick the products you manage, check the connection, and optionally load starter test cases. It takes about five minutes, and you can change everything later.",
+                                            "role": "statictext",
+                                            "value": "We will walk you through it: connect a tenant with the credentials an integration would use, pick the products you manage, check the connection, and optionally load starter test cases. It takes about five minutes, and you can change everything later."
+                                          }
+                                        ],
+                                        "role": "group"
+                                      },
+                                      {
+                                        "available_actions": [
+                                          "RightClick",
+                                          "ScrollTo"
+                                        ],
+                                        "children": [
+                                          {
+                                            "available_actions": [
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "children": [
+                                              {
+                                                "available_actions": [
+                                                  "RightClick",
+                                                  "ScrollTo"
+                                                ],
+                                                "name": "Built on the public APIs",
+                                                "role": "statictext",
+                                                "value": "Built on the public APIs"
+                                              },
+                                              {
+                                                "available_actions": [
+                                                  "RightClick",
+                                                  "ScrollTo"
+                                                ],
+                                                "name": "Nothing here uses a private interface. What the app reads and changes, your own code can read and change.",
+                                                "role": "statictext",
+                                                "value": "Nothing here uses a private interface. What the app reads and changes, your own code can read and change."
+                                              }
+                                            ],
+                                            "role": "group"
+                                          },
+                                          {
+                                            "available_actions": [
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "children": [
+                                              {
+                                                "available_actions": [
+                                                  "RightClick",
+                                                  "ScrollTo"
+                                                ],
+                                                "name": "See the calls as you go",
+                                                "role": "statictext",
+                                                "value": "See the calls as you go"
+                                              },
+                                              {
+                                                "available_actions": [
+                                                  "RightClick",
+                                                  "ScrollTo"
+                                                ],
+                                                "name": "With \u201cShow the calls\u201d on, each request the app sends is shown as it happens, with its response.",
+                                                "role": "statictext",
+                                                "value": "With \u201cShow the calls\u201d on, each request the app sends is shown as it happens, with its response."
+                                              }
+                                            ],
+                                            "role": "group"
+                                          },
+                                          {
+                                            "available_actions": [
+                                              "RightClick",
+                                              "ScrollTo"
+                                            ],
+                                            "children": [
+                                              {
+                                                "available_actions": [
+                                                  "RightClick",
+                                                  "ScrollTo"
+                                                ],
+                                                "name": "Learn by doing",
+                                                "role": "statictext",
+                                                "value": "Learn by doing"
+                                              },
+                                              {
+                                                "available_actions": [
+                                                  "RightClick",
+                                                  "ScrollTo"
+                                                ],
+                                                "name": "Scan a prompt, read a tenant, review a change. The Academy explains the why; this app shows the how.",
+                                                "role": "statictext",
+                                                "value": "Scan a prompt, read a tenant, review a change. The Academy explains the why; this app shows the how."
+                                              }
+                                            ],
+                                            "role": "group"
+                                          }
+                                        ],
+                                        "role": "group"
+                                      }
+                                    ],
+                                    "description": "Welcome to Prisma AIRS Desktop",
+                                    "name": "Welcome to Prisma AIRS Desktop",
+                                    "role": "group"
+                                  }
+                                ],
+                                "role": "main"
+                              },
+                              {
+                                "available_actions": [
+                                  "RightClick",
+                                  "ScrollTo"
+                                ],
+                                "children": [
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo"
+                                    ],
+                                    "role": "group"
+                                  },
+                                  {
+                                    "available_actions": [
+                                      "RightClick",
+                                      "ScrollTo"
+                                    ],
+                                    "name": "Step 1 of 7",
+                                    "role": "statictext",
+                                    "value": "Step 1 of 7"
+                                  },
+                                  {
+                                    "available_actions": [
+                                      "Click",
+                                      "RightClick",
+                                      "ScrollTo",
+                                      "SetFocus"
+                                    ],
+                                    "name": "Set up a tenant",
+                                    "ref_id": "@s3ioyet5jfi43r:e10",
+                                    "role": "button"
+                                  }
+                                ],
+                                "role": "contentinfo"
+                              }
+                            ],
+                            "name": "Prisma AIRS Desktop",
+                            "role": "webarea",
+                            "states": [
+                              "focused"
+                            ]
+                          }
+                        ],
+                        "role": "scrollarea",
+                        "states": [
+                          "focused"
+                        ]
+                      }
+                    ],
+                    "role": "group"
+                  }
+                ],
+                "role": "group"
+              },
+              {
+                "available_actions": [
+                  "Click"
+                ],
+                "name": "Close",
+                "ref_id": "@s3ioyet5jfi43r:e11",
+                "role": "button"
+              },
+              {
+                "available_actions": [
+                  "Click",
+                  "RightClick"
+                ],
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "role": "group"
+                      }
+                    ],
+                    "role": "group"
+                  }
+                ],
+                "name": "Full Screen",
+                "ref_id": "@s3ioyet5jfi43r:e12",
+                "role": "button"
+              },
+              {
+                "available_actions": [
+                  "Click"
+                ],
+                "name": "Minimize",
+                "ref_id": "@s3ioyet5jfi43r:e13",
+                "role": "button"
+              },
+              {
+                "name": "Prisma AIRS Desktop (Fixture)",
+                "role": "statictext",
+                "value": "Prisma AIRS Desktop (Fixture)"
+              }
+            ],
+            "name": "Prisma AIRS Desktop (Fixture)",
+            "role": "window"
+          },
+          "window": {
+            "id": "w-6463",
+            "title": "Prisma AIRS Desktop (Fixture)"
+          }
+        },
+        "ok": true,
+        "version": "2.5"
+      }
+    }
+  ],
+  "status": "observed",
+  "owned_pid": 45997,
+  "swift_before_nodes": 0,
+  "window_id": "w-6463",
+  "swift_after_nodes": 53,
+  "legacy_welcome_readable": true,
+  "finished_utc": "2026-11-04T14:13:13Z"
+}

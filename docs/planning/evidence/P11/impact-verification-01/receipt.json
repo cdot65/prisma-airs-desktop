@@ -1,0 +1,86 @@
+{
+  "host": "worf-vm",
+  "started_utc": "2026-11-04T14:56:49.470038+00:00",
+  "labels": {
+    "check": [
+      "C46/check/1",
+      "C46/check/4"
+    ],
+    "test": [
+      "C46/frontend/1",
+      "C46/frontend/2",
+      "C46/frontend/3",
+      "C46/frontend/4",
+      "C46/frontend/5",
+      "C47/fixture",
+      "C47/frontend/2",
+      "C47/frontend/3",
+      "C47/frontend/4",
+      "C48/frontend/1",
+      "C48/frontend/2",
+      "C49/frontend/1"
+    ]
+  },
+  "commands": [
+    {
+      "kind": "check",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--example",
+        "p11_affected",
+        "--",
+        "check",
+        "C46/check/1",
+        "C46/check/4"
+      ],
+      "exit_code": 0,
+      "raw": {
+        "path": "docs/planning/evidence/P11/runs/check-20261104T145708Z-95bd4f/run.json",
+        "sha256": "154701a99920994690f2777f2ed25ac04c1db848b63cac1bba597cef2b65a5cb"
+      },
+      "log_sha256": "b76a8362fbc76b7805f6bcc72b2a74ebe0191528f17e9fc46468485c823481f5",
+      "raw_status": "passed",
+      "tests_passed": 0,
+      "tests_failed": 0
+    },
+    {
+      "kind": "test",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--example",
+        "p11_affected",
+        "--",
+        "test",
+        "C46/frontend/1",
+        "C46/frontend/2",
+        "C46/frontend/3",
+        "C46/frontend/4",
+        "C46/frontend/5",
+        "C47/fixture",
+        "C47/frontend/2",
+        "C47/frontend/3",
+        "C47/frontend/4",
+        "C48/frontend/1",
+        "C48/frontend/2",
+        "C49/frontend/1"
+      ],
+      "exit_code": 1,
+      "raw": {
+        "path": "docs/planning/evidence/P11/runs/test-20261104T145718Z-86db66/run.json",
+        "sha256": "9573321db1ddb1678af0970e9f47a85325662c28148155e501e084e4be2b30a0"
+      },
+      "log_sha256": "0f2c16df5c264b3ced00103f358899f82f15a00ebeff4976815453c6edd238d1",
+      "raw_status": "failed",
+      "tests_passed": 235,
+      "tests_failed": 1
+    }
+  ]
+}
