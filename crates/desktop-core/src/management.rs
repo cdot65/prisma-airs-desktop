@@ -439,6 +439,10 @@ pub enum ManagementFailure {
 impl ManagementFailure {
     pub fn from_sdk(error: &scm_sdk::Error) -> Self {
         match (error.kind(), error.status()) {
+            // The SDK tags issuer HTTP failures as Authentication too; keep
+            // transient service causes distinct from rejected credentials.
+            (ErrorKind::Authentication, Some(429)) => Self::RateLimited,
+            (ErrorKind::Authentication, Some(s)) if s >= 500 => Self::Unavailable,
             (ErrorKind::Authentication, _) => Self::Unauthorized,
             (ErrorKind::Http, Some(401)) => Self::Unauthorized,
             (ErrorKind::Http, Some(403)) => Self::Denied,

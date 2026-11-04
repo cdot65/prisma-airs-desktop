@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use desktop_core::features::{ProductId, VerifyLine, VerifyState};
 use desktop_core::fixtures::{self, Handles};
-use desktop_core::management::{ManagementEndpoints, ManagementResult};
+use desktop_core::management::{ManagementEndpoints, ManagementFailure, ManagementResult};
 use desktop_core::transport::{ProxyMode, TransportPolicy};
 use desktop_core::{
     AuthorityHandle, Core, CoreConfig, Delivery, Intent, Observation, Receipt, Refusal, ScanState,
@@ -1120,4 +1120,75 @@ async fn refinement_production_policy_rejects_the_legacy_create_tenant_bypass() 
     assert!(desk.snap().tenants.is_empty());
     assert!(desk.snap().active.is_none());
     assert!(desk._server.seen().is_empty());
+}
+
+async fn issuer_failure_keeps_its_cause(status: u16, expected: ManagementFailure) {
+    let mut desk = desk_with_fixture_creation(false).await;
+    desk.send(
+        json!({"kind": "beginTenantSetup", "mode": "add", "profile": {
+            "label": "Issuer failure", "tsgId": TSG,
+            "destination": {"kind": "region", "region": "europe"}
+        }}),
+    )
+    .await
+    .expect("draft");
+    let context = desk.draft_context();
+    desk.send(
+        json!({"kind": "configureManagementCredential", "context": context,
+            "mode": "session", "clientId": CLIENT_ID, "secret": CLIENT_SECRET
+        }),
+    )
+    .await
+    .expect("client");
+    assert!(eventually(|| desk.setup().tenant.management.state == ScanState::Ready).await);
+    let context = desk.draft_context();
+    desk.script.lock().expect("script").token_status = status;
+    let result = desk.read(&context, json!({"kind": "verify"})).await;
+    assert!(
+        matches!(result, ManagementResult::Failed { failure, .. } if failure == expected),
+        "issuer {status}: {result:?}"
+    );
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify draft");
+    let verify = desk.verified().await;
+    assert!(verify.blocking && !desk.setup().completable);
+    assert_eq!(
+        desk.send(json!({"kind": "completeTenantSetup", "context": context, "packs": []}))
+            .await,
+        Err(Refusal::InvalidInput)
+    );
+    assert!(desk.snap().tenants.is_empty());
+    assert!(
+        desk._server
+            .seen()
+            .iter()
+            .all(|request| request.request_line.contains("/oauth2/access_token")),
+        "a failed grant must not become a product permission probe"
+    );
+}
+
+#[tokio::test]
+async fn refinement_issuer_400_is_an_authentication_failure() {
+    issuer_failure_keeps_its_cause(400, ManagementFailure::Unauthorized).await;
+}
+
+#[tokio::test]
+async fn refinement_issuer_401_is_an_authentication_failure() {
+    issuer_failure_keeps_its_cause(401, ManagementFailure::Unauthorized).await;
+}
+
+#[tokio::test]
+async fn refinement_issuer_403_does_not_prove_authentication() {
+    issuer_failure_keeps_its_cause(403, ManagementFailure::Unauthorized).await;
+}
+
+#[tokio::test]
+async fn refinement_issuer_429_retains_the_rate_limit_cause() {
+    issuer_failure_keeps_its_cause(429, ManagementFailure::RateLimited).await;
+}
+
+#[tokio::test]
+async fn refinement_issuer_503_retains_the_service_failure_cause() {
+    issuer_failure_keeps_its_cause(503, ManagementFailure::Unavailable).await;
 }
