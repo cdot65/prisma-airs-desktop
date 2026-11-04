@@ -359,7 +359,7 @@ describe('Show the calls', () => {
         expect(items[1]).toHaveTextContent('200 · 1.3 s')
         expect(items[0]).toHaveTextContent('management client token (attached by the core)')
         expect(within(panel).getByText(/never shown, and neither are queries or bodies/)).toBeInTheDocument()
-        await user.click(within(panel).getByRole('button', { name: 'Hide the calls' }))
+        await user.click(within(panel).getByRole('button', { name: 'Close Explain' }))
         expect(native.dispatched).toContainEqual({ kind: 'setShowCalls', on: false })
         // The core turns it off: the panel goes.
         await native.push({ ...native.current, showCalls: false, calls: undefined })

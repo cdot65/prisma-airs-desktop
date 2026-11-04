@@ -100,7 +100,8 @@ describe('C42 Academy board', () => {
     it('draws the chrome around the guest catalog: the pills, the frame, Your place, the Learning paths row from paths.list, through the guest generation only', async () => {
         const native = academyNative(replies)
         render(<Academy snapshot={academySnapshot(false)} client={native.client} onNavigate={vi.fn()} />)
-        expect(screen.getByRole('heading', { level: 1, name: 'AI Security Academy' })).toBeInTheDocument()
+        expect(screen.getByRole('region', { name: 'Academy' })).toBeInTheDocument()
+        expect(screen.queryByRole('heading', { name: 'AI Security Academy' })).toBeNull()
         expect(screen.getByText('Learn each product with your own tenant beside you')).toBeInTheDocument()
         expect(document.querySelector('[data-slot="academy-account"]')).toHaveTextContent('Browsing as a guest')
         expect(document.querySelector('[data-slot="academy-offline-pill"]')).toBeNull()
@@ -501,7 +502,7 @@ describe('C42 Academy board', () => {
         }
         const native = scriptedNative(snapshot)
         render(<App client={new DesktopClient(native.transport)} />)
-        expect(await screen.findByRole('heading', { level: 1, name: 'AI Security Academy' })).toBeInTheDocument()
+        expect(await screen.findByRole('heading', { level: 1, name: 'Academy' })).toBeInTheDocument()
         expect(document.querySelector('[data-slot="academy-v2"]')).not.toBeNull()
         expect(document.querySelector('[data-slot="academy"]')).toBeNull()
         expect(screen.getByRole('region', { name: 'Your place' })).toBeInTheDocument()

@@ -1,3 +1,4 @@
+import { PageIntro } from '../page-intro'
 import { forwardRef, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { CaseProduct, CaseView, FeatureId, Intent, LibraryNotice, ShellSnapshot } from '@prisma-airs/desktop-contracts'
@@ -65,7 +66,7 @@ const GRID = 'minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(0, 2.2fr) minmax(0, 176px
  * product's case is inspected only. Nothing on this screen dispatches a
  * scan (V2-T15).
  */
-export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function TestCases({ snapshot, dispatch, onNavigate }, ref) {
+export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function TestCases({ snapshot, dispatch, onNavigate }, _ref) {
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
     const context = snapshot.active?.context ?? null
     const library = snapshot.library
@@ -119,35 +120,19 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
     }
 
     const heading = (
-        <div className='flex flex-wrap items-end' style={{ gap: 12 }}>
-            <div className='min-w-0'>
-                <h1 ref={ref} id='cases-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                    {C.title}
-                </h1>
-                {tenant ? (
-                    <p className='text-[14px]' style={{ marginTop: 4, ...soft }} data-slot='cases-count'>
-                        {C.count(cases.length, tenant.label)}
-                    </p>
-                ) : null}
-            </div>
-            {tenant && context ? (
-                <div className='ml-auto flex shrink-0 flex-wrap' style={{ gap: 8 }} data-slot='cases-actions'>
-                    <Btn disabled={!ready} aria-haspopup='dialog' onClick={() => setPacks(true)}>
-                        {C.loadPacks}
-                    </Btn>
-                    <Btn tier='primary' className='px-4' disabled={!ready} aria-haspopup='dialog' onClick={() => setAuthoring(true)}>
-                        {C.newCase}
-                    </Btn>
-                </div>
-            ) : null}
-        </div>
+        <PageIntro
+            description={tenant ? <p data-slot='cases-count'>{C.count(cases.length, tenant.label)}</p> : C.noTenant}
+            actions={tenant && context ? <div className='flex min-w-0 flex-wrap' style={{ gap: 8 }} data-slot='cases-actions'>
+                <Btn disabled={!ready} aria-haspopup='dialog' onClick={() => setPacks(true)}>{C.loadPacks}</Btn>
+                <Btn tier='primary' className='px-4' disabled={!ready} aria-haspopup='dialog' onClick={() => setAuthoring(true)}>{C.newCase}</Btn>
+            </div> : undefined}
+        />
     )
 
     if (!tenant || !context) {
         return (
-            <section aria-labelledby='cases-heading' data-slot='cases-v2' className='flex flex-col' style={{ gap: 20 }}>
+            <section aria-label={C.title} data-slot='cases-v2' className='flex flex-col' style={{ gap: 20 }}>
                 {heading}
-                <p className='text-[14px]'>{C.noTenant}</p>
             </section>
         )
     }
@@ -214,7 +199,7 @@ export const TestCases = forwardRef<HTMLHeadingElement, TestCasesProps>(function
         </>
     )
     return (
-        <section aria-labelledby='cases-heading' data-slot='cases-v2' className='flex min-w-0 flex-col' style={{ gap: 20 }}>
+        <section aria-label={C.title} data-slot='cases-v2' className='flex min-w-0 flex-col' style={{ gap: 20 }}>
             {heading}
             {snapshot.showCalls ? (
                 <div className='flex rounded-[10px] text-[13px] leading-[1.45]' style={{ gap: 8, padding: '12px 14px', background: 'var(--v2-acc-soft)', maxWidth: 860 }} data-slot='cases-explain'>

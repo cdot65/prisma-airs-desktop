@@ -132,6 +132,8 @@ export const CALLS_COPY = {
     note: 'The newest 50 calls this app made for this tenant, newest last. The core attaches the real credential; it is never shown, and neither are queries or bodies.',
     empty: 'No calls yet. Read, scan or apply something and its calls appear here.',
     hide: 'Hide the calls',
+    close: 'Close',
+    closeExplain: 'Close Explain',
     purpose: { scan: 'Scan', management: 'Management', inference: 'AI Gateway' } as Record<CallPurpose, string>,
     credential: {
         scanKey: 'scan API key (attached by the core)',

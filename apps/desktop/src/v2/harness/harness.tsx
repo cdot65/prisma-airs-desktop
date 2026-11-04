@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useRef, useState } from 'react'
 import type { ConversationView, FeatureId, HarnessApproval, HarnessEntry, Intent, ProposalView, RotationView, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, type DispatchOutcome, outcomeMessage } from '../../modules/tenants/dispatch'
 import { Glyph } from '../icons'
+import { PageIntro } from '../page-intro'
 import { MANAGEMENT_FAILURE_TEXT } from '../../modules/administration/management-read'
 import { type Arrival, useShellStore } from '../store'
 import { Verdict, type VerdictTone } from '../verdict'
@@ -67,7 +68,7 @@ type Queued = { id: number; text: string; raw: string } & (
  * that scope, with "Put it in the box", unless the box still holds it;
  * nothing is ever sent by itself.
  */
-export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Harness({ snapshot, dispatch, onNavigate, arrival }, ref) {
+export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Harness({ snapshot, dispatch, onNavigate, arrival }, _ref) {
     const context = snapshot.active?.context ?? null
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
     const selected = snapshot.gateway.selected
@@ -511,28 +512,19 @@ export const Harness = forwardRef<HTMLHeadingElement, HarnessProps>(function Har
     const secondary = { border: '1px solid var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }
     const primary = { background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }
     return (
-        // The board (R2App start=harness) owns the page: its title band carries the page margins, the
+        // The board (R2App start=harness) owns the page: its description band carries the page margins, the
         // three columns run edge to edge beneath it.
         <section
-            aria-labelledby='harness-heading'
+            aria-label={C.title}
             data-slot='harness-v2'
             className='flex min-h-0 min-w-0 flex-grow flex-col'
             style={{ margin: 'calc(-1 * var(--v2-page-top)) calc(-1 * var(--v2-page-x)) -28px' }}
         >
-            <div data-slot='harness-band' className='flex shrink-0 items-end' style={{ gap: 12, padding: 'var(--v2-page-top) var(--v2-page-x) 18px', borderBottom: '1px solid var(--v2-rule)' }}>
-                <div className='min-w-0'>
-                    <h1 ref={ref} id='harness-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                        {C.title}
-                    </h1>
-                    <p className='truncate text-[14px]' data-slot='harness-status' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
-                        {subtitle}
-                    </p>
-                </div>
-                {current ? (
-                    <button type='button' className={`${button32} ml-auto shrink-0 px-3.5`} style={secondary} onClick={() => void run({ kind: 'endHarness', conversation: current.id })}>
-                        {C.end}
-                    </button>
-                ) : null}
+            <div data-slot='harness-band' className='shrink-0' style={{ padding: 'var(--v2-page-top) var(--v2-page-x) 18px', borderBottom: '1px solid var(--v2-rule)' }}>
+                <PageIntro
+                    description={<p data-slot='harness-status'>{subtitle}</p>}
+                    actions={current ? <button type='button' className={`${button32} px-3.5`} style={secondary} onClick={() => void run({ kind: 'endHarness', conversation: current.id })}>{C.end}</button> : undefined}
+                />
             </div>
             <div data-slot='harness-columns' className='flex min-h-0 min-w-0 flex-grow flex-nowrap'>
                 <nav aria-label={C.conversations} data-slot='harness-rail' className='flex min-w-0 flex-col overflow-auto' style={{ flex: '0 0 244px', maxWidth: '100%', padding: '20px 12px 22px', gap: 2, borderRight: '1px solid var(--v2-rule)' }}>

@@ -1,3 +1,4 @@
+import { PageIntro } from '../page-intro'
 import { createContext, forwardRef, lazy, Suspense, useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, Link, Outlet, redirect, RouterProvider } from '@tanstack/react-router'
@@ -577,7 +578,7 @@ function AcademyRoutes({
 }
 
 /**
- * The Academy as R2App draws it (C42): the title row with the learner's
+ * The Academy as R2App draws it (C42): the description row with the learner's
  * pills, the 1.4fr/1fr frame (Academy's own learner pages on the left,
  * the learner's place on the right) and the Learning paths row, around
  * the hosted learner pages with the Rust-owned theme. Signed out, the
@@ -593,7 +594,7 @@ export const Academy = forwardRef<HTMLHeadingElement, AcademyProps>(function Aca
             focus: () => {
                 const heading = target?.querySelector('[data-slot="academy-pages"] h1')
                 if (heading instanceof HTMLElement) focusHeading(heading)
-                else target?.querySelector<HTMLElement>('h1')?.focus()
+                else (document.querySelector<HTMLElement>('[data-slot="page-heading"]') ?? target)?.focus()
             },
         } as unknown as HTMLHeadingElement
     })
@@ -605,44 +606,39 @@ export const Academy = forwardRef<HTMLHeadingElement, AcademyProps>(function Aca
     const unreachable = !offline.reachable && offline.state !== 'signedOut'
 
     const band = (
-        <div data-slot='page-header-v2' className='flex flex-wrap items-end' style={{ gap: 12 }}>
-            <div className='min-w-0'>
-                <h1 id='academy-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                    {C.title}
-                </h1>
-                <p className='text-[14px]' style={{ marginTop: 4, ...soft }}>
-                    {C.lead}
-                </p>
-            </div>
-            <span className='ml-auto flex flex-wrap items-center' style={{ gap: 8 }} data-slot='academy-pills'>
-                <span
-                    className='flex items-center rounded-full text-[13px] font-semibold'
-                    style={{ height: 26, padding: '0 12px', gap: 6, background: displayName ? 'var(--v2-acc-soft)' : 'var(--v2-inset)', color: displayName ? 'var(--v2-acc)' : 'var(--v2-soft)' }}
-                    data-slot='academy-account'
-                >
-                    <Glyph name={displayName ? 'cap' : 'eye'} size={12} color='currentColor' />
-                    {displayName ? C.signedIn(displayName) : C.guest}
+        <PageIntro
+            description={C.lead}
+            actions={
+                <span className='ml-auto flex flex-wrap items-center' style={{ gap: 8 }} data-slot='academy-pills'>
+                    <span
+                        className='flex items-center rounded-full text-[13px] font-semibold'
+                        style={{ height: 26, padding: '0 12px', gap: 6, background: displayName ? 'var(--v2-acc-soft)' : 'var(--v2-inset)', color: displayName ? 'var(--v2-acc)' : 'var(--v2-soft)' }}
+                        data-slot='academy-account'
+                    >
+                        <Glyph name={displayName ? 'cap' : 'eye'} size={12} color='currentColor' />
+                        {displayName ? C.signedIn(displayName) : C.guest}
+                    </span>
+                    {unreachable ? (
+                        <span
+                            className='flex items-center rounded-full text-[13px] font-semibold'
+                            style={{ height: 26, padding: '0 12px', gap: 6, background: 'var(--v2-flag-bg)', color: 'var(--v2-flag)' }}
+                            data-slot='academy-offline-pill'
+                        >
+                            {C.offline}
+                        </span>
+                    ) : null}
+                    {accountId && offline.downloads.length ? (
+                        <span
+                            className='flex items-center rounded-full text-[13px] font-semibold'
+                            style={{ height: 26, padding: '0 12px', background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}
+                            data-slot='academy-downloads-pill'
+                        >
+                            {C.downloads(offline.downloads.length)}
+                        </span>
+                    ) : null}
                 </span>
-                {unreachable ? (
-                    <span
-                        className='flex items-center rounded-full text-[13px] font-semibold'
-                        style={{ height: 26, padding: '0 12px', gap: 6, background: 'var(--v2-flag-bg)', color: 'var(--v2-flag)' }}
-                        data-slot='academy-offline-pill'
-                    >
-                        {C.offline}
-                    </span>
-                ) : null}
-                {accountId && offline.downloads.length ? (
-                    <span
-                        className='flex items-center rounded-full text-[13px] font-semibold'
-                        style={{ height: 26, padding: '0 12px', background: 'var(--v2-inset)', color: 'var(--v2-soft)' }}
-                        data-slot='academy-downloads-pill'
-                    >
-                        {C.downloads(offline.downloads.length)}
-                    </span>
-                ) : null}
-            </span>
-        </div>
+            }
+        />
     )
 
     const place = (

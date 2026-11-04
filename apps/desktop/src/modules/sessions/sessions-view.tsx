@@ -13,7 +13,7 @@ import type {
     SessionsView as SessionsSnapshot,
     ShellSnapshot,
 } from '@prisma-airs/desktop-contracts'
-import { PageHeading } from '../../shell/feature-view'
+import { PageIntro } from '../../v2/page-intro'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
 import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, fieldText, readManagement } from '../administration/management-read'
 import {
@@ -91,7 +91,7 @@ export const REPORT_PROBLEM_TEXT: Record<ReportProblem, string> = {
  */
 export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function SessionsView(
     { snapshot, dispatch, observe, onNavigate },
-    ref
+    _ref
 ) {
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)
     const context: ContextRef | null = snapshot.active?.context ?? null
@@ -103,11 +103,13 @@ export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function Sessi
     useEffect(() => {
         if (context) void dispatch({ kind: 'openReports', context })
     }, [context])
-    const heading = <PageHeading ref={ref} id='sessions-heading' kicker='Sessions & Reports' title='Investigate sessions' />
+    const heading = <PageIntro description={!tenant ? 'Investigate sessions' : ready
+        ? `${tenant.label}, read with its management client. Prompts and responses stay hidden until you reveal them.`
+        : `${tenant.label}. Its FP/FN reports are kept on this Mac and stay available without a management client.`} />
 
     if (!tenant || !context) {
         return (
-            <section aria-labelledby='sessions-heading' data-slot='sessions'>
+            <section aria-label='Sessions & Reports' data-slot='sessions'>
                 {heading}
                 <Callout tone='default' icon={Info} data-slot='sessions-no-tenant'>
                     <p>Add a tenant in Settings to investigate its sessions.</p>
@@ -124,13 +126,8 @@ export const SessionsView = forwardRef<HTMLHeadingElement, Props>(function Sessi
         { id: 'exceptions', label: 'Exception patterns' },
     ]
     return (
-        <section aria-labelledby='sessions-heading' data-slot='sessions' className='flex flex-col gap-5'>
+        <section aria-label='Sessions & Reports' data-slot='sessions' className='flex flex-col gap-5'>
             {heading}
-            <p className='text-academy-ink-soft -mt-4 text-[13px]'>
-                {ready
-                    ? `${tenant.label}, read with its management client. Prompts and responses stay hidden until you reveal them.`
-                    : `${tenant.label}. Its FP/FN reports are kept on this Mac and stay available without a management client.`}
-            </p>
             <div role='tablist' aria-label='Sessions sections' className='flex flex-wrap gap-2'>
                 {tabs.map((t) => (
                     <Button

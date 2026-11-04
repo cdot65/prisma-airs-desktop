@@ -154,7 +154,7 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
                 }
                 actions={context && (
                     <button type='button' onClick={readNow} disabled={read.state === 'reading'} className={`${button32} ml-auto border px-3.5 disabled:opacity-60`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
-                        {read.state === 'reading' ? C.reading : 'Refresh'}
+                        {read.state === 'reading' ? C.reading : C.refresh}
                     </button>
                 )}
             />

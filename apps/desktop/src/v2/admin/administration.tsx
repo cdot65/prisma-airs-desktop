@@ -7,6 +7,7 @@ import type { Act } from '../inbox/inbox'
 import { type Arrival, useShellStore } from '../store'
 import { SHELL_COPY } from '../copy'
 import { Verdict } from '../verdict'
+import { PageIntro } from '../page-intro'
 import { ADMIN_COPY as C } from './copy'
 import { ReviewSheet } from './review-sheet'
 import { InventoryTable } from './inventory-table'
@@ -59,7 +60,7 @@ interface Sheet {
  */
 export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps>(function Administration(
     { snapshot, dispatch, client, onAct, onNavigate, arrival },
-    ref
+    _ref
 ) {
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
     const context = snapshot.active?.context ?? null
@@ -153,11 +154,8 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
 
     if (!tenant || !context) {
         return (
-            <section aria-labelledby='administration-heading' data-slot='administration-v2'>
-                <h1 ref={ref} id='administration-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)' }}>
-                    {C.title}
-                </h1>
-                <p className='mt-2 text-[13px]'>{C.noTenant}</p>
+            <section aria-label={C.title} data-slot='administration-v2'>
+                <PageIntro description={C.noTenant} />
             </section>
         )
     }
@@ -286,21 +284,14 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
     const available = products.filter((p) => p.availability.state === 'available')
     const setAll = (value: boolean) => setOpen(Object.fromEntries(available.map((p) => [p.id, value])))
     return (
-        <section aria-labelledby='administration-heading' data-slot='administration-v2' className='flex min-w-0 flex-col' style={{ gap: 14 }}>
-            <div className='flex flex-wrap items-end' style={{ gap: 12, marginBottom: 4 }}>
-                <div className='min-w-0'>
-                    <h1 ref={ref} id='administration-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                        {C.title}
-                    </h1>
-                    <p className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }} data-slot='admin-sub'>
-                        {C.lead(tenant.label)}
-                    </p>
-                </div>
-                <div className='ml-auto flex shrink-0' style={{ gap: 6 }}>
+        <section aria-label={C.title} data-slot='administration-v2' className='flex min-w-0 flex-col' style={{ gap: 14 }}>
+            <PageIntro
+                description={<p data-slot='admin-sub'>{C.lead(tenant.label)}</p>}
+                actions={<>
                     <Btn onClick={() => setAll(true)}>{C.expandAll}</Btn>
                     <Btn onClick={() => setAll(false)}>{C.collapseAll}</Btn>
-                </div>
-            </div>
+                </>}
+            />
             <ul className='flex flex-col' style={{ gap: 14 }} data-slot='admin-products'>
                 {products.map((product) => {
                     const tabs = product.tabs.filter((t) => t.disposition.kind !== 'removed')

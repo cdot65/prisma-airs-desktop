@@ -33,6 +33,12 @@ describe('refined shell page and Explain ownership', () => {
         expect(within(screen.getByRole('main')).getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
     })
 
+    it.each(['administration', 'library', 'harness', 'academy', 'sessions'] as const)('keeps %s outer descriptions beneath the shared title without another page H1', async (activeFeature) => {
+        await launch({ ...fxSwitcher(), activeFeature })
+        expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+        expect(screen.getByRole('main').querySelector('[data-slot="page-intro"]')).not.toBeNull()
+    })
+
     it('keeps Explain outside page layout and lets navigation continue while it is open', async () => {
         const user = userEvent.setup()
         const native = await launch({ ...fxHome(), showCalls: true, calls: [] })
@@ -75,15 +81,38 @@ describe('refined shell page and Explain ownership', () => {
         await waitFor(() => expect(explain).toHaveFocus())
     })
 
-    it('hides a previous tenant’s drawer immediately and waits for its preference close before reopening', async () => {
+    it('does not send a preference mutation when a tenant change has no visible Explain panel to close', async () => {
+        const native = await launch({ ...fxSwitcher(), showCalls: true, calls: undefined })
+        const other = native.current.tenants[1]!
+        await native.push({ ...native.current, active: { tenant: other.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+        expect(native.dispatched.filter((intent) => intent.kind === 'setShowCalls')).toEqual([])
+    })
+
+    it('retires a pending Explain open when the active tenant changes before its native reply', async () => {
+        const user = userEvent.setup()
+        const native = await launch({ ...fxSwitcher(), showCalls: false, calls: undefined })
+        await user.click(screen.getByRole('switch', { name: 'Show the calls' }))
+        const other = native.current.tenants[1]!
+        await native.push({ ...native.current, active: { tenant: other.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
+        await waitFor(() => expect(native.dispatched.at(-1)).toEqual({ kind: 'setShowCalls', on: false }))
+        await native.push({ ...native.current, showCalls: true, calls: [] })
+        expect(screen.queryByRole('complementary', { name: 'The calls' })).toBeNull()
+    })
+
+    it('hides the previous tenant’s drawer immediately until the operator opens it again', async () => {
+        const user = userEvent.setup()
         const native = await launch({ ...fxSwitcher(), showCalls: true, calls: [] })
         expect(screen.getByRole('complementary', { name: 'The calls' })).toBeInTheDocument()
+        screen.getByRole('button', { name: 'Close Explain' }).focus()
         const other = native.current.tenants.find((t) => t.id !== native.current.active?.tenant)!
         await native.push({ ...native.current, active: { tenant: other.id, context: 'cx-bbbbbbbbbbbbbbbbbbbbbbbb' } })
         expect(screen.queryByRole('complementary', { name: 'The calls' })).toBeNull()
         await waitFor(() => expect(native.dispatched.at(-1)).toEqual({ kind: 'setShowCalls', on: false }))
+        await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toHaveFocus())
         // An unrelated snapshot before the native preference reply cannot revive it.
         await native.push({ ...native.current, appearance: native.current.appearance })
         expect(screen.queryByRole('complementary', { name: 'The calls' })).toBeNull()
+        await user.click(screen.getByRole('switch', { name: 'Show the calls' }))
+        expect(screen.getByRole('complementary', { name: 'The calls' })).toBeInTheDocument()
     })
 })

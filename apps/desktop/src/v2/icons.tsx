@@ -36,7 +36,7 @@ export const PATHS = {
     eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
     dot: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
     play: 'M7 4l13 8-13 8z',
-    sun: 'M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+    sun: 'M12 2v2.25M12 19.75V22M2 12h2.25M19.75 12H22M4.93 4.93l1.59 1.59M17.48 17.48l1.59 1.59M4.93 19.07l1.59-1.59M17.48 6.52l1.59-1.59',
 } as const
 
 export type GlyphName = keyof typeof PATHS
@@ -70,6 +70,7 @@ export const PRODUCT_GLYPHS: Record<AdminProductId, GlyphName> = {
 export function Glyph({ name, size = 16, stroke = 1.8, color, className }: { name: GlyphName; size?: number; stroke?: number; color?: string; className?: string }) {
     return (
         <svg width={size} height={size} viewBox='0 0 24 24' fill='none' stroke={color ?? 'currentColor'} strokeWidth={stroke} strokeLinecap='round' strokeLinejoin='round' aria-hidden='true' className={className} style={{ flexShrink: 0 }}>
+            {name === 'sun' && <circle cx='12' cy='12' r='3.5' />}
             <path d={PATHS[name]} />
         </svg>
     )

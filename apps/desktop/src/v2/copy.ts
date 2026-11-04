@@ -150,6 +150,7 @@ export const INBOX_COPY = {
     footAll: (when: string) => `All sources read at ${when}.`,
     footGateway: (workspace: string, policies: number | null) => `AI Gateway ${workspace}${policies === null ? '' : ` · ${policies} limit polic${policies === 1 ? 'y' : 'ies'}`}`,
     readNow: 'Read now',
+    refresh: 'Refresh',
     detail: 'Details',
     selectHint: 'Select an item to see its details.',
     ariaList: 'Inbox items',

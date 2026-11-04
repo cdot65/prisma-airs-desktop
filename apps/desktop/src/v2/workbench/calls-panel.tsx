@@ -20,8 +20,8 @@ export function CallsPanel({ snapshot, dispatch, onClose }: { snapshot: ShellSna
         <aside aria-label={C.title} data-slot='calls-panel' className='flex min-w-0 flex-col gap-3 p-4 text-[13px]' style={{ width: '100%' }}>
             <div className='flex items-center justify-between gap-2'>
                 <h2 className='text-[15px] font-semibold'>{C.title}</h2>
-                <button type='button' aria-label={onClose ? 'Close Explain' : undefined} className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => (onClose ? onClose() : void dispatch({ kind: 'setShowCalls', on: false }))}>
-                    {onClose ? 'Close' : C.hide}
+                <button type='button' aria-label={onClose ? C.closeExplain : undefined} className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => (onClose ? onClose() : void dispatch({ kind: 'setShowCalls', on: false }))}>
+                    {onClose ? C.close : C.hide}
                 </button>
             </div>
             <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>

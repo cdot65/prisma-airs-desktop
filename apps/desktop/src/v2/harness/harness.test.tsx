@@ -1519,9 +1519,10 @@ describe('v2 Harness', () => {
         // An earlier, separately saved conversation: the live one's own saved copy is not listed twice.
         const earlier = { ...l.saved, id: '7b1c9d2e-3f4a-4b5c-8d6e-7f8091a2b3c4', title: 'Earlier investigation' }
         const { user, native } = await launch(fxHarness(l.steps.approved, {}, [earlier]))
-        // The band: the title, the status line and End conversation at its right.
+        // The header owns the page title; the band keeps status and End conversation.
         const band = document.querySelector('[data-slot="harness-band"]') as HTMLElement
-        expect(within(band).getByRole('heading', { level: 1, name: 'Harness' })).toBeInTheDocument()
+        expect(screen.getByRole('heading', { level: 1, name: 'Harness' })).toBeInTheDocument()
+        expect(within(band).queryByRole('heading', { level: 1 })).toBeNull()
         expect(within(band).getByRole('button', { name: 'End conversation' })).toBeInTheDocument()
         // The rail: the encrypted-saved label, New investigation, the live conversation and the saved one.
         const rail = screen.getByRole('navigation', { name: 'Conversations' })

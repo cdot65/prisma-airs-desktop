@@ -110,11 +110,14 @@ export function V2Shell(props: V2ShellProps) {
     const read = snapshot.inbox.read
     const tenantNow = snapshot.active?.tenant ?? null
     const tenant = snapshot.tenants.find((t) => t.id === tenantNow) ?? null
-    // A tenant change hides the old drawer before a preference reply can arrive.
+    // A tenant change retires the drawer until an explicit open in the new tenant.
+    // A late reply to the old tenant's preference cannot reopen it.
     const [explainTenant, setExplainTenant] = useState<string | null | undefined>(tenantNow)
-    const seenExplainTenant = useRef(tenantNow)
     const explainOpen = snapshot.showCalls && explainTenant === tenantNow
+    const pendingExplainOpen = useRef<string | null | undefined>(undefined)
+    const seenExplain = useRef({ tenant: tenantNow, open: snapshot.showCalls && snapshot.calls !== undefined })
     const setExplain = (on: boolean) => {
+        pendingExplainOpen.current = on ? tenantNow : undefined
         if (on) {
             setExplainTenant(tenantNow)
             explainOpener.current = explainButton.current
@@ -122,15 +125,16 @@ export function V2Shell(props: V2ShellProps) {
         props.onSetShowCalls(on)
     }
     useEffect(() => {
-        if (seenExplainTenant.current !== tenantNow) {
-            seenExplainTenant.current = tenantNow
+        const previous = seenExplain.current
+        seenExplain.current = { tenant: tenantNow, open: explainOpen && snapshot.calls !== undefined }
+        if (previous.tenant !== tenantNow) {
             explainOpener.current = null
+            const wasOpening = pendingExplainOpen.current === previous.tenant
+            pendingExplainOpen.current = undefined
             setExplainTenant(undefined)
-            props.onSetShowCalls(false)
-        } else if (!snapshot.showCalls && explainTenant !== tenantNow) {
-            setExplainTenant(tenantNow)
+            if (previous.open || wasOpening) props.onSetShowCalls(false)
         }
-    }, [tenantNow, snapshot.showCalls, explainTenant, props.onSetShowCalls])
+    }, [tenantNow, snapshot.calls, explainOpen, props.onSetShowCalls])
     const seenGeneration = useRef<{ tenant: string | null; generation: number }>({ tenant: tenantNow, generation: read.generation })
     useEffect(() => {
         const seen = seenGeneration.current
@@ -581,7 +585,7 @@ export function V2Shell(props: V2ShellProps) {
                             {props.status}
                         </p>
                     </main>
-                    {explainOpen && <ExplainDrawer snapshot={snapshot} dispatch={props.dispatch} onClose={() => setExplain(false)} returnFocus={explainOpener.current} modalOpen={modalOpen} />}
+                    {explainOpen && snapshot.calls !== undefined && <ExplainDrawer snapshot={snapshot} dispatch={props.dispatch} onClose={() => setExplain(false)} returnFocus={explainOpener.current} modalOpen={modalOpen} />}
                 </div>
             </div>
             {paletteOpen && (

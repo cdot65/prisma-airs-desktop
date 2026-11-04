@@ -99,7 +99,7 @@ async function openSessions(native: Native) {
     const user = userEvent.setup()
     render(<App client={new DesktopClient(native.transport)} />)
     await native.push({ ...native.current, onboarding: 'done', activeFeature: 'sessions' })
-    await screen.findByRole('heading', { level: 1, name: 'Investigate sessions' })
+    await screen.findByRole('heading', { level: 1, name: 'Sessions & Reports' })
     return user
 }
 
@@ -144,7 +144,7 @@ describe('Sessions & Reports', () => {
         // Leaving Sessions drops revealed content; coming back shows none.
         await native.push({ ...native.current, onboarding: 'done', activeFeature: 'administration' })
         await native.push({ ...native.current, onboarding: 'done', activeFeature: 'sessions' })
-        await screen.findByRole('heading', { level: 1, name: 'Investigate sessions' })
+        await screen.findByRole('heading', { level: 1, name: 'Sessions & Reports' })
         expect(screen.queryByText(PROMPT)).toBeNull()
     })
 
