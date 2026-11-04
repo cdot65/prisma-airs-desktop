@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { DocumentView, ImportNote, ShellSnapshot, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
 import type { Dispatch } from '../../modules/tenants/dispatch'
@@ -14,6 +14,7 @@ import { tone, elapsedText } from './response-pane'
 import { clockOf } from '../copy'
 import type { EditorStatus } from './presentation-status'
 import { PageIntro } from '../page-intro'
+import { useShellStore } from '../store'
 
 export interface ApiClientProps {
     snapshot: ShellSnapshot
@@ -50,6 +51,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
     const state = snapshot.workbench
     const collection = state.collection
     const [message, setMessage] = useState('')
+    const messageAction = useRef(0)
     const [offerNew, setOfferNew] = useState(false)
     const [tool, setTool] = useState<Tool | null>(null)
     const [menu, setMenu] = useState(false)
@@ -67,7 +69,26 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
     const [editorStatus, setEditorStatus] = useState<{ owner: string; value: EditorStatus } | null>(null)
     const statusOwner = useRef<string | null>(null)
     const tabStrip = useRef<HTMLDivElement>(null)
-    const [startupFailure, setStartupFailure] = useState(false)
+    const tenant = snapshot.active?.tenant ?? null
+    const context = snapshot.active?.context ?? null
+    const startupFailure = useShellStore((s) => s.workbenchRecovery.tenant === tenant && s.workbenchRecovery.context === context && s.workbenchRecovery.failed)
+    const restorePreferred = useCallback(async () => {
+        const recovery = useShellStore.getState()
+        const generation = recovery.beginWorkbenchRestore(tenant, context)
+        if (generation === null) return { kind: 'cancelled' } as const
+        const action = ++messageAction.current
+        const result = await call({ kind: 'load' })
+        const current = useShellStore.getState().workbenchRecovery
+        // A successful retry retires its prior alternative-open message, even if the opened snapshot arrived first.
+        // Another action, context or collection generation must keep its own message.
+        const currentChoice = current.generation === generation || (current.collection !== null && current.generation === generation + 1)
+        if (action === messageAction.current && current.tenant === tenant && current.context === context && currentChoice && (result.kind === 'opened' || result.kind === 'done')) {
+            setMessage('')
+            setOfferNew(false)
+        }
+        recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused' || (result.kind === 'cancelled' && recovery.workbenchRecovery.failed))
+        return result
+    }, [call, tenant, context])
     const editors = useRef(new Map<string, EditorHandle>())
     const [closing, setClosing] = useState<Closing | null>(null)
     // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
@@ -75,13 +96,17 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
 
     // A refusal stays shown until the next action that succeeds (a cancelled sheet keeps it).
     const run: Run = async (request) => {
-        const r = await call(request)
-        if (request.kind === 'load' && collectionRef.current !== null) return r
-        if (request.kind !== 'load' && r.kind !== 'cancelled') setStartupFailure(false)
+        if (request.kind !== 'load') ++messageAction.current
+        const generation = useShellStore.getState().workbenchRecovery.generation
+        const r = request.kind === 'load' ? await restorePreferred() : await call(request)
+        if (request.kind === 'load') return r
+        if (['openFolder', 'openRecent', 'openBuiltIn', 'createCollection', 'closeCollection'].includes(request.kind) && ['done', 'opened', 'created'].includes(r.kind)) {
+            useShellStore.getState().resolveWorkbenchRestore(tenant, context, generation)
+        }
         const text = resultText(r)
         if (text) {
             setMessage(text)
-            setOfferNew(request.kind !== 'load' && r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
+            setOfferNew(r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
         } else if (r.kind !== 'cancelled') {
             setMessage('')
             setOfferNew(false)
@@ -234,10 +259,8 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
     }, [editorUp, doc])
     const loaded = state.loaded
     useEffect(() => {
-        if (!loaded) void call({ kind: 'load' }).then((r) => {
-            if (r.kind === 'refused' && collectionRef.current === null) { setMessage(C.start.restoreFailed); setStartupFailure(true) }
-        })
-    }, [loaded, call])
+        if (!loaded) void restorePreferred()
+    }, [loaded, restorePreferred])
     // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
     useEffect(() => {
         if (!menu) return
@@ -434,7 +457,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
                 <div className='flex flex-col' style={{ gap: 12, padding: '20px var(--v2-page-x)' }}>
                     {alerts}
                     {state.loaded ? (
-                        <Start state={state} run={run} message={message} offerNew={offerNew} retry={startupFailure ? async () => { const r = await run({ kind: 'load' }); if (collectionRef.current === null) { setStartupFailure(r.kind === 'refused'); if (r.kind === 'refused') setMessage(C.start.restoreFailed) } } : undefined} />
+                        <Start state={state} run={run} message={startupFailure ? `${C.start.restoreFailed}${message ? ` ${message}` : ''}` : message} offerNew={offerNew} retry={startupFailure ? async () => { await restorePreferred() } : undefined} />
                     ) : (
                         <p role='status' className='text-[13px]' style={soft}>
                             {C.opening}

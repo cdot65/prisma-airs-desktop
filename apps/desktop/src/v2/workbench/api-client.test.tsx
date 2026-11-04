@@ -361,6 +361,114 @@ describe('C41 API Client board', () => {
         expect(requests.filter((r) => ['openBuiltIn', 'createCollection', 'openFolder'].includes(r.kind))).toHaveLength(0)
     })
 
+    it.each(['missing', 'notCollection'] as const)('keeps %s preferred-folder recovery across Home and back until an explicit retry succeeds', async (detail) => {
+        const base = fxApi()
+        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
+        let restored = false
+        let cancelled = false
+        const requests = workbench(native, answers((r) => r.kind === 'load'
+            ? cancelled ? { kind: 'cancelled' } : restored ? { kind: 'opened', name: 'AIRS' } : { kind: 'refused', problem: { kind: 'project', detail } }
+            : r.kind === 'openFolder' ? { kind: 'refused', problem: { kind: 'project', detail: 'io' } } : null))
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1))
+        await native.push(closed)
+        expect(await screen.findByText(/The preferred collection could not be opened/)).toBeInTheDocument()
+        const navigate = async (feature: 'home' | 'apiClient', label: string) => {
+            await user.click(within(screen.getByRole('navigation', { name: 'Destinations' })).getByRole('button', { name: new RegExp(label) }))
+            expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature })
+            await native.push({ ...native.current, activeFeature: feature })
+            await screen.findByRole('heading', { level: 1, name: label })
+        }
+        await navigate('home', 'Home')
+        await navigate('apiClient', 'API Client')
+        expect(screen.getByText(/The preferred collection could not be opened/)).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1)
+        // A failed alternative is not a successful choice and must not dismiss recovery.
+        await user.click(screen.getByRole('button', { name: 'Open collection…' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1))
+        expect(screen.getByText(/The preferred collection could not be opened/)).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2))
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        cancelled = true
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(3))
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        cancelled = false
+        restored = true
+        let releaseRestore: (() => void) | undefined
+        if (detail === 'notCollection') {
+            const observe = native.observeWorkbench
+            native.observeWorkbench = async (operation) => {
+                native.observeWorkbench = observe
+                const result = await observe(operation)
+                await new Promise<void>((resolve) => { releaseRestore = resolve })
+                return result
+            }
+        }
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4))
+        // Both native orders: an opened snapshot may precede the load result.
+        if (detail === 'notCollection') {
+            await waitFor(() => expect(releaseRestore).toBeDefined())
+            await native.push(base)
+            await act(async () => { releaseRestore!() })
+        } else await native.push(base)
+        expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
+        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
+        // The explicit Close preference must remain closed on remount, rather than restoring the default.
+        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+        await user.click(screen.getByRole('menuitem', { name: 'Close collection' }))
+        await waitFor(() => expect(requests.filter((r) => r.kind === 'closeCollection')).toHaveLength(1))
+        await native.push(closed)
+        await navigate('home', 'Home')
+        await navigate('apiClient', 'API Client')
+        expect(screen.getByText('No collection is open.')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+        expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
+        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4)
+        expect(requests.filter((r) => ['openBuiltIn', 'createCollection'].includes(r.kind))).toHaveLength(0)
+        expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1)
+    })
+
+    it('settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement', async () => {
+        const base = fxApi()
+        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
+        const requests = workbench(native, answers((r) => r.kind === 'load' ? { kind: 'refused', problem: { kind: 'project', detail: 'missing' } } : null))
+        const observe = native.observeWorkbench
+        let release: (() => void) | undefined
+        native.observeWorkbench = async (operation) => {
+            const result = await observe(operation)
+            await new Promise<void>((resolve) => { release = resolve })
+            return result
+        }
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await waitFor(() => expect(release).toBeDefined())
+        await native.push({ ...native.current, activeFeature: 'home' })
+        await native.push({ ...native.current, activeFeature: 'apiClient' })
+        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1)
+        await native.push(closed)
+        await act(async () => { release!() })
+        expect(await screen.findByText(/The preferred collection could not be opened/)).toBeInTheDocument()
+        release = undefined
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(release).toBeDefined())
+        const next = { ...closed, active: { ...closed.active!, context: `cx-${'b'.repeat(24)}` } }
+        await native.push({ ...next, activeFeature: 'home' })
+        await native.push(next)
+        await act(async () => { release!() })
+        expect(screen.getByText('No collection is open.')).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+        expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
+        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2)
+    })
+
     it('draws the title row with the chips, the tree, the tabs, the request line, the sub-tabs, the response pane and the footer (V2-T14)', async () => {
         const { tree, line } = await open()
         expect(document_().querySelector('[data-slot="api-client-v2"]')).not.toBeNull()

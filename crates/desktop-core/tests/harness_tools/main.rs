@@ -1848,6 +1848,57 @@ async fn a_save_admitted_before_a_discard_never_writes_the_discarded_transcript(
     std::fs::remove_dir_all(&dir).expect("cleanup");
 }
 
+/// Authenticate the synthetic draft through the same management pipeline,
+/// then use its rotated context for a genuinely completable setup.
+async fn authenticated_setup(desk: &mut Desk) -> String {
+    let before = desk.json()["setup"]["context"]
+        .as_str()
+        .expect("draft context")
+        .to_owned();
+    desk.send(
+        json!({"kind": "configureManagementCredential", "context": before, "mode": "keychain",
+        "clientId": CLIENT_ID, "secret": CLIENT_SECRET}),
+    )
+    .await
+    .expect("draft management credential");
+    assert!(
+        settle(|| desk
+            .snap()
+            .setup
+            .is_some_and(|s| s.tenant.management.state == desktop_core::ScanState::Ready))
+        .await
+    );
+    let context = desk.json()["setup"]["context"]
+        .as_str()
+        .expect("authenticated draft context")
+        .to_owned();
+    assert_ne!(
+        context, before,
+        "the saved draft credential rotates context"
+    );
+    desk.send(json!({"kind": "verifyTenantSetup", "context": context}))
+        .await
+        .expect("verify authenticated draft");
+    assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
+    let setup = desk.snap().setup.expect("verified draft");
+    assert!(
+        setup.completable,
+        "authentication must reach the switch guard"
+    );
+    let verify = setup.verify.expect("verification");
+    assert!(!verify.blocking && !verify.stale);
+    assert_eq!(
+        verify
+            .steps
+            .iter()
+            .find(|s| s.line == desktop_core::features::VerifyLine::ManagementClient)
+            .expect("OAuth line")
+            .state,
+        desktop_core::features::VerifyState::Pass
+    );
+    context
+}
+
 /// C30 (I1): completing an Add-a-tenant draft makes the new tenant active,
 /// so it is the same guarded switch: a pending Harness decision refuses it
 /// with the guard naming the draft, nothing is committed or retired until
@@ -1878,12 +1929,8 @@ async fn completing_a_tenant_setup_is_the_guarded_switch_path() {
         .await
         .expect("draft");
     let setup = desk.json()["setup"].clone();
-    let draft = setup["context"].as_str().expect("draft context").to_owned();
     let draft_id = setup["tenant"]["id"].as_str().expect("draft id").to_owned();
-    desk.send(json!({"kind": "verifyTenantSetup", "context": draft}))
-        .await
-        .expect("verify");
-    assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
+    let draft = authenticated_setup(&mut desk).await;
     assert_eq!(
         desk.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": []}))
             .await,
@@ -2003,14 +2050,7 @@ async fn guarded_resolution_save_failure(completion: bool, kind: &str) {
         .to_owned();
     let intent = if completion {
         desk.send(json!({"kind":"beginTenantSetup","mode":"add","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("draft");
-        let draft = desk.json()["setup"]["context"]
-            .as_str()
-            .expect("draft context")
-            .to_owned();
-        desk.send(json!({"kind":"verifyTenantSetup","context":draft}))
-            .await
-            .expect("verify");
-        assert!(settle(|| desk.json()["setup"]["verify"]["done"] == true).await);
+        let draft = authenticated_setup(&mut desk).await;
         json!({"kind":"completeTenantSetup","context":draft,"packs":[]})
     } else {
         desk.send(json!({"kind":"createTenant","profile":{"label":"Tenant B","tsgId":"1234567890","destination":{"kind":"custom","origin":origin}}})).await.expect("B");
