@@ -6,6 +6,7 @@ This module neither executes tests nor assigns scores or ledger completions.
 from pathlib import Path
 import json
 import hashlib
+import importlib.util
 import os
 import platform
 import stat
@@ -86,7 +87,17 @@ def current_fingerprints(root):
     return json.loads(result.stdout)
 
 
-def validate_execution(root, performed, candidate):
+def native_origins(root, acceptance, execution, candidate):
+    spec = importlib.util.spec_from_file_location('p11_native_proof', Path(__file__).with_name('native.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.validate(root, acceptance, execution, candidate)
+
+
+def validate_execution(root, performed, candidate, acceptance=None, execution=None):
+    if performed.get('schema') == 'airs-desktop/p11-native-selection/1':
+        require(acceptance is not None and execution is not None, 'native continuation paths missing')
+        return native_origins(root, acceptance, execution, candidate)
     require(performed['status'] == 'observed' and performed['exit_code'] == 0,
             'native observation process failed or did not finish')
     require(Path(performed['argv'][0]).name in ('python3', 'Python3', 'Python')
@@ -428,21 +439,105 @@ def validate_impact_selection(root, path, runner_inputs, source=None, files=None
             'dependencies': dependencies}
 
 
+
+S2_SOURCE = Path('docs/planning/evidence/P11/source-history/S2')
+
+
+def validate_helper_source_carry(root, path, runner_inputs, source=None, files=None):
+    """Reuse source QA only across a fully enumerated helper/proof-only change."""
+    record = read(path)
+    require(record['schema'] == 'airs-desktop/p11-helper-source-carry/1'
+            and record['runner_inputs'] == runner_inputs and record['reason'], 'helper carry binding missing')
+    before = read(bound(root, record['baseline_source']))
+    after = read(bound(root, record['current_source']))
+    require(after['files'] == (source_inventory(root) if files is None else files)
+            and inventory_source(after) == runner_inputs['source'], 'helper carry current source differs')
+    archive = root / S2_SOURCE
+    require({str(p.relative_to(archive)): file_identity(p) for p in archive.rglob('*')
+             if p.is_file() or p.is_symlink()} == before['files'], 'S2 archive membership/content differs')
+    changed = sorted(name for name in set(before['files']) | set(after['files'])
+                     if before['files'].get(name) != after['files'].get(name))
+    allowed = lambda name: (name.startswith(('tools/native-acceptance/', 'tools/p11/'))
+        or name in ('.gitattributes', 'AGENTS.md', 'crates/xtask/examples/p11_affected.rs',
+                    'docs/planning/refinements/2026-11-04/execution.md'))
+    require(changed and changed == record['changed_paths'] and all(allowed(n) for n in changed),
+            'undeclared or application-affecting helper carry delta')
+    app_names = lambda mapping: {n for n in mapping if any(n == prefix or n.startswith(prefix + '/')
+                                                           for prefix in APPLICATION_INPUTS)}
+    names = app_names(before['files'])
+    require(names and names == app_names(after['files'])
+            and all(before['files'][name] == after['files'][name] for name in names),
+            'application input membership/content changed across helper carry')
+    origin = read(bound(root, record['baseline_candidate']))
+    require(origin['source_inventory_sha256'] == digest(before['files'])
+            and origin['runner_inputs']['source'] == inventory_source(before)
+            and all(origin['runner_inputs'][key] == runner_inputs[key]
+                    for key in ('dependencies', 'build_flags')), 'helper carry source/dependencies/flags differ')
+    require(record['conditions'] == origin['conditions'], 'helper carry VM conditions differ')
+    if files is None:
+        require(record['conditions'] == {'platform': platform.platform(), 'hostname': platform.node()},
+                'helper carry current VM differs')
+    selected = validate_impact_selection(root, bound(root, record['impact_selection']),
+        origin['runner_inputs'], source=archive, files=before['files'])
+    require(selected['record']['current_source'] == record['baseline_source'],
+            'helper carry does not join original QA source')
+    covered = set()
+    require(record['qa'], 'helper-only changes need affected pure QA')
+    for ref in record['qa']:
+        qa = read(bound(root, ref))
+        require(qa['schema'] == 'airs-desktop/p11-helper-qa/1' and qa['argv']
+                and qa['cwd'] == origin['execution_root'] and qa['exit_code'] == 0
+                and qa['tests']['passed'] > 0 and qa['tests']['failed'] == 0,
+                'helper pure QA failed or provenance missing')
+        bound(root, qa['log'])
+        require(qa['helper_files'] and all(name in after['files']
+                and after['files'][name].get('sha256') == value
+                for name, value in qa['helper_files'].items()), 'helper QA input drift')
+        if 'source_before' in qa or 'source_after' in qa:
+            require(qa.get('source_before') == qa.get('source_after'), 'helper QA inputs changed during execution')
+        covered.update(qa['helper_files'])
+    require({n for n in changed if n.endswith('.py')} <= covered, 'changed helper lacks affected pure QA')
+    for kind in ('check', 'test'):
+        for choice in selected['choices'][kind]:
+            if choice['disposition'] == 'executed':
+                choice['disposition'] = 'reused_exact'
+                choice['reason'] = record['reason']
+    return {'record': record, 'selection': selected, 'origin': origin}
+
+
 def verify_impact_coverage(root, qualified, historical=None):
     candidate = read(bound(root, qualified['candidate']))
     source = historical.source(qualified['source_inventory_sha256']) if historical else root
     seal = read(bound(root, qualified['impact_source']))
     require(digest(seal['files']) == qualified['source_inventory_sha256'],
             'impact selection does not bind qualified source')
-    selected = validate_impact_selection(root, bound(root, qualified['impact_selection']),
+    reuse = (validate_helper_source_carry(root, bound(root, qualified['helper_source_carry']),
         candidate['runner_inputs'], source=source, files=seal['files'] if historical else None)
-    require(qualified['impact_source'] == selected['record']['current_source'],
-            'impact source reference differs')
-    check_choices = {'check:' + row['needed']['label']: row for row in selected['choices']['check']}
+        if 'helper_source_carry' in qualified else None)
+    selected = (reuse['selection'] if reuse else validate_impact_selection(root,
+        bound(root, qualified['impact_selection']), candidate['runner_inputs'],
+        source=source, files=seal['files'] if historical else None))
+    require(qualified['impact_source'] == (reuse['record']['current_source'] if reuse else
+            selected['record']['current_source']), 'impact source reference differs')
+    if reuse:
+        require(qualified['impact_selection'] == reuse['record']['impact_selection'],
+                'helper carry original impact selection differs')
+        require(all(candidate[key] == reuse['origin'][key] for key in coverage.EXACT_FIELDS),
+                'helper carry application/flags/conditions changed')
+    check_choices = {'check:' + row['needed']['label']: row for row in selected['choices']['check']
+                     if row['disposition'] != 'reused_exact'}
     modes = {kind + ':' + row['needed']['label']: row['disposition']
              for kind in ('check', 'test') for row in selected['choices'][kind]}
+    per_native = (native_origins(root, bound(root, qualified['native_acceptance']),
+        bound(root, qualified['native_selection']), candidate) if 'native_selection' in qualified else {})
+    require(not per_native or reuse is not None, 'native continuation lacks helper-source transition')
+    modes.update({cid: origin['disposition'] for cid, origin in per_native.items()})
     plan = read(bound(root, qualified['plan']))
     verify_plan(source, plan, modes)
+    for cid, origin in per_native.items():
+        needed = next(row for row in plan['requirements'] if row['id'] == cid)
+        require(needed['argv'] == origin['raw']['argv']
+                and needed['helper_paths'] == origin['helper_paths'], 'native per-row requirement drift')
     require(all(row.get('dependencies') == selected['dependencies']
                 for row in plan['requirements'] if modes.get(row['id']) == 'carried_unaffected'),
             'impact dependency plan differs from conservative closure')
@@ -450,7 +545,26 @@ def verify_impact_coverage(root, qualified, historical=None):
     require(len(rows) == len(plan['requirements']) and {r['id'] for r in rows}
             == {r['id'] for r in plan['requirements']}, 'impact coverage membership differs')
     test_choices = {'test:' + row['needed']['label']: row for row in selected['choices']['test']}
+    if reuse:
+        test_choices.update({'check:' + row['needed']['label']: row for row in selected['choices']['check']
+                             if row['disposition'] == 'reused_exact'})
     for row in rows:
+        if row['id'] in per_native:
+            origin = per_native[row['id']]
+            raw = origin['raw']
+            native_candidate = (reuse['record']['baseline_candidate']
+                if origin['disposition'] == 'reused_exact' and reuse else qualified['candidate'])
+            result = read(bound(root, row['result']))
+            require(row['disposition'] == origin['disposition']
+                    and result['status'] == 'pass' and result['exit_code'] == 0
+                    and result['process_exit_code'] == raw['exit_code']
+                    and result['execution_id'] == raw['execution_id'] and result['argv'] == raw['argv']
+                    and result['started_utc'] == raw['started_utc'] and result['finished_utc'] == raw['finished_utc']
+                    and result['log'] == reference(root, origin['raw_path'])
+                    and result['candidate'] == native_candidate
+                    and result['raw'] == qualified['native_acceptance'],
+                    'native per-row original execution drift')
+            continue
         if row['id'] in test_choices:
             choice = test_choices[row['id']]
             raw, actual, path = choice['raw'], choice['actual'], choice['path']
@@ -462,7 +576,8 @@ def verify_impact_coverage(root, qualified, historical=None):
                 'cwd': selected['origin']['execution_root'] if carried else candidate['execution_root'],
                 'started_utc': raw['started_utc'], 'finished_utc': raw['finished_utc'],
                 'required_ids': [row['id']], 'log': reference(root, path.parent / actual['log']),
-                'candidate': selected['record']['baseline_candidate'] if carried else qualified['candidate'],
+                'candidate': (selected['record']['baseline_candidate'] if carried else
+                    reuse['record']['baseline_candidate'] if reuse else qualified['candidate']),
                 'raw': reference(root, path), 'evidence': {}},
                 'impact Test result changed original provenance')
             continue
@@ -514,7 +629,8 @@ def verify_plan(source, plan, check_dispositions=None):
     for row in rows:
         require(all(row.get(key) == value for key, value in expected[row['id']].items()),
                 'P11 approved requirement changed')
-        affected = not (check_dispositions and check_dispositions.get(row['id']) == 'carried_unaffected')
+        affected = not (check_dispositions and check_dispositions.get(row['id']) in
+                        ('carried_unaffected', 'reused_exact'))
         require(row.get('affected') is affected and row.get('must_execute') is affected,
                 'changed P11 coverage cannot be silently carried')
 
@@ -588,7 +704,9 @@ def verify(root, path):
     require(source_inventory(root) == seal['files'], 'P11 source changed after qualification')
     qualified = read(bound(root, record['coverage']))
     require(digest(seal['files']) == qualified['source_inventory_sha256'], 'P11 source binding')
-    if 'impact_selection' in record:
+    if 'helper_source_carry' in record:
+        validate_helper_source_carry(root, bound(root, record['helper_source_carry']), record['runner_inputs'])
+    elif 'impact_selection' in record:
         validate_impact_selection(root, bound(root, record['impact_selection']), record['runner_inputs'])
     else:
         for kind in ('check', 'test'):
@@ -603,10 +721,13 @@ def verify(root, path):
     candidate = read(bound(root, qualified['candidate']))
     from candidate import verify_candidate
     verify_candidate(root, candidate)
-    require(candidate['helper_closure'] == helper_closure(root, 'acceptance_p11'),
+    driver = 'acceptance_p11_resume' if 'native_acceptance' in record else 'acceptance_p11'
+    require(candidate['helper_closure'] == helper_closure(root, driver),
             'P11 native helper membership changed')
     performed = read(bound(root, record['native_execution']))
-    validate_execution(root, performed, candidate)
+    validate_execution(root, performed, candidate,
+        acceptance=bound(root, record['native_acceptance']) if 'native_acceptance' in record else None,
+        execution=bound(root, record['native_execution']))
     build_path = bound(root, record['build'])
     build = read(build_path)
     require(build['application_inputs_unchanged'] is True
@@ -646,14 +767,18 @@ def verify(root, path):
             'controller_complete': False}
 
 
-def make(root, check, tests, fingerprint, prepare, native, execution, build, out, carry=None, impact=None):
+def make(root, check, tests, fingerprint, prepare, native, execution, build, out,
+         carry=None, impact=None, helper_carry=None):
     """Bind existing executions; never create a passing raw run or verdict."""
     require(not out.exists(), 'preserve previous P11 qualification')
     require((root / 'tools/native-acceptance/acceptance_p11.py').is_file(),
             'P11 native driver missing')
     inputs = read(fingerprint)
     runner_inputs = {key: inputs[key] for key in ('source', 'dependencies', 'build_flags')}
-    selection = validate_impact_selection(root, impact, runner_inputs) if impact else None
+    reuse = validate_helper_source_carry(root, helper_carry, runner_inputs) if helper_carry else None
+    selection = reuse['selection'] if reuse else validate_impact_selection(root, impact, runner_inputs) if impact else None
+    if reuse:
+        require(reuse['record']['impact_selection'] == reference(root, impact), 'helper QA selection differs')
     runs = ({} if selection else {kind: validate_run(root, path, kind, runner_inputs)
             for kind, path in [('check', check), ('test', tests)]})
     if selection:
@@ -667,10 +792,13 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
             'not an actual fixture native acceptance')
     require(acceptance['app']['executable_sha256'] == prepared['executable_sha256'],
             'native executable differs from prepared candidate')
-    require(performed.get('argv') and performed.get('started_utc') and performed.get('finished_utc'),
-            'native execution provenance missing')
-    helpers = helper_closure(root, 'acceptance_p11')
-    require(performed['helper_closure'] == helpers, 'native execution helper closure differs')
+    continuation = performed.get('schema') == 'airs-desktop/p11-native-selection/1'
+    if not continuation:
+        require(performed.get('argv') and performed.get('started_utc') and performed.get('finished_utc'),
+                'native execution provenance missing')
+    helpers = helper_closure(root, 'acceptance_p11_resume' if continuation else 'acceptance_p11')
+    if not continuation:
+        require(performed['helper_closure'] == helpers, 'native execution helper closure differs')
     require(prepared['bundle_sha256'] == bundle_hash(root / prepared['bundle']),
             'complete native bundle drift')
     out.mkdir(parents=True)
@@ -693,7 +821,10 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
                  'conditions': {'platform': platform.platform(), 'hostname': platform.node()},
                  'helper_closure': helpers}
     candidate_ref = write('candidate.json', candidate)
-    validate_execution(root, performed, candidate)
+    per_native = validate_execution(root, performed, candidate,
+        acceptance=native if continuation else None, execution=execution) or {}
+    if continuation:
+        require(reuse is not None, 'native continuation needs explicit helper-source carry')
     requirements, rows = [], []
     for kind, path in [('check', check), ('test', tests)]:
         raw = runs.get(kind, {})
@@ -710,7 +841,7 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
             affected = choice['disposition'] == 'executed'
             requirement = dict(id=cid, kind='command', **needed, affected=affected,
                                must_execute=affected, helper_paths=[])
-            if selection and not affected:
+            if selection and choice['disposition'] == 'carried_unaffected':
                 requirement['dependencies'] = selection['dependencies']
             requirements.append(requirement)
             origin, origin_path = choice['raw'], choice['path']
@@ -719,14 +850,17 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
                           argv=actual['argv'], cwd=str(root), started_utc=origin['started_utc'],
                           finished_utc=origin['finished_utc'], required_ids=[cid], log=log,
                           candidate=candidate_ref, raw=reference(root, origin_path), evidence={})
-            if selected_check:
+            if selected_check and choice['disposition'] != 'reused_exact':
                 result.update(original_runner_inputs=origin['inputs_before'], reason=choice['reason'])
-            if selection and kind == 'test' and not affected:
+            if reuse and choice['disposition'] == 'reused_exact':
+                result['candidate'] = reuse['record']['baseline_candidate']
+                result['cwd'] = reuse['origin']['execution_root']
+            if selection and kind == 'test' and choice['disposition'] == 'carried_unaffected':
                 result['candidate'] = selection['record']['baseline_candidate']
                 result['cwd'] = selection['origin']['execution_root']
             result_ref = write('results/' + kind + '-' + needed['label'].replace('/', '-') + '.json', result)
             row = dict(id=cid, disposition=choice['disposition'], result=result_ref)
-            if selection and kind == 'test' and not affected:
+            if selection and kind == 'test' and choice['disposition'] == 'carried_unaffected':
                 deps = selection['dependencies']
                 bindings = {name: {'original_sha256': sha(root / D2_SOURCE / name),
                                     'current_sha256': sha(root / name),
@@ -750,33 +884,46 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
         require(row['result'] == 'pass' and row['observation'] and row['evidence'],
                 'native assertion not established: ' + cid)
         evidence = {name: sha(root / name) for name in row['evidence']}
-        require(str(execution.relative_to(root)) in evidence,
+        origin = per_native.get(cid)
+        actual = origin['raw'] if origin else performed
+        raw_path = origin['raw_path'] if origin else execution
+        mode = origin['disposition'] if origin else 'executed'
+        require(str(execution.relative_to(root)) in evidence and str(raw_path.relative_to(root)) in evidence,
                 'native row omits original execution provenance')
-        requirements.append(dict(id=cid, kind='native', argv=performed['argv'], affected=True,
-                                 must_execute=True, helper_paths=sorted(helpers)))
-        result = dict(status='pass', exit_code=performed['exit_code'], execution_id=performed['execution_id'],
-                      argv=performed['argv'], cwd=str(root), started_utc=performed['started_utc'],
-                      finished_utc=performed['finished_utc'], required_ids=[cid],
-                      log=reference(root, execution), candidate=candidate_ref,
+        requirements.append(dict(id=cid, kind='native', argv=actual['argv'], affected=mode == 'executed',
+            must_execute=mode == 'executed', helper_paths=origin['helper_paths'] if origin else sorted(helpers)))
+        result = dict(status='pass', exit_code=0, execution_id=actual['execution_id'],
+                      argv=actual['argv'], cwd=str(root), started_utc=actual['started_utc'],
+                      finished_utc=actual['finished_utc'], required_ids=[cid],
+                      log=reference(root, raw_path), candidate=(reuse['record']['baseline_candidate']
+                          if mode == 'reused_exact' else candidate_ref),
                       raw=reference(root, native), evidence=evidence)
-        rows.append(dict(id=cid, disposition='executed', result=write('results/' + cid + '.json', result)))
+        if continuation:
+            result['process_exit_code'] = actual['exit_code']
+        rows.append(dict(id=cid, disposition=mode, result=write('results/' + cid + '.json', result)))
     plan = write('required-coverage.json', {'schema': 'airs-desktop/required-coverage/1',
                  'subject': 'P11', 'requirements': requirements})
     qualified_record = {'schema': 'airs-desktop/qualified-coverage/1',
                       'plan': plan, 'candidate': candidate_ref,
                       'source_inventory_sha256': digest(source), 'coverage': rows}
     if selection:
+        custom_checks = {row['id'] for row in rows if row['id'].startswith('check:')
+                         and row['disposition'] != 'reused_exact'}
         qualified_record.update(impact_selection=reference(root, impact),
-            impact_source=selection['record']['current_source'],
+            impact_source=reuse['record']['current_source'] if reuse else selection['record']['current_source'],
             runtime_plan=write('runtime-required-coverage.json', {
                 'schema': 'airs-desktop/required-coverage/1', 'subject': 'P11',
-                'requirements': [r for r in requirements if not r['id'].startswith('check:')]}))
+                'requirements': [r for r in requirements if r['id'] not in custom_checks]}))
+        if reuse:
+            qualified_record['helper_source_carry'] = reference(root, helper_carry)
     elif 'selection' in runs['check']:
         qualified_record.update(check_selection=reference(root, check),
             check_source=runs['check']['selection']['current_source'],
             runtime_plan=write('runtime-required-coverage.json', {
                 'schema': 'airs-desktop/required-coverage/1', 'subject': 'P11',
                 'requirements': [r for r in requirements if not r['id'].startswith('check:')]}))
+    if continuation:
+        qualified_record.update(native_acceptance=reference(root, native), native_selection=reference(root, execution))
     qualified = write('coverage.json', qualified_record)
     record = {'schema': 'airs-desktop/p11-shared-qualification/1', 'source': seal,
               'coverage': qualified, 'runs': {'check': reference(root, check), 'test': reference(root, tests)},
@@ -788,6 +935,10 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
               'controller_complete': False}
     if selection:
         record['impact_selection'] = reference(root, impact)
+    if continuation:
+        record['native_acceptance'] = reference(root, native)
+    if reuse:
+        record['helper_source_carry'] = reference(root, helper_carry)
     if carry is not None:
         record['build_input_carry'] = reference(root, carry)
     from review_gate import release_prerequisites
@@ -806,6 +957,7 @@ if __name__ == '__main__':
         create.add_argument('--' + flag, type=Path, required=True)
     create.add_argument('--build-input-carry', type=Path)
     create.add_argument('--impact-selection', type=Path)
+    create.add_argument('--helper-source-carry', type=Path)
     args = parser.parse_args()
     root = Path.cwd().resolve()
     if args.action == 'verify':
@@ -814,5 +966,6 @@ if __name__ == '__main__':
         result = make(root, *[getattr(args, key).resolve() for key in
                              ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out')],
                       carry=args.build_input_carry.resolve() if args.build_input_carry else None,
-                      impact=args.impact_selection.resolve() if args.impact_selection else None)
+                      impact=args.impact_selection.resolve() if args.impact_selection else None,
+                      helper_carry=args.helper_source_carry.resolve() if args.helper_source_carry else None)
     print(json.dumps(result, indent=2))

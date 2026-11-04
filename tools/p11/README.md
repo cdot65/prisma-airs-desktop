@@ -104,3 +104,33 @@ requirement remains present. Final standing includes both source contexts and
 verifies without a target directory or the original host. A changed production
 dependency, omitted command, failed/zero-test result or changed compiler fails
 the consumer. New native assertions still require actual current VM evidence.
+
+## Native helper continuation without replaying source QA
+
+For helper/proof-only fixes after the VM source checks, --helper-source-carry
+binds schema airs-desktop/p11-helper-source-carry/1. It names baseline_source
+(the archived S2 source seal), baseline_candidate (S2 app/VM context),
+impact_selection (the original D2/S2 selection), current_source (S3), exact
+changed_paths, current runner_inputs, unchanged conditions, a reason and qa refs.
+The complete application input identities and dependency/build fingerprints must
+match. Only native/P11 helpers, their build-only example and owner execution
+documentation/attributes may change; an application edit is rejected.
+
+Each QA ref has schema airs-desktop/p11-helper-qa/1, actual argv/cwd, exit_code,
+positive passing tests, a bound log and helper_files mapping names to current
+hashes. The records must cover every changed Python helper. Their relevant
+helper hashes bind validity; unrelated source edits do not force repeated QA.
+
+The fourteen S2 frontend/check results retain their actual RunRecords and become
+reused_exact against the same app, flags and VM conditions with empty helper
+dependencies. The eight D2 Rust results remain carried_unaffected. Original
+failed Check evidence stays unchanged. Both D2 and S2 source archives are in
+the durable historical context; no current target or original host is needed.
+
+A native continuation names a native-selection/1 manifest and finalized standard
+acceptance. Per-row origins retain the failed original process status separately
+from completed assertion status. C46 uses its original completed observations
+and unchanged relevant helpers; remaining rows use the successful continuation.
+The native provenance validator binds actual per-row logs, arguments, times,
+capture reviews and app identities. A failed whole process is never relabelled
+as a newly passing process.

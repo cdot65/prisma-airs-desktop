@@ -564,14 +564,15 @@ class ProofTests(unittest.TestCase):
             proof.validate_run(self.root, path, 'test', self.inputs, labels=labels)
 
 
-    def test_impact_generic_carry_survives_fresh_clone_without_target(self):
+    def _impact_coverage_fixture(self, return_fixture=False):
         from standing import ArchivedP11
         bind, verify, record, fresh, audit, after, inputs, origin_ref, write = self.impact_fixture()
         selected = verify()
         source_hash = proof.digest(after['files'])
         candidate = dict(selected['origin'], source_inventory_sha256=source_hash,
                          runner_inputs=inputs, executable_sha256='current-fixture-executable',
-                         bundle_sha256='current-fixture-bundle', conditions={'host': 'new-fixture-vm'})
+                         bundle_sha256='current-fixture-bundle', conditions={
+                             'platform': proof.platform.platform(), 'hostname': proof.platform.node()})
         candidate_ref = write('current-candidate.json', candidate)
         requirements, rows = [], []
         for kind in ('check', 'test'):
@@ -642,6 +643,8 @@ class ProofTests(unittest.TestCase):
                         selected['origin']['source_inventory_sha256']: {
                             'path': str(proof.D2_SOURCE), 'seal': record['baseline_source']}},
             'applications': {}})
+        if return_fixture:
+            return qualified, context, selected, record, after, inputs, write
         expected = proof.verify_impact_coverage(self.root, qualified)
         self.assertEqual(expected['dispositions'], {'executed': 26, 'carried_unaffected': 15})
         with tempfile.TemporaryDirectory() as clone:
@@ -653,6 +656,123 @@ class ProofTests(unittest.TestCase):
             dependency = clone / proof.D2_SOURCE / selected['dependencies'][0]
             dependency.write_text('historical dependency drift\n')
             with self.assertRaisesRegex(ValueError, 'archive membership/content drift|D2 source archive'):
+                proof.verify_impact_coverage(clone, qualified, historical=history)
+
+
+    def test_impact_generic_carry_survives_fresh_clone_without_target(self):
+        self._impact_coverage_fixture()
+
+    def helper_source_fixture(self):
+        qualified, context, selected, impact, before, old_inputs, write = self._impact_coverage_fixture(True)
+        origin_ref = qualified['candidate']
+        s2 = self.root / proof.S2_SOURCE
+        for name in before['files']:
+            path = s2 / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(self.root / name, path)
+        helper_name = 'tools/native-acceptance/acceptance_p11_api.py'
+        helper = self.root / helper_name
+        helper.parent.mkdir(parents=True)
+        helper.write_text('synthetic native helper correction only\n')
+        after = dict(files=proof.source_inventory(self.root), git_config=before['git_config'])
+        inputs = dict(old_inputs, source=proof.inventory_source(after))
+        qa = {'schema': 'airs-desktop/p11-helper-qa/1', 'argv': ['python3', '-m', 'unittest'],
+              'cwd': str(self.root), 'exit_code': 0, 'tests': {'passed': 1, 'failed': 0},
+              'log': write('helper-qa-log.json', {'fixture': 'synthetic validator input, never executed'}),
+              'helper_files': {helper_name: proof.sha(helper)}}
+        record = dict(schema='airs-desktop/p11-helper-source-carry/1', runner_inputs=inputs,
+            reason='Synthetic helper-only correction; original source QA remains unchanged.',
+            baseline_source=impact['current_source'], baseline_candidate=origin_ref,
+            current_source=write('s3-source.json', after), impact_selection=qualified['impact_selection'],
+            changed_paths=[helper_name], conditions=proof.read(proof.bound(self.root, origin_ref))['conditions'])
+        path = self.root / 'docs/planning/evidence/P11/impact-fixture/helper-carry.json'
+        def bind():
+            record['qa'] = [write('helper-qa.json', qa)]
+            record['current_source'] = write('s3-source.json', after)
+            write('helper-carry.json', record)
+        def verify():
+            return proof.validate_helper_source_carry(self.root, path, inputs)
+        bind()
+        return qualified, context, selected, impact, after, inputs, write, record, qa, bind, verify
+
+    def test_helper_source_carry_rejects_application_qa_and_condition_drift(self):
+        qualified, context, selected, impact, after, inputs, write, record, qa, bind, verify = self.helper_source_fixture()
+        verified = verify()
+        self.assertEqual(sum(r['disposition'] == 'reused_exact'
+            for kind in ('check', 'test') for r in verified['selection']['choices'][kind]), 14)
+        saved = copy.deepcopy(qa)
+        qa['tests']['passed'] = 0; bind()
+        with self.assertRaisesRegex(ValueError, 'pure QA failed'): verify()
+        qa.clear(); qa.update(copy.deepcopy(saved))
+        qa['helper_files'][record['changed_paths'][0]] = 'stale helper'; bind()
+        with self.assertRaisesRegex(ValueError, 'QA input drift'): verify()
+        qa.clear(); qa.update(saved)
+        conditions = record['conditions']
+        record['conditions'] = dict(conditions, hostname='different-host'); bind()
+        with self.assertRaisesRegex(ValueError, 'VM conditions'): verify()
+        record['conditions'] = conditions
+        app = self.root / 'apps/desktop/src/v2/modal.tsx'
+        app.write_text('actual application change cannot be carried\n')
+        after['files'] = proof.source_inventory(self.root)
+        inputs['source'] = proof.inventory_source(after)
+        record['changed_paths'] = sorted([record['changed_paths'][0], str(app.relative_to(self.root))])
+        bind()
+        with self.assertRaisesRegex(ValueError, 'application-affecting helper'): verify()
+
+    def test_helper_source_exact_reuse_verifies_from_fresh_clone(self):
+        from standing import ArchivedP11
+        qualified, context_ref, selected, impact, after, inputs, write, record, qa, bind, verify = self.helper_source_fixture()
+        reuse = verify()
+        s2_ref = record['baseline_candidate']
+        current = dict(reuse['origin'], source_inventory_sha256=proof.digest(after['files']),
+                       runner_inputs=inputs, helper_closure={'synthetic-new-helper': 'hash'})
+        current_ref = write('s3-candidate.json', current)
+        plan = proof.read(proof.bound(self.root, qualified['plan']))
+        by_id = {row['id']: row for row in plan['requirements']}
+        for row in qualified['coverage']:
+            result = proof.read(proof.bound(self.root, row['result']))
+            if row['id'].startswith(('check:', 'test:')) and row['disposition'] == 'executed':
+                row['disposition'] = 'reused_exact'
+                by_id[row['id']].update(affected=False, must_execute=False)
+                result['candidate'] = s2_ref
+                result.pop('original_runner_inputs', None); result.pop('reason', None)
+            elif row['id'].startswith('check:') or row['id'].startswith('C'):
+                result['candidate'] = current_ref
+            if row.get('impact'):
+                previous = proof.read(proof.bound(self.root, row['impact']['proof']))
+                previous['current_source_inventory_sha256'] = current['source_inventory_sha256']
+                row['impact']['proof'] = write('s3-proof-' + row['id'].replace('/', '-') + '.json', previous)
+            row['result'] = write('s3-result-' + row['id'].replace('/', '-') + '.json', result)
+        qualified.update(candidate=current_ref, source_inventory_sha256=current['source_inventory_sha256'],
+            helper_source_carry=proof.reference(self.root,
+                self.root / 'docs/planning/evidence/P11/impact-fixture/helper-carry.json'),
+            impact_source=record['current_source'], plan=write('s3-plan.json', plan))
+        custom = {row['id'] for row in qualified['coverage']
+                  if row['id'].startswith('check:') and row['disposition'] != 'reused_exact'}
+        qualified['runtime_plan'] = write('s3-runtime.json',
+            dict(plan, requirements=[r for r in plan['requirements'] if r['id'] not in custom]))
+        source = self.root / 'docs/planning/evidence/P11/accepted/source'
+        for name in after['files']:
+            target = source / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(self.root / name, target)
+        context = proof.read(proof.bound(self.root, context_ref))
+        old_hash = reuse['origin']['source_inventory_sha256']
+        context['sources'][old_hash] = {'path': str(proof.S2_SOURCE), 'seal': record['baseline_source']}
+        context['sources'][current['source_inventory_sha256']] = {
+            'path': str(source.relative_to(self.root)), 'seal': record['current_source']}
+        context_ref = write('s3-context.json', context)
+        expected = proof.verify_impact_coverage(self.root, qualified)
+        self.assertEqual(expected['dispositions'], {
+            'executed': 12, 'reused_exact': 14, 'carried_unaffected': 15})
+        with tempfile.TemporaryDirectory() as directory:
+            clone = Path(directory).resolve()
+            shutil.copytree(self.root, clone, dirs_exist_ok=True)
+            history = ArchivedP11(clone, context_ref)
+            self.assertFalse((clone / 'target').exists())
+            self.assertEqual(proof.verify_impact_coverage(clone, qualified, historical=history), expected)
+            (clone / proof.S2_SOURCE / 'apps/desktop/src/v2/modal.tsx').write_text('S2 drift\n')
+            with self.assertRaisesRegex(ValueError, 'S2 archive membership/content'):
                 proof.verify_impact_coverage(clone, qualified, historical=history)
 
 

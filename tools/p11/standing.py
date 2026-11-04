@@ -24,7 +24,9 @@ BASE = Path('docs/planning/evidence/P11')
 ACCEPTED = BASE / 'accepted'
 COMPLETION = BASE / 'completion-proof.json'
 D2_SOURCE = BASE / 'source-history/D2'
-LFS_PATHS = (str(D2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+S2_SOURCE = BASE / 'source-history/S2'
+LFS_PATHS = (str(S2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+             str(D2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
              str(ACCEPTED / 'application/Contents/MacOS/prisma-airs-desktop'),
              str(ACCEPTED / 'application/Contents/Resources/harness/airs-harness'),
              str(ACCEPTED / 'source/resources/harness/darwin-arm64.tar.gz'))
@@ -35,7 +37,7 @@ class ArchivedP11(Historical):
     def archive_path(self, name):
         path = self.root / name
         require(path.resolve().is_relative_to((self.root / ACCEPTED).resolve())
-                or path.resolve() == (self.root / D2_SOURCE).resolve(),
+                or path.resolve() in ((self.root / D2_SOURCE).resolve(), (self.root / S2_SOURCE).resolve()),
                 'historical archive escapes accepted P11 evidence')
         return path
 
@@ -125,7 +127,9 @@ def verify(root):
     verify_candidate(root, candidate, historical=history)
     require(coverage['candidate']['sha256'] == qualified['candidate_sha256'],
             'P11 accepted candidate reference differs')
-    proof.validate_execution(root, read(bound(root, original['native_execution'])), candidate)
+    proof.validate_execution(root, read(bound(root, original['native_execution'])), candidate,
+        acceptance=bound(root, original['native_acceptance']) if 'native_acceptance' in original else None,
+        execution=bound(root, original['native_execution']))
     inventory = read(bound(root, record['evidence']))['files']
     require(inventory, 'P11 raw evidence inventory missing')
     require(set(inventory) == {str(p.relative_to(root)) for p in evidence_files(root, record['attempts'])},
@@ -198,6 +202,11 @@ def finalize(root, qualification_path, attempts):
         baseline = read(bound(root, impact['baseline_source']))
         sources[digest(baseline['files'])] = {
             'path': str(D2_SOURCE), 'seal': impact['baseline_source']}
+    if 'helper_source_carry' in original:
+        helper = read(bound(root, original['helper_source_carry']))
+        baseline = read(bound(root, helper['baseline_source']))
+        sources[digest(baseline['files'])] = {
+            'path': str(S2_SOURCE), 'seal': helper['baseline_source']}
     context = write('historical-context.json', {
         'schema': 'airs-desktop/historical-qualification-context/1',
         'sources': sources,
