@@ -1680,6 +1680,7 @@ pub(super) async fn save_response(inner: &Arc<Inner>, root: &Path, run: String) 
         .next()
         .unwrap_or("response")
         .trim_end_matches(".request.toml");
+    let name = name.split_whitespace().collect::<Vec<_>>().join("-");
     let json = record.headers.iter().any(|(n, v)| {
         n.eq_ignore_ascii_case("content-type") && v.to_ascii_lowercase().contains("json")
     });

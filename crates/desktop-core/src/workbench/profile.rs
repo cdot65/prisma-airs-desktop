@@ -73,6 +73,18 @@ pub struct Profile {
     pub secrets: Vec<(String, String)>,
     /// Built-in collection files and the hash this desktop last wrote.
     pub scm: BTreeMap<String, String>,
+    /// Absent in existing profiles: first use opens SCM. Closed is an
+    /// explicit preference, not another first-use marker.
+    #[serde(default)]
+    pub selection: Option<Selection>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+pub enum Selection {
+    BuiltIn,
+    Custom { root: PathBuf, id: String },
+    Closed,
 }
 
 impl Profile {
@@ -340,6 +352,31 @@ pub fn journal_state(root: &Path, journal: &Journal) -> JournalState {
 mod tests {
     use super::*;
     use crate::vault::SessionVault;
+
+    #[test]
+    fn an_existing_profile_has_an_uninitialized_collection_choice() {
+        let old: Profile =
+            serde_json::from_value(serde_json::json!({"recent": [], "secrets": [], "scm": {}}))
+                .expect("existing profile");
+        assert_eq!(old.selection, None);
+        for choice in [
+            Selection::BuiltIn,
+            Selection::Closed,
+            Selection::Custom {
+                root: "/owned/api".into(),
+                id: "c14".into(),
+            },
+        ] {
+            let profile = Profile {
+                selection: Some(choice),
+                ..old.clone()
+            };
+            let restored: Profile =
+                serde_json::from_slice(&serde_json::to_vec(&profile).expect("encode"))
+                    .expect("decode");
+            assert_eq!(restored, profile);
+        }
+    }
 
     #[test]
     fn sealed_files_open_only_under_their_key_and_name() {

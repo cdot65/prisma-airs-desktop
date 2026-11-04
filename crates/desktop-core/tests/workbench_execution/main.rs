@@ -591,6 +591,40 @@ async fn lost_responses_cancels_and_the_bound_never_resend() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn refinement_response_suggestions_normalize_whitespace_without_renaming_the_chosen_destination()
+ {
+    const BODY: &str = "{\"integer\":9007199254740993,\"escaped\":\"\\u0061\"}\r\n";
+    let http = Http::start(Arc::new(|_| Answer::ok(BODY))).await;
+    let root = collection(
+        &format!("base = \"{}\"\n", http.origin()),
+        &[(
+            "My  request.request.toml",
+            &request("response-name", "GET", "{{base}}/probe", ""),
+        )],
+    );
+    let mut desk = desk().await;
+    desk.open(&root).await;
+    let r = desk.send_doc("My  request.request.toml").await;
+    let run = r["run"]["record"]["id"].clone();
+    let folder = temp("response name with spaces");
+    let chosen = folder.join("My explicitly chosen name.json");
+    desk.adapters.folders.reply_save(Some(chosen.clone()));
+    let saved = desk.wb(json!({"kind": "saveResponse", "run": run})).await;
+    assert_eq!(
+        desk.adapters.folders.suggested(),
+        ["My-request-response.json"]
+    );
+    assert_eq!(
+        saved,
+        json!({"kind": "responseSaved", "bytes": BODY.len(), "name": "My explicitly chosen name.json"})
+    );
+    assert_eq!(
+        std::fs::read(&chosen).expect("exact exported bytes"),
+        BODY.as_bytes()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn large_responses_stream_to_sealed_storage_and_save_exactly() {
     const LEN: u64 = 20 * 1024 * 1024 + 7;
     let http = Http::start(Arc::new(|_| Answer::Stream { len: LEN })).await;

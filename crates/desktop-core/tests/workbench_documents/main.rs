@@ -149,6 +149,94 @@ fn with(doc: &Value, key: &str, value: &str) -> Value {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn refinement_startup_defaults_once_and_remembers_an_explicit_close() {
+    let mut desk = desk().await;
+    let first = desk.wb(json!({"kind": "load"})).await;
+    assert_eq!(first["kind"], "opened", "{first}");
+    assert_eq!(desk.workbench()["collection"]["builtIn"], true);
+    assert_eq!(
+        desk.workbench()["collection"]["requests"]
+            .as_array()
+            .expect("requests")
+            .len(),
+        193
+    );
+    assert_eq!(desk.wb(json!({"kind": "load"})).await["kind"], "done");
+    assert_eq!(
+        desk.wb(json!({"kind": "closeCollection", "discard": false}))
+            .await["kind"],
+        "done"
+    );
+    assert!(desk.workbench()["collection"].is_null());
+    assert_eq!(desk.wb(json!({"kind": "load"})).await["kind"], "done");
+    assert!(desk.workbench()["collection"].is_null());
+    let handles = desk.adapters;
+    drop(desk.core);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    assert_eq!(again.wb(json!({"kind": "load"})).await["kind"], "done");
+    assert!(
+        again.workbench()["collection"].is_null(),
+        "explicit close survives restart"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn refinement_startup_restores_custom_choice_and_does_not_replace_missing_or_changed_folders()
+{
+    let root = collection();
+    let mut desk = desk().await;
+    desk.open(&root).await;
+    let handles = desk.adapters;
+    drop(desk.core);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    let result = again.wb(json!({"kind": "load"})).await;
+    assert_eq!(result["kind"], "opened", "{result}");
+    assert_eq!(again.workbench()["collection"]["id"], "c14");
+    drop(again.core);
+    let moved = root.with_file_name("moved-api");
+    std::fs::rename(&root, &moved).expect("move owned collection");
+    let mut missing = start(Some(&handles), CoreConfig::default()).await;
+    assert_eq!(missing.wb(json!({"kind": "load"})).await["kind"], "refused");
+    assert!(missing.workbench()["collection"].is_null());
+    assert!(
+        !root.exists(),
+        "startup must not recreate the missing folder"
+    );
+    std::fs::rename(&moved, &root).expect("restore owned collection");
+    assert_eq!(
+        missing.wb(json!({"kind": "load"})).await["kind"],
+        "opened",
+        "explicit Retry can restore the remembered choice"
+    );
+    drop(missing.core);
+    let metadata = root.join("collection.toml");
+    let original = std::fs::read_to_string(&metadata).expect("metadata");
+    std::fs::write(
+        &metadata,
+        original.replace("id = \"c14\"", "id = \"replacement\""),
+    )
+    .expect("replace collection identity");
+    let mut changed = start(Some(&handles), CoreConfig::default()).await;
+    assert_eq!(changed.wb(json!({"kind": "load"})).await["kind"], "refused");
+    assert!(
+        changed.workbench()["collection"].is_null(),
+        "never silently open another collection at the old path"
+    );
+    let profile = desktop_core::workbench::profile::load_profile(
+        &handles.workbench_root,
+        handles.vault.as_ref(),
+    )
+    .expect("private profile");
+    assert!(
+        serde_json::to_value(profile)
+            .expect("profile")
+            .to_string()
+            .contains("c14"),
+        "keep the remembered preference for recovery"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn saves_a_fresh_snapshot_keeping_the_files_layout_and_revisions() {
     let root = collection();
     let mut desk = desk().await;

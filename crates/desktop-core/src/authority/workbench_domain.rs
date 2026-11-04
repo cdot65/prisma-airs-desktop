@@ -30,7 +30,7 @@ use crate::workbench::environments::{self, Origin, Preview};
 use crate::workbench::git::{self, GitView};
 use crate::workbench::history::{ExportFailure, RunRecord};
 use crate::workbench::insomnia::{self, ExportProblem, ResourceView};
-use crate::workbench::profile::{self, Draft, PrivateFailure, Profile, Recent, Scope};
+use crate::workbench::profile::{self, Draft, PrivateFailure, Profile, Recent, Scope, Selection};
 use crate::workbench::project::{self, Catalog, Issue, ProjectProblem, RequestEntry};
 use crate::workbench::schema::{self, SchemaProblem, SchemaText};
 use crate::workbench::scm;
@@ -864,7 +864,21 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
         Err(problem) => return refused(problem),
     };
     match request {
-        WorkbenchRequest::Load => WorkbenchResult::Done,
+        WorkbenchRequest::Load => {
+            // Load runs on initial entry, not whenever a collection closes.
+            // An explicit retry may repeat a failed restore, without opening
+            // a different collection or creating a missing custom folder.
+            if lock(inner).is_ok_and(|s| s.workbench.open.is_some()) {
+                return WorkbenchResult::Done;
+            }
+            match profile.selection.clone() {
+                None | Some(Selection::BuiltIn) => open_built_in(inner, &root, profile).await,
+                Some(Selection::Custom { root: folder, id }) => {
+                    open_at(inner, &root, folder, false, Some(id)).await
+                }
+                Some(Selection::Closed) => WorkbenchResult::Done,
+            }
+        }
         WorkbenchRequest::OpenFolder => match inner.adapters.folders.choose_folder().await {
             Some(folder) => {
                 // D057: an empty folder becomes a new collection in place;
@@ -879,7 +893,7 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
                 })
                 .await;
                 match ready {
-                    Ok(()) => open_at(inner, &root, folder, false).await,
+                    Ok(()) => open_at(inner, &root, folder, false, None).await,
                     Err(p) => refused(WorkbenchProblem::Project(p)),
                 }
             }
@@ -893,18 +907,26 @@ async fn execute(inner: &Arc<Inner>, request: WorkbenchRequest) -> WorkbenchResu
                 })
                 .await;
                 match created {
-                    Ok(_) => open_at(inner, &root, folder, false).await,
+                    Ok(_) => open_at(inner, &root, folder, false, None).await,
                     Err(p) => refused(WorkbenchProblem::Project(p)),
                 }
             }
             None => WorkbenchResult::Cancelled,
         },
         WorkbenchRequest::OpenRecent { index } => match profile.recent.get(usize::from(index)) {
-            Some(recent) => open_at(inner, &root, recent.root.clone(), false).await,
+            Some(recent) => open_at(inner, &root, recent.root.clone(), false, None).await,
             None => refused(WorkbenchProblem::Invalid),
         },
         WorkbenchRequest::OpenBuiltIn => open_built_in(inner, &root, profile).await,
         WorkbenchRequest::CloseCollection { discard } => {
+            if !discard && lock(inner).is_ok_and(|s| !s.workbench.editing.is_empty()) {
+                return refused(WorkbenchProblem::Unprotected);
+            }
+            let mut next = profile;
+            next.selection = Some(Selection::Closed);
+            if let Err(f) = store_profile(inner, &root, next).await {
+                return refused(WorkbenchProblem::Private(f));
+            }
             if let Ok(mut state) = lock(inner) {
                 if !discard && !state.workbench.editing.is_empty() {
                     return refused(WorkbenchProblem::Unprotected);
@@ -1313,8 +1335,12 @@ fn read_opening(
     private: &std::path::Path,
     keychain: &dyn crate::vault::Vault,
     folder: &std::path::Path,
+    expected_id: Option<&str>,
 ) -> Result<Opening, WorkbenchProblem> {
     let catalog = project::discover(folder).map_err(WorkbenchProblem::Project)?;
+    if expected_id.is_some_and(|id| id != catalog.id) {
+        return Err(WorkbenchProblem::Project(ProjectProblem::NotCollection));
+    }
     let scope = profile::scope(&catalog.root, &catalog.id);
     let mut data =
         profile::load_scope(private, keychain, &scope).map_err(WorkbenchProblem::Private)?;
@@ -1385,11 +1411,12 @@ async fn open_at(
     root: &std::path::Path,
     folder: PathBuf,
     built_in: bool,
+    expected_id: Option<String>,
 ) -> WorkbenchResult {
     let keychain = Arc::clone(&inner.adapters.keychain);
     let private = root.to_path_buf();
     let opened = blocking(Err(WorkbenchProblem::Unavailable), move || {
-        read_opening(&private, keychain.as_ref(), &folder)
+        read_opening(&private, keychain.as_ref(), &folder, expected_id.as_deref())
     })
     .await;
     let opening = match opened {
@@ -1402,7 +1429,24 @@ async fn open_at(
         id: opening.catalog.id.clone(),
         name: name.clone(),
     };
-    let profile = {
+    let profile = lock(inner).ok().and_then(|s| s.workbench.profile.clone());
+    if let Some(mut next) = profile {
+        next.selection = Some(if built_in {
+            Selection::BuiltIn
+        } else {
+            Selection::Custom {
+                root: recent.root.clone(),
+                id: recent.id.clone(),
+            }
+        });
+        if !built_in {
+            next.remember(recent);
+        }
+        if let Err(f) = store_profile(inner, root, next).await {
+            return refused(WorkbenchProblem::Private(f));
+        }
+    }
+    {
         let Ok(mut state) = lock(inner) else {
             return refused(WorkbenchProblem::Unavailable);
         };
@@ -1422,12 +1466,6 @@ async fn open_at(
             conflicts: opening.conflicts,
             interrupted: opening.interrupted,
         });
-        state.workbench.profile.clone()
-    };
-    if !built_in && let Some(mut next) = profile {
-        next.remember(recent);
-        // The recent list is a convenience: a failed write only loses it.
-        let _ = store_profile(inner, root, next).await;
     }
     WorkbenchResult::Opened { name }
 }
@@ -1454,7 +1492,7 @@ async fn open_built_in(
     if let Err(f) = store_profile(inner, root, next).await {
         return refused(WorkbenchProblem::Private(f));
     }
-    open_at(inner, root, folder, true).await
+    open_at(inner, root, folder, true, None).await
 }
 
 /// Reads the collection's inventory again (after a write).
