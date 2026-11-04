@@ -3566,6 +3566,17 @@
           "--",
           "-D",
           "warnings"
+        ],
+        [
+          "cargo",
+          "clippy",
+          "--locked",
+          "-p",
+          "xtask",
+          "--lib",
+          "--",
+          "-D",
+          "warnings"
         ]
       ],
       "fixture_command": [
@@ -3877,6 +3888,16 @@
           "--",
           "-D",
           "warnings"
+        ],
+        [
+          "cargo",
+          "run",
+          "--locked",
+          "-p",
+          "xtask",
+          "--",
+          "notices",
+          "--check"
         ]
       ],
       "fixture_command": [

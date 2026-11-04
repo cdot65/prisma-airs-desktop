@@ -14,7 +14,7 @@ class ProofTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
-        self.root = Path(self.directory.name)
+        self.root = Path(self.directory.name).resolve()
         source = Path(__file__).resolve().parents[2]
         folder = self.root / 'docs/architecture'
         folder.mkdir(parents=True)
@@ -115,6 +115,151 @@ class ProofTests(unittest.TestCase):
                         dict(execution, helper_closure={})]:
             with self.assertRaises(ValueError):
                 proof.validate_execution(self.root, altered, candidate)
+
+    def frontend_carry_fixture(self):
+        """Small byte-bound fixture, without executing a frontend/native build."""
+        subprocess.run(['/usr/bin/git', 'init', '-q'], cwd=self.root, check=True)
+        (self.root / '.gitignore').write_text('apps/desktop/dist/\n.evidence-private/\n')
+        name = 'apps/desktop/src/example.test.tsx'
+        test = self.root / name
+        test.parent.mkdir(parents=True)
+        test.write_text('original test\n')
+        before = proof.sha(test)
+        test.write_text('await the real publication\n')
+        dist = self.root / 'apps/desktop/dist/index.html'
+        dist.parent.mkdir()
+        dist.write_text('unchanged application frontend\n')
+        folder = self.root / 'docs/fixture-carry'
+        folder.mkdir()
+        build_path = folder / 'build.json'
+        build = {'application_inputs_before': {name: before}}
+        build_path.write_text(json.dumps(build))
+        prepare = folder / 'prepare.json'
+        prepare.write_text('{}\n')
+        candidate = {'prepare': proof.reference(self.root, prepare)}
+        log = folder / 'build.log'
+        log.write_text('frontend build fixture only\n')
+        inputs = {item: proof.sha(self.root / item)
+                  for item in proof.application_files(self.root)}
+        equivalence = {
+            'schema': 'airs-desktop/frontend-build-equivalence/1',
+            'cwd': str(self.root),
+            'argv': ['pnpm', '--filter', '@prisma-airs/desktop', 'exec', 'vite',
+                     'build', '--outDir', str(self.root / '.evidence-private/rebuilt')],
+            'application_inputs_before': inputs,
+            'application_inputs_after': inputs,
+            'exit_code': 0,
+            'frontend_byte_identical': True,
+            'original_frontend_unchanged': True,
+            'original_prepare_sha256': candidate['prepare']['sha256'],
+            'original_frontend_files': {'index.html': proof.sha(dist)},
+            'rebuilt_frontend_files': {'index.html': proof.sha(dist)},
+            'log_sha256': proof.sha(log),
+        }
+        equivalence_path = folder / 'equivalence.json'
+        carry_path = folder / 'carry.json'
+        carry = {
+            'schema': 'airs-desktop/frontend-test-build-carry/1',
+            'build': proof.reference(self.root, build_path),
+            'prepare': candidate['prepare'],
+            'native_rebuilt': False,
+            'changed_inputs': {name: {'before': before, 'after': proof.sha(test)}},
+            'reason': 'Test-only readiness correction; actual frontend bytes retained.',
+        }
+        record = {}
+
+        def bind():
+            equivalence_path.write_text(json.dumps(equivalence))
+            carry['frontend_equivalence'] = proof.reference(self.root, equivalence_path)
+            carry_path.write_text(json.dumps(carry))
+            record['build_input_carry'] = proof.reference(self.root, carry_path)
+
+        def verify(changed=None):
+            proof.frontend_test_carry(self.root, record, build_path, build, candidate,
+                                      changed if changed is not None else [name])
+
+        bind()
+        return bind, verify, equivalence, carry, name, dist, log
+
+    def test_frontend_test_carry_requires_exact_delta_and_candidate(self):
+        bind, verify, equivalence, carry, name, _, _ = self.frontend_carry_fixture()
+        verify()
+        for changed in ([], ['apps/desktop/src/application.tsx']):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                verify(changed)
+        original = copy.deepcopy(carry)
+        for change in ('delta', 'candidate', 'build', 'rebuilt'):
+            carry.clear()
+            carry.update(copy.deepcopy(original))
+            if change == 'delta':
+                carry['changed_inputs'][name]['after'] = 'another test edit'
+            elif change == 'candidate':
+                carry['prepare']['sha256'] = 'another candidate'
+            elif change == 'build':
+                carry['build']['sha256'] = 'another build'
+            else:
+                carry['native_rebuilt'] = True
+            bind()
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify()
+
+    def test_frontend_equivalence_requires_real_build_and_current_inputs(self):
+        bind, verify, equivalence, _, name, _, _ = self.frontend_carry_fixture()
+        original = copy.deepcopy(equivalence)
+        for change in ('schema', 'cwd', 'command', 'extra-argument', 'outside-output',
+                       'old-input', 'input-drift', 'input-omission'):
+            equivalence.clear()
+            equivalence.update(copy.deepcopy(original))
+            if change == 'schema':
+                equivalence['schema'] = 'unrelated/1'
+            elif change == 'cwd':
+                equivalence['cwd'] = str(self.root.parent)
+            elif change == 'command':
+                equivalence['argv'][4:6] = ['echo', 'success']
+            elif change == 'extra-argument':
+                equivalence['argv'].append('--mode=test')
+            elif change == 'outside-output':
+                equivalence['argv'][-1] = str(self.root.parent / 'different-output')
+            elif change == 'old-input':
+                equivalence['application_inputs_before'][name] = 'old test hash'
+                equivalence['application_inputs_after'][name] = 'old test hash'
+            elif change == 'input-drift':
+                equivalence['application_inputs_after'] = dict(equivalence['application_inputs_after'],
+                                                      **{name: 'changed during build'})
+            else:
+                equivalence['application_inputs_before'] = {}
+                equivalence['application_inputs_after'] = {}
+            bind()
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify()
+
+    def test_frontend_equivalence_requires_success_exact_bytes_and_original_prepare(self):
+        bind, verify, equivalence, _, _, dist, log = self.frontend_carry_fixture()
+        original = copy.deepcopy(equivalence)
+        for change in ('failure', 'byte-difference', 'missing-output', 'candidate'):
+            equivalence.clear()
+            equivalence.update(copy.deepcopy(original))
+            if change == 'failure':
+                equivalence['exit_code'] = 1
+            elif change == 'byte-difference':
+                equivalence['rebuilt_frontend_files']['index.html'] = 'different bytes'
+            elif change == 'missing-output':
+                equivalence['rebuilt_frontend_files'] = {}
+            else:
+                equivalence['original_prepare_sha256'] = 'another candidate'
+            bind()
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                verify()
+        equivalence.clear()
+        equivalence.update(copy.deepcopy(original))
+        bind()
+        log.write_text('replaced log\n')
+        with self.assertRaisesRegex(ValueError, 'log drift'):
+            verify()
+        log.write_text('frontend build fixture only\n')
+        dist.write_text('changed retained frontend\n')
+        with self.assertRaisesRegex(ValueError, 'retained frontend bytes changed'):
+            verify()
 
 
 if __name__ == '__main__':

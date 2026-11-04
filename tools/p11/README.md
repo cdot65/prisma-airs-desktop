@@ -26,6 +26,10 @@ required inputs. It reuses P10's raw evidence validator and rejects missing or
 changed command/native membership, logs, current source/dependencies, candidate,
 helpers, incomplete build inputs and failed observation exits. The Python source
 hash recomputation was checked against the actual Rust fingerprint algorithm.
+For a frontend test-only source change, `--build-input-carry` requires the
+original native build and a successful current-source frontend rebuild whose
+complete output is byte-identical. Its command, input hashes and raw log remain
+bound; the retained native build is never reported as newly executed.
 
 `review.py make C46 attempt-01 QUALIFICATION` (likewise C47–C49) writes a frozen
 request and inventories. Launch it with the retained

@@ -86,6 +86,50 @@ def validate_execution(root, performed, candidate):
     require(performed['helper_closure'] == candidate['helper_closure'], 'native helper drift')
 
 
+def frontend_test_carry(root, record, build_path, build, candidate, changed):
+    """A test-only edit may retain the native build after an exact frontend rebuild.
+
+    The native executable/bundle are verified independently. Original build
+    outcomes stay bound; this does not claim a newly executed native build.
+    """
+    require(changed and all(name.startswith('apps/desktop/src/')
+                           and name.endswith(('.test.ts', '.test.tsx')) for name in changed),
+            'application-affecting build input changed')
+    carry = read(bound(root, record['build_input_carry']))
+    require(carry['schema'] == 'airs-desktop/frontend-test-build-carry/1'
+            and carry['build'] == reference(root, build_path)
+            and carry['prepare'] == candidate['prepare'] and carry['native_rebuilt'] is False,
+            'test-only native build carry is not bound')
+    expected = {name: {'before': build['application_inputs_before'][name], 'after': sha(root / name)}
+                for name in changed}
+    require(carry['changed_inputs'] == expected and carry['reason'], 'test-only delta differs')
+    equivalence_path = bound(root, carry['frontend_equivalence'])
+    equivalence = read(equivalence_path)
+    require(equivalence['schema'] == 'airs-desktop/frontend-build-equivalence/1'
+            and equivalence['cwd'] == str(root)
+            and len(equivalence['argv']) == 8
+            and equivalence['argv'][:7] == ['pnpm', '--filter', '@prisma-airs/desktop',
+                                           'exec', 'vite', 'build', '--outDir']
+            and Path(equivalence['argv'][7]).resolve().is_relative_to(root / '.evidence-private'),
+            'frontend equivalence command differs')
+    current_inputs = {name: sha(root / name) for name in sorted(application_files(root))}
+    require(equivalence['application_inputs_before'] == current_inputs
+            and equivalence['application_inputs_after'] == current_inputs,
+            'frontend equivalence inputs changed or were not bound')
+    require(equivalence['exit_code'] == 0 and equivalence['frontend_byte_identical'] is True
+            and equivalence['original_frontend_unchanged'] is True
+            and equivalence['original_prepare_sha256'] == candidate['prepare']['sha256'],
+            'frontend rebuild equivalence failed or names another candidate')
+    original = equivalence['original_frontend_files']
+    require(original and original == equivalence['rebuilt_frontend_files'],
+            'frontend rebuilt bytes or membership differ')
+    current = {str(path.relative_to(root / 'apps/desktop/dist')): sha(path)
+               for path in sorted((root / 'apps/desktop/dist').rglob('*')) if path.is_file()}
+    require(current == original, 'retained frontend bytes changed after equivalence proof')
+    require(sha(equivalence_path.parent / 'build.log') == equivalence['log_sha256'],
+            'frontend equivalence build log drift')
+
+
 def reference(root, path):
     path = Path(path).resolve()
     require(path.is_relative_to(root.resolve()), 'proof path escapes checkout')
@@ -213,8 +257,12 @@ def verify(root, path):
         log = (build_path.parent / step['log']).resolve()
         require(log.is_relative_to(root.resolve()) and sha(log) == step['log_sha256'],
                 'fixture build log drift')
-    for name, value in build['application_inputs_before'].items():
-        require(sha(root / name) == value, 'built application input changed: ' + name)
+    changed = [name for name, value in build['application_inputs_before'].items()
+               if sha(root / name) != value]
+    if changed:
+        frontend_test_carry(root, record, build_path, build, candidate, changed)
+    else:
+        require('build_input_carry' not in record, 'unnecessary or stale build carry')
     require(all(row['disposition'] == 'executed' for row in qualified['coverage']),
             'P11 changed-flow results must be actual shared executions')
     baseline = read(bound(root, record['historical_baseline']))
@@ -228,7 +276,7 @@ def verify(root, path):
             'controller_complete': False}
 
 
-def make(root, check, tests, fingerprint, prepare, native, execution, build, out):
+def make(root, check, tests, fingerprint, prepare, native, execution, build, out, carry=None):
     """Bind existing executions; never create a passing raw run or verdict."""
     require(not out.exists(), 'preserve previous P11 qualification')
     require((root / 'tools/native-acceptance/acceptance_p11.py').is_file(),
@@ -320,6 +368,8 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
               'historical_baseline': reference(root, root / 'docs/planning/evidence/P10/completion-proof.json'),
               'historical_use': 'Original P10 standing/artifact bindings retained. No old result is relabelled current and no RC1 byte equality is claimed. P11 executes the changed-flow requirements on one shared candidate.',
               'controller_complete': False}
+    if carry is not None:
+        record['build_input_carry'] = reference(root, carry)
     from review_gate import release_prerequisites
     record['historical_standing'] = release_prerequisites(root)
     record_ref = write('qualification.json', record)
@@ -334,11 +384,13 @@ if __name__ == '__main__':
     create = actions.add_parser('make')
     for flag in ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out'):
         create.add_argument('--' + flag, type=Path, required=True)
+    create.add_argument('--build-input-carry', type=Path)
     args = parser.parse_args()
     root = Path.cwd().resolve()
     if args.action == 'verify':
         result = verify(root, args.record.resolve())
     else:
         result = make(root, *[getattr(args, key).resolve() for key in
-                             ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out')])
+                             ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out')],
+                      carry=args.build_input_carry.resolve() if args.build_input_carry else None)
     print(json.dumps(result, indent=2))

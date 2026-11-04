@@ -1,0 +1,23 @@
+{
+  "schema": "airs-desktop/frontend-test-build-carry/1",
+  "build": {
+    "path": "docs/planning/evidence/P11/native-build-02/receipt.json",
+    "sha256": "3a58d6f4a68af0ab5c0c85ba6da8de36eda08a682fcf9c23339cde2092a98ad9"
+  },
+  "prepare": {
+    "path": "docs/planning/evidence/P11/native-prepare.json",
+    "sha256": "51a9507eef67afab150a11db03db30f30705d007ecd3010adb721174a1e74070"
+  },
+  "changed_inputs": {
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+      "before": "eb5980ed1303149684a246e85e1b6cf78eeb903b79f8e4d74f683fea972a9a90",
+      "after": "f154cef0337e4f9ded2949958cf995f30df806ea177a984a8e5b9de5f5b5b5c5"
+    }
+  },
+  "frontend_equivalence": {
+    "path": "docs/planning/evidence/P11/frontend-test-equivalence-01/receipt.json",
+    "sha256": "ea0f2c727447e5a6e57a35920664ff0e9f8d43bf7f0131f8723c9996f22ccd51"
+  },
+  "native_rebuilt": false,
+  "reason": "Two test-only waitFor assertions now wait for actual footer publication. The rebuilt production frontend is byte-identical in every file/name to the retained build, all other app/Rust inputs are unchanged, and the complete fixture bundle/executable are retained with their original hashes. No native or Rust suite is re-executed merely to refresh source provenance."
+}
