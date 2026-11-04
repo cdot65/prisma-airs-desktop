@@ -15,10 +15,74 @@ def enabled(app, label):
     return bool(node and node.get('enabled') is not False)
 
 
+def _visible_identity_fields(ctx, tree):
+    window = ctx.app.node(tree, 'AXWindow', '')
+    if not window or not window.get('pos') or not window.get('size'):
+        return False
+    x, y = window['pos']
+    width, height = window['size']
+    for label in ('Display name', 'TSG ID'):
+        field = ctx.app.node(tree, 'AXTextField', label)
+        if (not field or field.get('label') != label or field.get('enabled') is False
+                or not field.get('pos') or not field.get('size')):
+            return False
+        px, py = field['pos']
+        pw, ph = field['size']
+        if not (pw > 0 and ph > 0 and x <= px and y <= py and px+pw <= x+width and py+ph <= y+height):
+            return False
+    return True
+
+
+def _type_ready_identity(ctx, label, value, deadline, evidence):
+    # Activate only the candidate-owned process before any focus/input. A
+    # transient AX focus failure may be retried, never the text delivery.
+    ctx.app.front()
+    while time.monotonic() < deadline:
+        ctx.require(ctx.app.pid == ctx.app.running_pid(), 'owned fixture identity changed during draft readiness')
+        tree = ctx.app.tree()
+        if not _visible_identity_fields(ctx, tree):
+            time.sleep(.15)
+            continue
+        try:
+            ctx.app.ax('focus', 'AXTextField', label)
+        except RuntimeError as error:
+            if not str(error).startswith('ax focus '):
+                raise
+            ctx.log.append({'step': 'draft-focus-not-ready', 'field': label,
+                            'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), 'error': str(error)})
+            # The next iteration must obtain a fresh positive field tree.
+            continue
+        tree = ctx.app.tree()
+        focused = ctx.app.focused(tree) or {}
+        if not (_visible_identity_fields(ctx, tree) and focused.get('role') == 'AXTextField'
+                and focused.get('label') == label):
+            time.sleep(.15)
+            continue
+        ctx.require(time.monotonic() < deadline, 'draft identity readiness exceeded15seconds before input')
+        ctx.require(str((ctx.app.node(tree, 'AXTextField', label) or {}).get('value') or '') == '',
+                    'new draft identity field is unexpectedly nonempty; refusing duplicate text')
+        sequence = ctx.state.setdefault('draft_readiness_sequence', 0)+1
+        ctx.state['draft_readiness_sequence'] = sequence
+        path = ctx.save(f'draft-identity-ready-{sequence}', tree)
+        evidence.append(path)
+        ctx.log.append({'step': 'draft-identity-ready', 'field': label, 'evidence': path,
+                        'utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})
+        # No app.type_into call here: it would issue a second unchecked focus.
+        # keys() rechecks the owned/frontmost PID; text is sent exactly once.
+        ctx.app.keys(value)
+        tree, arrived = ctx.app.wait_for(lambda t: str((ctx.app.node(t, 'AXTextField', label) or {}).get('value') or '') == value,
+                                        max(.01, deadline-time.monotonic()))
+        ctx.require(arrived, 'draft identity text did not arrive exactly; no automatic input replay')
+        return
+    raise RuntimeError('draft identity fields/focus did not become ready within15seconds: '+label)
+
+
 def draft(ctx, name):
     ctx.heading('Connect your tenant')
-    ctx.app.type_into('AXTextField', 'Display name', name)
-    ctx.app.type_into('AXTextField', 'TSG ID', c8.TSG)
+    deadline = time.monotonic()+15
+    evidence = ctx.state.setdefault('draft_readiness_evidence', [])
+    _type_ready_identity(ctx, 'Display name', name, deadline, evidence)
+    _type_ready_identity(ctx, 'TSG ID', c8.TSG, deadline, evidence)
     ctx.press('AXButton', 'Draft tenant')
     ctx.text(name+' is drafted. Add its management client below.')
     return not enabled(ctx.app, 'Save the management client to continue')
@@ -128,7 +192,7 @@ def bootstrap(ctx):
     ctx.navigate('Home')
     facts['add_committed_only_after_actual_oauth'] = len(ctx.fixture_state()['tenants']) == 2
     facts['no_validation_scan_in_any_setup'] = len(ctx.scan.requests()) == 0
-    ctx.record('C46-N01', facts, evidence)
+    ctx.record('C46-N01', facts, [*evidence, *ctx.state.get('draft_readiness_evidence', [])])
 
 
 def warning_flows(ctx):
