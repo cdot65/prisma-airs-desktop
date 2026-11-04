@@ -1,5 +1,20 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useShellStore } from './store'
+
+// Undefined preserves standalone use; null means the shell host is mounting.
+const DesktopModalHostContext = createContext<HTMLElement | null | undefined>(undefined)
+
+/** Desktop-owned dialogs stay inside the shell palette, outside its inert page. */
+export function DesktopModalHost({ children }: { children: ReactNode }) {
+    const [host, setHost] = useState<HTMLDivElement | null>(null)
+    return (
+        <DesktopModalHostContext.Provider value={host}>
+            {children}
+            <div ref={setHost} data-slot='desktop-modal-host' data-desktop-theme='' className='contents' />
+        </DesktopModalHostContext.Provider>
+    )
+}
 
 interface ModalProps {
     label: string
@@ -37,6 +52,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * sheet returned focus elsewhere), and closes only itself.
  */
 export function Modal({ label, onClose, children, width = 560, padding = 20, top, radius = 12, sheet = false, returnFocus = null, ...rest }: ModalProps) {
+    const host = useContext(DesktopModalHostContext)
     const id = useId()
     const pushModal = useShellStore((s) => s.pushModal)
     const popModal = useShellStore((s) => s.popModal)
@@ -48,7 +64,8 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
     returnRef.current = returnFocus
     const focusedOnce = useRef(false)
 
-    useEffect(() => {
+    // Capture before a child wizard's passive heading-focus effect runs.
+    useLayoutEffect(() => {
         opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
         pushModal(id)
         return () => {
@@ -82,7 +99,7 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
             const first = node.querySelector<HTMLElement>('[autofocus]') ?? node.querySelector<HTMLElement>(FOCUSABLE)
             ;(first ?? node).focus()
         }
-    }, [topmost])
+    }, [topmost, host])
 
     // Escape still closes the topmost dialog when focus has left it (a
     // native sheet returning focus to the page body, a click on the scrim's
@@ -133,7 +150,7 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
         }
     }
 
-    return (
+    const content = (
         <div
             className={sheet ? 'fixed z-50 flex justify-end' : 'fixed inset-0 z-50 grid place-items-start justify-center'}
             style={sheet ? { inset: 'var(--v2-header, 56px) 0 0 0' } : { paddingTop: top ?? '4vh' }}
@@ -166,6 +183,7 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
             </div>
         </div>
     )
+    return host === undefined ? content : host ? createPortal(content, host) : null
 }
 
 /** Whether any modal is open: the shell makes the page behind it inert. */

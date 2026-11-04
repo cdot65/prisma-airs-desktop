@@ -15,7 +15,7 @@ import { unconfirmedInContext, useShellStore } from './store'
 import { SwitchGuard } from './switch-guard'
 import { TenantSwitcher } from './tenant-switcher'
 import { Toasts } from './toasts'
-import { Modal, useModalsOpen } from './modal'
+import { DesktopModalHost, Modal, useModalsOpen } from './modal'
 import { Wizard } from './wizard/wizard'
 import { Academy } from './academy/academy'
 import { ApiClient } from './workbench/api-client'
@@ -237,6 +237,7 @@ export function V2Shell(props: V2ShellProps) {
 
     return (
         <div data-v2-shell='' className='flex h-screen overflow-hidden'>
+            <DesktopModalHost>
             <nav
                 data-v2-rail=''
                 data-desktop-theme=''
@@ -614,6 +615,7 @@ export function V2Shell(props: V2ShellProps) {
             <div aria-hidden={modalOpen ? true : undefined} inert={modalOpen ? true : undefined}>
                 <Toasts />
             </div>
+            </DesktopModalHost>
         </div>
     )
 }

@@ -36,6 +36,32 @@ beforeEach(() => {
 })
 
 describe('v2 shell', () => {
+    it.each(['prismaAirs', 'gruvbox'] as const)('keeps Settings Add outside inert shell ancestors in %s', async (colorTheme) => {
+        const user = userEvent.setup()
+        const native = await launch({ ...fxSwitcher(), activeFeature: 'settings', colorTheme })
+        await screen.findByRole('heading', { level: 1, name: 'Settings' })
+        const opener = screen.getByRole('button', { name: 'Add tenant…' })
+        await user.click(opener)
+        const dialog = document.querySelector<HTMLElement>('[data-slot="settings-add-tenant-sheet"]')
+        expect(dialog).not.toBeNull()
+        expect(dialog).toHaveAttribute('aria-modal', 'true')
+        expect(dialog?.closest('[inert], [aria-hidden="true"]')).toBeNull()
+        const host = dialog?.closest('[data-slot="desktop-modal-host"]')
+        expect(host).toHaveAttribute('data-desktop-theme')
+        expect(host?.closest('[inert], [aria-hidden="true"]')).toBeNull()
+        expect(host?.closest('[data-v2-shell]')).not.toBeNull()
+        expect(document.querySelector('[data-slot="app-main"]')?.closest('[inert]')).not.toBeNull()
+        const visible = screen.getByRole('dialog', { name: 'Add a tenant' })
+        expect(within(visible).getByRole('heading', { name: 'Connect your tenant' })).toBeInTheDocument()
+        const field = within(visible).getByRole('textbox', { name: /Display name/ })
+        await user.type(field, 'Uncommitted local draft')
+        expect(field).toHaveValue('Uncommitted local draft')
+        await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+        await waitFor(() => expect(opener).toHaveFocus())
+        expect(native.dispatched.filter((intent) => intent.kind !== 'navigate')).toEqual([])
+    })
+
     it('renders the sidebar from the Rust catalogue with the menu shortcuts and marks an unavailable destination', async () => {
         await launch(withUnavailableInbox(fxHome()))
         const items = rail().getAllByRole('button').filter((b) => b.hasAttribute('data-inset-focus'))
