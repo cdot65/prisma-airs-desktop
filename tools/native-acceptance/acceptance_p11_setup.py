@@ -155,7 +155,8 @@ def warning_flows(ctx):
     ctx.press('AXButton', runtime['label'])
     ctx.press('AXButton', 'Open API keys')
     runtime_tree = ctx.heading('Administration')
-    runtime_filter = ctx.app.node(runtime_tree, 'AXRadioButton', 'API keys') or any('API keys' in t for t in ctx.app.texts(runtime_tree))
+    runtime_tree, filtered = ctx.app.wait_for(lambda t: str((ctx.app.node(t, 'AXTextField', 'Search api keys') or {}).get('value') or '') == 'Runtime', 15)
+    runtime_filter = filtered
     runtime_evidence = ctx.save('warning-runtime-resource-arrival', runtime_tree)
     ctx.navigate('Inbox')
     ctx.press('AXButton', title)
