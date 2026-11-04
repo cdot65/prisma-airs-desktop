@@ -488,6 +488,39 @@ describe('C41 API Client board', () => {
         expect(native.dispatched.filter((intent) => intent.kind === 'workbench' && ['openBuiltIn', 'createCollection', 'openFolder'].includes(intent.request.kind))).toHaveLength(0)
     })
 
+    it('uses only the restore warning for a core refusal after an undelivered load', async () => {
+        const base = fxApi()
+        const native = scriptedNative({ ...base, workbench: { ...base.workbench, loaded: false, collection: null } })
+        let mode: 'busy' | 'cancelled' | 'refused' | 'opened' = 'busy'
+        workbench(native, answers((r) => r.kind === 'load'
+            ? mode === 'opened' ? { kind: 'opened', name: 'AIRS' } : mode === 'cancelled' ? { kind: 'cancelled' } : { kind: 'refused', problem: { kind: 'project', detail: 'notCollection' } }
+            : null))
+        const respond = native.respond
+        native.respond = (intent) => intent.kind === 'workbench' && intent.request.kind === 'load' && mode === 'busy'
+            ? { outcome: 'refusal', refusal: 'busy' } : respond(intent)
+        const loads = () => native.dispatched.filter((intent) => intent.kind === 'workbench' && intent.request.kind === 'load').length
+        const warning = () => document_().querySelector('[data-slot=workbench-message]') as HTMLElement
+        const user = userEvent.setup()
+        render(<App client={new DesktopClient(native.transport)} />)
+        await waitFor(() => expect(warning()).toHaveTextContent('The desktop is busy with a previous request.'))
+        mode = 'cancelled'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(2))
+        expect(warning()).toHaveTextContent('The desktop is busy with a previous request.')
+        mode = 'refused'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(3))
+        expect(warning()).toHaveTextContent('The preferred collection could not be opened.')
+        expect(warning()).not.toHaveTextContent("That folder isn't empty")
+        expect(warning()).not.toHaveTextContent('The desktop is busy')
+        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+        mode = 'opened'
+        await user.click(screen.getByRole('button', { name: 'Try again' }))
+        await waitFor(() => expect(loads()).toBe(4))
+        await native.push(base)
+        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
+    })
+
     it('settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement', async () => {
         const base = fxApi()
         const closed = { ...base, workbench: { ...base.workbench, collection: null } }

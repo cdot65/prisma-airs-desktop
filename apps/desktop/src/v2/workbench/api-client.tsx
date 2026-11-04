@@ -90,7 +90,8 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
         // Admission/delivery/observation failure is still unresolved, including on the first load.
         // Only a positive owned result may retire recovery; keep sanitized text with its scope.
         const resolved = result.kind === 'opened' || result.kind === 'done'
-        recovery.finishWorkbenchRestore(tenant, context, generation, !resolved, resolved ? '' : resultText(result) ?? recovery.workbenchRecovery.message)
+        const deliveryMessage = result.kind === 'undelivered' ? resultText(result) ?? '' : result.kind === 'cancelled' ? recovery.workbenchRecovery.message : ''
+        recovery.finishWorkbenchRestore(tenant, context, generation, !resolved, deliveryMessage)
         return result
     }, [call, tenant, context])
     const editors = useRef(new Map<string, EditorHandle>())

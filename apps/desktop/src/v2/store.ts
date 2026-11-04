@@ -102,7 +102,7 @@ interface WorkbenchRecovery {
     generation: number
     pending: boolean
     failed: boolean
-    /** Sanitized delivery/refusal outcome; survives page remount with this recovery. */
+    /** Sanitized delivery outcome; survives page remount with this recovery. */
     message: string
 }
 const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false, message: '' })
