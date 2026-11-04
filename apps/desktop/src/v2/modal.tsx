@@ -64,7 +64,7 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
                 // The opener may be gone (a "Finish rotation…" that completed):
                 // focus the page heading rather than leave it on nothing.
                 if (target?.isConnected) target.focus()
-                else document.querySelector<HTMLElement>('main h1[tabindex="-1"]')?.focus()
+                else document.querySelector<HTMLElement>('[data-slot="page-heading"], main h1[tabindex="-1"]')?.focus()
             })
         }
     }, [id, pushModal, popModal])

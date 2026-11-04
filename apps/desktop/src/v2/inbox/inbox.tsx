@@ -5,6 +5,7 @@ import { INBOX_COPY as C, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from '..
 import { Glyph, type GlyphName } from '../icons'
 import { useShellStore } from '../store'
 import type { VerdictTone } from '../verdict'
+import { PageIntro } from '../page-intro'
 
 /**
  * Sends one intent and reports its outcome on the shell's surfaces (DESIGN-V2
@@ -67,7 +68,7 @@ const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] text-[13px] whites
  * label is the one Home uses (I11). The selected tab and item are kept per
  * tenant across a switch (I2) and cleared when the tenant is deleted.
  */
-export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({ snapshot, onAct, onNavigate }, ref) {
+export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({ snapshot, onAct, onNavigate }, _ref) {
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
     const context = snapshot.active?.context ?? null
     const tenantKey = tenant?.id ?? 'none'
@@ -143,23 +144,20 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
     const footLine2 = gateway ? C.footGateway(gateway.workspaceName, gateway.policies) : (snapshot.overview.read?.gaps[0] ?? '')
 
     return (
-        <section aria-labelledby='inbox-heading' data-slot='inbox' className='flex min-h-0 flex-grow flex-col' style={{ gap: 20 }}>
-            <div className='flex items-end' style={{ gap: 12 }}>
-                <div>
-                    <h1 ref={ref} id='inbox-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                        {C.title}
-                    </h1>
+        <section aria-label={C.title} data-slot='inbox' className='flex min-h-0 flex-grow flex-col' style={{ gap: 20 }}>
+            <PageIntro
+                description={
                     <p role='status' data-slot='inbox-sub' className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
                         {tenant ? C.sub(tenant.label) : C.emptyPending}
                         {partialLine ? ` · ${partialLine}` : ''}
                     </p>
-                </div>
-                {context && (
+                }
+                actions={context && (
                     <button type='button' onClick={readNow} disabled={read.state === 'reading'} className={`${button32} ml-auto border px-3.5 disabled:opacity-60`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
-                        {read.state === 'reading' ? C.reading : C.readNow}
+                        {read.state === 'reading' ? C.reading : 'Refresh'}
                     </button>
                 )}
-            </div>
+            />
             {/* The list column is the prototype's 430px beside the detail; one under the other when both cannot fit (200% zoom, a narrow window). */}
             <div data-slot='inbox-columns' className='grid min-h-0 min-w-0 flex-grow' style={{ gridTemplateColumns: 'minmax(0, 430px) minmax(0, 1fr)', gap: 20 }}>
                 <section aria-label={C.listCard} data-slot='inbox-list' className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[12px] border' style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }}>

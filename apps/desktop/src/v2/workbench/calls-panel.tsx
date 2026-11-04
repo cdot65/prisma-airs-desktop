@@ -13,15 +13,15 @@ const durationOf = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFi
  * attached it), and the response status, duration and content type. No body
  * is ever kept. Rendered like the API Client's response line.
  */
-export function CallsPanel({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch: Dispatch }) {
+export function CallsPanel({ snapshot, dispatch, onClose }: { snapshot: ShellSnapshot; dispatch: Dispatch; onClose?: () => void }) {
     const calls = snapshot.calls
     if (!snapshot.showCalls || calls === undefined) return null
     return (
-        <aside aria-label={C.title} data-slot='calls-panel' className='flex min-w-0 flex-col gap-3 border-l p-4 text-[13px]' style={{ borderColor: 'var(--v2-rule)', width: 'min(100%, 340px)' }}>
+        <aside aria-label={C.title} data-slot='calls-panel' className='flex min-w-0 flex-col gap-3 p-4 text-[13px]' style={{ width: '100%' }}>
             <div className='flex items-center justify-between gap-2'>
                 <h2 className='text-[15px] font-semibold'>{C.title}</h2>
-                <button type='button' className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => void dispatch({ kind: 'setShowCalls', on: false })}>
-                    {C.hide}
+                <button type='button' aria-label={onClose ? 'Close Explain' : undefined} className='h-8 rounded-[7px] border px-3 text-[12px]' style={{ borderColor: 'var(--v2-rule)' }} onClick={() => (onClose ? onClose() : void dispatch({ kind: 'setShowCalls', on: false }))}>
+                    {onClose ? 'Close' : C.hide}
                 </button>
             </div>
             <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>

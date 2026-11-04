@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { PageIntro } from './page-intro'
 import type { AdminProduct, AdminProductId, FeatureId, InboxEntry, ProductId, ProductRead, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import { HOME_COPY, INBOX_COPY, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from './copy'
 import { Glyph, PRODUCT_GLYPHS, type GlyphName } from './icons'
@@ -205,7 +206,7 @@ const severityTile = (e: InboxEntry): { glyph: GlyphName; fg: string; bg: string
  * Every figure reads the snapshot; every action is a core intent whose
  * outcome reaches the shell's surfaces (DESIGN-V2 §7).
  */
-export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ snapshot, onAct, onNavigate }, ref) {
+export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ snapshot, onAct, onNavigate }, _ref) {
     const tenant = snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) ?? null
     const context = snapshot.active?.context ?? null
     const read = snapshot.inbox.read
@@ -235,22 +236,20 @@ export const Home = forwardRef<HTMLHeadingElement, HomeProps>(function Home({ sn
     ]
     const button32 = 'flex h-8 min-h-0 items-center rounded-[7px] border text-[12px] whitespace-nowrap'
     return (
-        <section aria-labelledby='home-heading' data-slot='home' className='flex flex-col' style={{ gap: 20 }}>
-            <div className='flex items-end' style={{ gap: 12 }}>
-                <div className='flex flex-col' style={{ gap: 2 }}>
-                    <h1 ref={ref} id='home-heading' tabIndex={-1} className='font-bold' style={{ fontSize: 'var(--v2-title)', letterSpacing: '-0.01em' }}>
-                        {account ? HOME_COPY.greeting(account) : HOME_COPY.title}
-                    </h1>
+        <section aria-label={HOME_COPY.title} data-slot='home' className='flex flex-col' style={{ gap: 20 }}>
+            <PageIntro
+                description={
                     <p role='status' aria-live='polite' data-slot='read-status' data-tone={readLine(snapshot, tenant?.label ?? null).tone} className='text-[14px]' style={{ marginTop: 4, color: 'var(--v2-soft)' }}>
+                        {account ? `${HOME_COPY.greeting(account)} · ` : ''}
                         {tenant ? homeSub(snapshot, tenant.label, products.length, attention.length) : HOME_COPY.noTenant}
                     </p>
-                </div>
-                {context && (
+                }
+                actions={context && (
                     <button type='button' aria-live='polite' onClick={readNow} disabled={read.state === 'reading'} className={`${button32} ml-auto px-3.5 text-[13px] disabled:opacity-60`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>
                         {read.state === 'reading' ? HOME_COPY.reading : HOME_COPY.refresh}
                     </button>
                 )}
-            </div>
+            />
             {snapshot.showCalls && (
                 <div data-slot='home-explain' className='flex gap-2 rounded-[10px] text-[13px] leading-[1.45]' style={{ padding: '12px 14px', background: 'var(--v2-acc-soft)', maxWidth: 860 }}>
                     <Glyph name='info' size={15} stroke={2} color='var(--v2-acc)' className='mt-px' />

@@ -19,7 +19,7 @@ import { Modal, useModalsOpen } from './modal'
 import { Wizard } from './wizard/wizard'
 import { Academy } from './academy/academy'
 import { ApiClient } from './workbench/api-client'
-import { CallsPanel } from './workbench/calls-panel'
+import { ExplainDrawer } from './explain-drawer'
 import { TestCases } from './workbench/test-cases'
 
 /** C44: the product destinations the catalogue still lists (Go, the palette), opened as Administration's products. */
@@ -70,7 +70,7 @@ function useShownDark(theme: Theme): boolean {
  * 244px sidebar (tenant button, the Rust navigation inventory with the
  * Administration products as children and needs-action badges, the status
  * block) and a right column with the 56px header (title and subtitle, the
- * search button that opens the palette, the Explain switch, Ask Harness)
+ * search button that opens the palette and the Explain switch)
  * over the destination. Labels and ⌘ hints come from the same catalogue
  * the native menu is built from. Destinations not yet ported render the
  * legacy FeatureBody inside the page frame.
@@ -89,6 +89,8 @@ export function V2Shell(props: V2ShellProps) {
     const arrival = useShellStore((s) => s.arrival)
     const modalOpen = useModalsOpen()
     const heading = useRef<HTMLHeadingElement>(null)
+    const explainButton = useRef<HTMLButtonElement>(null)
+    const explainOpener = useRef<HTMLElement | null>(null)
     const firstRender = useRef(true)
     const [adding, setAdding] = useState(false)
     // The sheet closes only when the wizard says so: a committed tenant (toast)
@@ -108,6 +110,27 @@ export function V2Shell(props: V2ShellProps) {
     const read = snapshot.inbox.read
     const tenantNow = snapshot.active?.tenant ?? null
     const tenant = snapshot.tenants.find((t) => t.id === tenantNow) ?? null
+    // A tenant change hides the old drawer before a preference reply can arrive.
+    const [explainTenant, setExplainTenant] = useState<string | null | undefined>(tenantNow)
+    const seenExplainTenant = useRef(tenantNow)
+    const explainOpen = snapshot.showCalls && explainTenant === tenantNow
+    const setExplain = (on: boolean) => {
+        if (on) {
+            setExplainTenant(tenantNow)
+            explainOpener.current = explainButton.current
+        }
+        props.onSetShowCalls(on)
+    }
+    useEffect(() => {
+        if (seenExplainTenant.current !== tenantNow) {
+            seenExplainTenant.current = tenantNow
+            explainOpener.current = null
+            setExplainTenant(undefined)
+            props.onSetShowCalls(false)
+        } else if (!snapshot.showCalls && explainTenant !== tenantNow) {
+            setExplainTenant(tenantNow)
+        }
+    }, [tenantNow, snapshot.showCalls, explainTenant, props.onSetShowCalls])
     const seenGeneration = useRef<{ tenant: string | null; generation: number }>({ tenant: tenantNow, generation: read.generation })
     useEffect(() => {
         const seen = seenGeneration.current
@@ -212,6 +235,7 @@ export function V2Shell(props: V2ShellProps) {
         <div data-v2-shell='' className='flex h-screen overflow-hidden'>
             <nav
                 data-v2-rail=''
+                data-desktop-theme=''
                 aria-label={SHELL_COPY.navLabel}
                 aria-hidden={modalOpen ? true : undefined}
                 inert={modalOpen ? true : undefined}
@@ -409,13 +433,16 @@ export function V2Shell(props: V2ShellProps) {
                 <header
                     data-slot='app-header'
                     data-v2-header=''
+                    data-desktop-theme=''
                     className='flex shrink-0 items-center'
                     style={{ height: 'var(--v2-header)', gap: 14, padding: '0 20px 0 44px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-bg)' }}
                 >
-                    <div className='min-w-0 truncate text-[16px] font-bold whitespace-nowrap'>
-                        <span data-slot='header-title'>{feature.label}</span>
+                    <div className='flex min-w-0 items-baseline gap-2'>
+                        <h1 ref={heading} id='page-heading' data-slot='page-heading' tabIndex={-1} className='min-w-0 truncate text-[18px] font-bold'>
+                            <span data-slot='header-title'>{feature.label}</span>
+                        </h1>
                         {subtitle && (
-                            <span data-slot='header-subtitle' className='font-normal' style={{ color: 'var(--v2-faint)' }}>
+                            <span data-slot='header-subtitle' className='truncate text-[13px] font-normal' style={{ color: 'var(--v2-faint)' }}>
                                 {'  ›  '}
                                 {subtitle}
                             </span>
@@ -438,39 +465,38 @@ export function V2Shell(props: V2ShellProps) {
                     <button
                         type='button'
                         role='switch'
-                        aria-checked={snapshot.showCalls}
+                        ref={explainButton}
+                        aria-checked={explainOpen}
+                        aria-controls='explain-drawer'
                         aria-label={SHELL_COPY.showCalls}
                         aria-describedby='v2-show-calls-hint'
                         title={SHELL_COPY.showCallsHint}
-                        onClick={() => props.onSetShowCalls(!snapshot.showCalls)}
+                        onClick={() => setExplain(!explainOpen)}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Escape' && explainOpen && !modalOpen) {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                setExplain(false)
+                            }
+                        }}
                         className='flex h-8 min-h-0 shrink-0 items-center rounded-[7px] px-2 text-[12px]'
                         style={{ gap: 7, border: 0, background: 'transparent', color: 'var(--v2-soft)' }}
                     >
                         <span
                             aria-hidden='true'
                             className='relative inline-block h-4 w-[26px] rounded-full'
-                            style={{ background: snapshot.showCalls ? 'var(--v2-acc)' : 'var(--v2-inset)', boxShadow: `inset 0 0 0 1px ${snapshot.showCalls ? 'var(--v2-acc)' : 'var(--v2-ctl)'}` }}
+                            style={{ background: explainOpen ? 'var(--v2-acc)' : 'var(--v2-inset)', boxShadow: `inset 0 0 0 1px ${explainOpen ? 'var(--v2-acc)' : 'var(--v2-ctl)'}` }}
                         >
-                            <span className='absolute top-0.5 size-3 rounded-full' style={{ left: snapshot.showCalls ? 12 : 2, background: snapshot.showCalls ? 'var(--v2-acc-ink)' : 'var(--v2-ctl)' }} />
+                            <span className='absolute top-0.5 size-3 rounded-full' style={{ left: explainOpen ? 12 : 2, background: explainOpen ? 'var(--v2-acc-ink)' : 'var(--v2-ctl)' }} />
                         </span>
                         <span data-v2-label>{SHELL_COPY.explain}</span>
                         <span id='v2-show-calls-hint' className='sr-only'>
                             {SHELL_COPY.showCallsHint}
                         </span>
                     </button>
-                    <button
-                        type='button'
-                        data-slot='ask-harness'
-                        onClick={() => props.onNavigate('harness')}
-                        className='flex h-8 min-h-0 shrink-0 items-center rounded-[7px] border text-[12px] font-semibold'
-                        style={{ gap: 6, padding: '0 14px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}
-                    >
-                        <Glyph name='bot' size={13} />
-                        <span data-v2-label>{SHELL_COPY.askHarness}</span>
-                    </button>
                 </header>
-                <div className='flex min-h-0 flex-grow'>
-                    <main data-slot='app-main' data-v2-page='' className='flex min-w-0 flex-grow flex-col'>
+                <div className='relative flex min-h-0 flex-grow'>
+                    <main data-slot='app-main' data-v2-page='' aria-labelledby='page-heading' data-desktop-theme={feature.id === 'academy' ? undefined : ''} className='flex min-w-0 flex-grow flex-col'>
                         {unconfirmed.length > 0 && (
                             <ul data-slot='unconfirmed' aria-label='Not confirmed' className='mb-4 flex flex-col gap-2'>
                                 {unconfirmed.map((u) => (
@@ -495,13 +521,13 @@ export function V2Shell(props: V2ShellProps) {
                             </ul>
                         )}
                         {feature.id === 'home' ? (
-                            <Home ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
+                            <Home snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
                         ) : feature.id === 'inbox' ? (
-                            <Inbox ref={heading} snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
+                            <Inbox snapshot={snapshot} onAct={props.onAct} onNavigate={props.onNavigate} />
                         ) : feature.id === 'administration' && feature.availability.state === 'available' ? (
                             <Administration
                                 key={snapshot.active?.context ?? 'none'}
-                                ref={heading}
+
                                 snapshot={snapshot}
                                 dispatch={props.dispatch}
                                 client={props.client}
@@ -512,7 +538,7 @@ export function V2Shell(props: V2ShellProps) {
                         ) : feature.id === 'harness' && feature.availability.state === 'available' ? (
                             <Harness
                                 key={snapshot.active?.context ?? 'none'}
-                                ref={heading}
+
                                 snapshot={snapshot}
                                 dispatch={props.dispatch}
                                 onNavigate={props.onNavigate}
@@ -520,18 +546,18 @@ export function V2Shell(props: V2ShellProps) {
                             />
                         ) : feature.id === 'library' && feature.availability.state === 'available' ? (
                             // Keyed by context: a new tenant starts at its first page, nothing inspected.
-                            <TestCases key={snapshot.active?.context ?? 'none'} ref={heading} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
+                            <TestCases key={snapshot.active?.context ?? 'none'} snapshot={snapshot} dispatch={props.dispatch} onNavigate={props.onNavigate} />
                         ) : feature.id === 'academy' && feature.availability.state === 'available' ? (
                             // Not keyed by tenant: the learner generation is the account's, not the tenant's.
-                            <Academy ref={heading} snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
+                            <Academy snapshot={snapshot} client={props.client} onNavigate={props.onNavigate} />
                         ) : feature.id === 'apiClient' && feature.availability.state === 'available' ? (
                             // Not keyed by tenant: API Client documents are on this Mac.
-                            <ApiClient ref={heading} snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
+                            <ApiClient snapshot={snapshot} dispatch={props.dispatch} observe={observeWorkbench} />
                         ) : (feature.id === 'runtime' || feature.id === 'gateway' || feature.id === 'redTeam') && feature.availability.state === 'available' ? (
                             // C44: the product destinations (Go, the palette) open Administration on their product; the legacy views are gone.
                             <Administration
                                 key={snapshot.active?.context ?? 'none'}
-                                ref={heading}
+
                                 snapshot={snapshot}
                                 dispatch={props.dispatch}
                                 client={props.client}
@@ -541,7 +567,7 @@ export function V2Shell(props: V2ShellProps) {
                             />
                         ) : (
                             <FeatureBody
-                                ref={heading}
+
                                 feature={feature}
                                 snapshot={snapshot}
                                 appearancePending={props.appearancePending}
@@ -555,8 +581,7 @@ export function V2Shell(props: V2ShellProps) {
                             {props.status}
                         </p>
                     </main>
-                    {/* "Show the calls" (C33): beside every destination while chosen. */}
-                    <CallsPanel snapshot={snapshot} dispatch={props.dispatch} />
+                    {explainOpen && <ExplainDrawer snapshot={snapshot} dispatch={props.dispatch} onClose={() => setExplain(false)} returnFocus={explainOpener.current} modalOpen={modalOpen} />}
                 </div>
             </div>
             {paletteOpen && (
