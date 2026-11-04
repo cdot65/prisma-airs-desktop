@@ -94,6 +94,37 @@ def native_origins(root, acceptance, execution, candidate):
     return module.validate(root, acceptance, execution, candidate)
 
 
+
+def native_driver(root, performed):
+    raw = (read(bound(root, performed['origins'][-1]['observations']))
+           if performed.get('schema') == 'airs-desktop/p11-native-selection/1' else performed)
+    argv = raw.get('argv', [])
+    names = ('acceptance_p11', 'acceptance_p11_resume', 'acceptance_p11_continue')
+    require(len(argv) > 1 and argv[1] in ['tools/native-acceptance/' + name + '.py' for name in names],
+            'unknown actual native driver')
+    return Path(argv[1]).stem
+
+
+def equivalent_native_origin(root, raw_path, raw, candidate, source):
+    """Original helper bytes verified in a current source context, not a new run."""
+    require(raw['executable_sha256'] == candidate['executable_sha256']
+            and raw['bundle_sha256'] == candidate['bundle_sha256']
+            and raw['host'] == candidate['conditions']['platform'],
+            'native origin application or execution platform changed')
+    require(raw['helper_closure'] and all((source / name).resolve().is_relative_to(source.resolve())
+            and (source / name).is_file() and sha(source / name) == value
+            for name, value in raw['helper_closure'].items()),
+            'original native helper bytes changed')
+    return {key: candidate[key] for key in
+        ('source_inventory_sha256', 'execution_root', 'prepare', *coverage.EXACT_FIELDS)} | {
+        'helper_closure': raw['helper_closure'],
+        'native_observation': reference(root, raw_path),
+        'meaning': 'Original native process observations retain their actual arguments, times and exit status. '
+                   'The source inventory identifies only the current exact-helper-byte equivalence context; '
+                   'the original observations recorded no whole-source fingerprint. No current execution '
+                   'or original global source fingerprint is claimed.'}
+
+
 def validate_execution(root, performed, candidate, acceptance=None, execution=None):
     if performed.get('schema') == 'airs-desktop/p11-native-selection/1':
         require(acceptance is not None and execution is not None, 'native continuation paths missing')
@@ -552,9 +583,14 @@ def verify_impact_coverage(root, qualified, historical=None):
         if row['id'] in per_native:
             origin = per_native[row['id']]
             raw = origin['raw']
-            native_candidate = (reuse['record']['baseline_candidate']
-                if origin['disposition'] == 'reused_exact' and reuse else qualified['candidate'])
             result = read(bound(root, row['result']))
+            native_candidate = (reuse['record']['baseline_candidate']
+                if row['id'] == 'C46-N01' and origin['disposition'] == 'reused_exact' and reuse
+                else result['candidate'] if origin['disposition'] == 'reused_exact' else qualified['candidate'])
+            if origin['disposition'] == 'reused_exact' and row['id'] != 'C46-N01':
+                require(read(bound(root, native_candidate)) == equivalent_native_origin(
+                    root, origin['raw_path'], raw, candidate, source),
+                    'native original helper equivalence context differs')
             require(row['disposition'] == origin['disposition']
                     and result['status'] == 'pass' and result['exit_code'] == 0
                     and result['process_exit_code'] == raw['exit_code']
@@ -721,10 +757,9 @@ def verify(root, path):
     candidate = read(bound(root, qualified['candidate']))
     from candidate import verify_candidate
     verify_candidate(root, candidate)
-    driver = 'acceptance_p11_resume' if 'native_acceptance' in record else 'acceptance_p11'
-    require(candidate['helper_closure'] == helper_closure(root, driver),
-            'P11 native helper membership changed')
     performed = read(bound(root, record['native_execution']))
+    require(candidate['helper_closure'] == helper_closure(root, native_driver(root, performed)),
+            'P11 native helper membership changed')
     validate_execution(root, performed, candidate,
         acceptance=bound(root, record['native_acceptance']) if 'native_acceptance' in record else None,
         execution=bound(root, record['native_execution']))
@@ -796,7 +831,7 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
     if not continuation:
         require(performed.get('argv') and performed.get('started_utc') and performed.get('finished_utc'),
                 'native execution provenance missing')
-    helpers = helper_closure(root, 'acceptance_p11_resume' if continuation else 'acceptance_p11')
+    helpers = helper_closure(root, native_driver(root, performed))
     if not continuation:
         require(performed['helper_closure'] == helpers, 'native execution helper closure differs')
     require(prepared['bundle_sha256'] == bundle_hash(root / prepared['bundle']),
@@ -879,6 +914,7 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
     require(len(acceptance['checks']) == len(expected)
             and {row['id'] for row in acceptance['checks']} == expected,
             'native acceptance does not cover exactly the twelve P11 assertions')
+    native_contexts = {}
     for row in acceptance['checks']:
         cid = row['id']
         require(row['result'] == 'pass' and row['observation'] and row['evidence'],
@@ -892,11 +928,20 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
                 'native row omits original execution provenance')
         requirements.append(dict(id=cid, kind='native', argv=actual['argv'], affected=mode == 'executed',
             must_execute=mode == 'executed', helper_paths=origin['helper_paths'] if origin else sorted(helpers)))
+        native_candidate = candidate_ref
+        if mode == 'reused_exact':
+            if cid == 'C46-N01':
+                native_candidate = reuse['record']['baseline_candidate']
+            else:
+                key = sha(raw_path)
+                if key not in native_contexts:
+                    native_contexts[key] = write('native-origins/' + actual['execution_id'] + '-' + key[:8] + '.json',
+                        equivalent_native_origin(root, raw_path, actual, candidate, root))
+                native_candidate = native_contexts[key]
         result = dict(status='pass', exit_code=0, execution_id=actual['execution_id'],
                       argv=actual['argv'], cwd=str(root), started_utc=actual['started_utc'],
                       finished_utc=actual['finished_utc'], required_ids=[cid],
-                      log=reference(root, raw_path), candidate=(reuse['record']['baseline_candidate']
-                          if mode == 'reused_exact' else candidate_ref),
+                      log=reference(root, raw_path), candidate=native_candidate,
                       raw=reference(root, native), evidence=evidence)
         if continuation:
             result['process_exit_code'] = actual['exit_code']

@@ -776,5 +776,37 @@ class ProofTests(unittest.TestCase):
                 proof.verify_impact_coverage(clone, qualified, historical=history)
 
 
+    def test_native_driver_and_original_helper_equivalence_are_not_new_execution(self):
+        folder = self.root / 'docs/planning/evidence/P11/origin-fixture'
+        folder.mkdir(parents=True)
+        helper_name = 'tools/native-acceptance/immutable-original-helper.py'
+        helper = self.root / helper_name
+        helper.parent.mkdir(parents=True)
+        helper.write_text('original helper byte fixture\n')
+        raw = dict(argv=['python3', 'tools/native-acceptance/acceptance_p11_continue.py'],
+                   executable_sha256='fixture-executable', bundle_sha256='fixture-bundle',
+                   host='fixture-platform', helper_closure={helper_name: proof.sha(helper)},
+                   exit_code=1, status='failed', execution_id='original-failed-fixture')
+        raw_path = folder / 'observations.json'
+        raw_path.write_text(json.dumps(raw))
+        selection = dict(schema='airs-desktop/p11-native-selection/1',
+                         origins=[dict(observations=proof.reference(self.root, raw_path))])
+        self.assertEqual(proof.native_driver(self.root, selection), 'acceptance_p11_continue')
+        candidate = dict(source_inventory_sha256='current-equivalence-context',
+                         execution_root='/original/execution-root', prepare={'fixture': 'prepare'},
+                         executable_sha256='fixture-executable', bundle_sha256='fixture-bundle',
+                         build_flags={'target': 'fixture-arm64'}, conditions={'platform': 'fixture-platform'})
+        origin = proof.equivalent_native_origin(self.root, raw_path, raw, candidate, self.root)
+        self.assertEqual(origin['source_inventory_sha256'], 'current-equivalence-context')
+        self.assertNotIn('runner_inputs', origin)
+        self.assertEqual(proof.read(proof.bound(self.root, origin['native_observation']))['exit_code'], 1)
+        helper.write_text('changed helper bytes\n')
+        with self.assertRaisesRegex(ValueError, 'helper bytes changed'):
+            proof.equivalent_native_origin(self.root, raw_path, raw, candidate, self.root)
+        raw['argv'][1] = 'tools/native-acceptance/unapproved-driver.py'
+        with self.assertRaisesRegex(ValueError, 'unknown actual native driver'):
+            proof.native_driver(self.root, raw)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -147,6 +147,55 @@ class NativeOriginsTests(unittest.TestCase):
             self.assertEqual(len(result), 12)
 
 
+    def test_three_real_process_origins_retain_five_completed_rows(self):
+        # Synthetic process manifests only; no app execution or pixel verdict.
+        previous = copy.deepcopy(self.raws[0])
+        middle = copy.deepcopy(self.raws[1])
+        ids = {'C48-N01', 'C48-N02', 'C48-N03', 'C49-N01'}
+        middle['checks'] = [row for row in middle['checks'] if row['id'] in ids]
+        middle.update(complete=False, status='failed', exit_code=1, errors=[{'message': 'later Contents role failed'}])
+        last = copy.deepcopy(self.raws[1])
+        last['checks'] = [row for row in last['checks'] if row['id'] not in ids]
+        self.candidate['helper_closure']['continue-helper'] = 'new'
+        last['helper_closure'] = copy.deepcopy(self.candidate['helper_closure'])
+        last['binding']['helper_closure'] = last['helper_closure']
+        last['argv'][1] = 'tools/native-acceptance/acceptance_p11_continue.py'
+        last['execution_id'] = 'last'
+        old = self.root/'continuation'
+        shutil.copytree(old, self.root/'last')
+        last['artifact_sha256'] = {name.replace('continuation/', 'last/', 1): digest
+                                   for name, digest in last['artifact_sha256'].items()}
+        for row in last['checks']:
+            for key in ('evidence', 'visual'):
+                row[key] = [name.replace('continuation/', 'last/', 1) for name in row[key]]
+        refs, completed = [], set()
+        selection = copy.deepcopy(self.selection)
+        selection['origins'] = []
+        for i, (raw, name) in enumerate([(previous, 'original'), (middle, 'continuation'), (last, 'last')]):
+            if i:
+                admission = dict(origins=copy.deepcopy(refs), observations=refs[-1],
+                    completed_ids=sorted(completed), remaining_ids=sorted(set(n.inventory(self.root))-completed),
+                    fixture_state_semantically_equal=True, certificate_generation_or_install_executed=False)
+                raw['continuation'] = admission
+                receipt = self.write(name+'/resume-preconditions.json', admission)
+                raw['artifact_sha256'][receipt['path']] = receipt['sha256']
+            ref = self.write(name+'/observations.json', raw)
+            refs.append(ref)
+            completed.update(row['id'] for row in raw['checks'])
+            selection['origins'].append(dict(observations=ref,
+                ids=sorted(row['id'] for row in raw['checks']),
+                disposition='executed' if i == 2 else 'reused_exact',
+                helper_paths=['shared-helper'] if i == 0 else sorted(raw['helper_closure'])))
+        selected = n.origins(self.root, selection, self.candidate)
+        self.assertEqual(len(selected), 12)
+        self.assertEqual(sum(row['disposition'] == 'reused_exact' for row in selected.values()), 5)
+        self.assertEqual(selected['C48-N01']['raw']['exit_code'], 1)
+        self.assertEqual(selected['C49-N01']['raw']['execution_id'], 'continuation')
+        selection['origins'][1]['ids'].append('C46-N01')
+        with self.assertRaisesRegex(ValueError, 'membership'): n.origins(self.root, selection, self.candidate)
+
+
+
 class ResumeAdmissionTests(unittest.TestCase):
     def test_state_artifact_helper_and_process_drift_fail_before_ui(self):
         import sys

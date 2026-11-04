@@ -48,20 +48,28 @@ def origins(root, selection, candidate):
     require(all(context[key] == candidate[key] for key in
                 ('executable_sha256', 'bundle_sha256', 'build_flags', 'conditions')),
             'completed native assertion conditions changed')
-    require(len(selection['origins']) == 2, 'native continuation requires its two actual contributing runs')
-    selected = {}
+    require(len(selection['origins']) >= 2, 'native continuation needs its actual contributing runs')
+    selected, prior_refs = {}, []
     for i, origin in enumerate(selection['origins']):
         path = bound(root, origin['observations'])
         raw = read(path)
-        prior = i == 0
-        ids = ['C46-N01'] if prior else sorted(set(inventory(root))-{'C46-N01'})
-        expected_driver = 'acceptance_p11.py' if prior else 'acceptance_p11_resume.py'
-        require(origin['ids'] == ids and origin['disposition'] == ('reused_exact' if prior else 'executed'),
+        final = i == len(selection['origins'])-1
+        rows = {row['id']: row for row in raw['checks']}
+        ids = sorted(rows)
+        require(rows and len(rows) == len(raw['checks']) and origin['ids'] == ids
+                and set(ids) <= set(inventory(root))-set(selected)
+                and origin['disposition'] == ('executed' if final else 'reused_exact'),
                 'native origin membership or disposition differs')
+        if i == 0: require(ids == ['C46-N01'], 'initial completed setup scope differs')
+        driver = Path(raw['argv'][1]).name
         require(raw['schema'] == 'airs-desktop/p11-native-observations/1' and raw['subject'] == 'P11'
                 and raw['execution_id'] == path.parent.name and raw['performed_by']
                 and len(raw['argv']) >= 2 and Path(raw['argv'][0]).name.lower() in ('python3', 'python')
-                and raw['argv'][1] == 'tools/native-acceptance/'+expected_driver,
+                and raw['argv'][1] in [
+                    'tools/native-acceptance/acceptance_p11.py',
+                    'tools/native-acceptance/acceptance_p11_resume.py',
+                    'tools/native-acceptance/acceptance_p11_continue.py']
+                and (i != 0 or driver == 'acceptance_p11.py'),
                 'native origin execution identity differs')
         require(raw['executable_sha256'] == candidate['executable_sha256']
                 and raw['bundle_sha256'] == candidate['bundle_sha256']
@@ -73,39 +81,41 @@ def origins(root, selection, candidate):
                 'native origin aliases differ')
         require(time.strptime(raw['finished_utc'], '%Y-%m-%dT%H:%M:%SZ')
                 >= time.strptime(raw['started_utc'], '%Y-%m-%dT%H:%M:%SZ'), 'native origin time invalid')
-        if prior:
-            require(raw['helper_closure'] == context['helper_closure'],
-                    'completed run differs from bound S2 helper context')
+        if not final:
             require(raw['complete'] is False and raw['status'] == 'failed' and raw['exit_code'] == 1
                     and raw['errors'], 'original failed process provenance was relabelled')
         else:
             require(raw['complete'] is True and raw['status'] == 'observed' and raw['exit_code'] == 0
-                    and not raw['errors'], 'remaining native execution did not complete')
+                    and not raw['errors'] and set(ids) == set(inventory(root))-set(selected),
+                    'remaining native execution did not complete')
+        if i == 0:
+            require(raw['helper_closure'] == context['helper_closure'],
+                    'completed run differs from bound S2 helper context')
+            paths = c46_helpers(root)
+        else:
+            admission = raw['continuation']
+            admitted_origins = admission.get('origins', [admission['observations']])
             require(raw['binding']['conditions'] == candidate['conditions']
-                    and raw['continuation']['observations'] == selection['origins'][0]['observations']
-                    and raw['continuation']['completed_ids'] == ['C46-N01']
-                    and raw['continuation']['remaining_ids'] == ids
-                    and raw['continuation']['fixture_state_semantically_equal'] is True
-                    and raw['continuation']['certificate_generation_or_install_executed'] is False,
+                    and admitted_origins == prior_refs
+                    and admission['observations'] == prior_refs[-1]
+                    and sorted(admission['completed_ids']) == sorted(selected)
+                    and sorted(admission['remaining_ids']) == sorted(set(inventory(root))-set(selected))
+                    and admission['fixture_state_semantically_equal'] is True
+                    and admission['certificate_generation_or_install_executed'] is False,
                     'native continuation admission/provenance differs')
             admission_path = path.parent/'resume-preconditions.json'
-            admission_name = str(admission_path.relative_to(root))
-            require(raw['artifact_sha256'].get(admission_name) == sha(admission_path)
-                    and read(admission_path) == raw['continuation'],
-                    'recorded admission proof differs')
-        paths = c46_helpers(root) if prior else sorted(candidate['helper_closure'])
+            require(raw['artifact_sha256'].get(str(admission_path.relative_to(root))) == sha(admission_path)
+                    and read(admission_path) == admission, 'recorded admission proof differs')
+            # All 07 driver files remain unchanged; no scope is silently dropped.
+            paths = sorted(raw['helper_closure'])
         require(origin['helper_paths'] == paths and all(
             raw['helper_closure'].get(name) == candidate['helper_closure'].get(name)
             for name in paths), 'relevant native helper changed')
-        if not prior:
-            require(raw['helper_closure'] == candidate['helper_closure'],
-                    'remaining native driver closure differs')
+        if final:
+            require(raw['helper_closure'] == candidate['helper_closure'], 'current native driver closure differs')
         for artifact, digest in raw['artifact_sha256'].items():
             file = (root/artifact).resolve()
-            require(file.is_relative_to(path.parent) and sha(file) == digest,
-                    'native origin artifact changed')
-        rows = {row['id']: row for row in raw['checks']}
-        require(len(rows) == len(raw['checks']) and set(rows) == set(ids), 'native row membership differs')
+            require(file.is_relative_to(path.parent) and sha(file) == digest, 'native origin artifact changed')
         for check_id, row in rows.items():
             require(row['facts'] and all(value is True for value in row['facts'].values()),
                     'native assertion has incomplete or failed facts')
@@ -114,6 +124,7 @@ def origins(root, selection, candidate):
                         'native row evidence was not captured by its contributing run')
             selected[check_id] = dict(raw_path=path, raw=raw, row=row,
                                      helper_paths=paths, disposition=origin['disposition'])
+        prior_refs.append(origin['observations'])
     return selected
 
 
@@ -157,22 +168,23 @@ def validate(root, acceptance_path, execution_path, candidate):
 
 def finalize(args):
     root = Path.cwd().resolve()
-    previous, continuation = args.previous.resolve(), args.continuation.resolve()
-    first, last = read(previous), read(continuation)
+    previous, continuation = [path.resolve() for path in args.previous], args.continuation.resolve()
+    last = read(continuation)
     prepare = Path(last['binding']['prepare']['path']).resolve()
     prepared = read(prepare)
     candidate = dict(executable_sha256=prepared['executable_sha256'],
-        bundle_sha256=prepared['bundle_sha256'], helper_closure=helper_closure(root, 'acceptance_p11_resume'),
+        bundle_sha256=prepared['bundle_sha256'],
+        helper_closure=helper_closure(root, Path(last['argv'][1]).stem),
         build_flags={'target': prepared['target'], 'features': prepared['features']},
         conditions=last['binding']['conditions'])
     selection = dict(schema='airs-desktop/p11-native-selection/1',
         prepare=reference(root, prepare), source_context=reference(root, args.source_context),
         native_inventory_sha256=sha(inventory_root(root)/'docs/architecture/native-checks.json'),
         visual_review=reference(root, args.visual_review), origins=[
-            dict(observations=reference(root, previous), ids=['C46-N01'],
-                 disposition='reused_exact', helper_paths=c46_helpers(root)),
-            dict(observations=reference(root, continuation), ids=sorted(set(inventory(root))-{'C46-N01'}),
-                 disposition='executed', helper_paths=sorted(candidate['helper_closure']))])
+            dict(observations=reference(root, path), ids=sorted(row['id'] for row in read(path)['checks']),
+                 disposition='reused_exact' if i < len(previous) else 'executed',
+                 helper_paths=c46_helpers(root) if i == 0 else sorted(read(path)['helper_closure']))
+            for i, path in enumerate([*previous, continuation])])
     selected = origins(root, selection, candidate)
     review_captures(root, selection, candidate, selected)
     out = args.out.resolve()
@@ -207,6 +219,7 @@ def finalize(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['finalize'])
-    for name in ('previous', 'continuation', 'visual-review', 'source-context', 'out'):
+    parser.add_argument('--previous', type=Path, nargs='+', required=True)
+    for name in ('continuation', 'visual-review', 'source-context', 'out'):
         parser.add_argument('--'+name, type=Path, required=True)
     raise SystemExit(finalize(parser.parse_args()))
