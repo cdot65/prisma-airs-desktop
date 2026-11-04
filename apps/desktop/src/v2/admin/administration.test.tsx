@@ -215,12 +215,13 @@ function service(native: Native, data: Inventories = { keys: [KEY], topics: [TOP
     }
 }
 
-async function launch(snapshot: ShellSnapshot, data?: Inventories) {
+async function launch(snapshot: ShellSnapshot, data?: Inventories, initialDialog?: string) {
     const native = scriptedNative(snapshot)
     service(native, data)
     const user = userEvent.setup()
     const { unmount } = render(<App client={new DesktopClient(native.transport)} />)
-    await screen.findByRole('heading', { level: 1, name: 'Administration' })
+    if (initialDialog) await screen.findByRole('dialog', { name: initialDialog })
+    else await screen.findByRole('heading', { level: 1, name: 'Administration' })
     return { native, user, unmount }
 }
 
@@ -874,7 +875,7 @@ describe('v2 Administration', () => {
             ...base,
             harness: { ...base.harness, conversation },
             changes: { review: review({ review: 'rv-h1' }), staged: null, results: [] },
-        })
+        }, undefined, 'Review a change')
         const sheet = await screen.findByRole('dialog', { name: 'Review a change' })
         expect(within(sheet).getAllByRole('heading', { name: `Proposed by the Harness: update custom topic ${TOPIC.topic_id}` }).length).toBeGreaterThan(0)
         expect(within(sheet).getByLabelText('custom topic draft (JSON)')).toHaveValue('{"topic_name":"Finance","description":"Money and payments"}')
