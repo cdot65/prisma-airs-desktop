@@ -135,8 +135,7 @@ def _settings(ctx):
 
 
 def _academy_reader(ctx):
-    """Existing synthetic catalog, through guest learner links only."""
-    ctx.navigate("Academy")
+    """From the current synthetic catalog, through guest learner links only."""
     ctx.press("AXCheckBox", "Courses")
     ctx.press("AXLink", "COURSE Runtime Security Foundations")
     ctx.text("Runtime Security Foundations")
@@ -166,7 +165,7 @@ def _themes(ctx, original_appearance, original_theme):
     ctx.navigate("Home")
     captures.append(ctx.capture("c49-product-gruvbox-dark"))
 
-    portal_observed, desktop_portals = [], []
+    portal_observed, desktop_portals, academy_inputs = [], [], []
     for theme in ("Prisma AIRS", "Gruvbox"):
         _settings(ctx)
         _select(ctx, "Theme", ["Prisma AIRS", "Gruvbox"], theme)
@@ -178,6 +177,20 @@ def _themes(ctx, original_appearance, original_theme):
         ctx.press("AXButton", "Cancel")
         _resize(ctx, 1100, 800)
         _zoom(ctx, doubled=True)
+        ctx.navigate("Academy")
+        # Academy owns this ordinary in-page search input too. Capture its
+        # actual focus treatment, not only a portal or static learner text.
+        label = "Search paths, courses, and labs"
+        tree, ready = ctx.app.wait_for(lambda t: any(ctx.app.node(t, role, label)
+            for role in ("AXSearchField", "AXTextField")))
+        ctx.require(ready, "Academy catalog search input missing")
+        role = next(role for role in ("AXSearchField", "AXTextField") if ctx.app.node(tree, role, label))
+        ctx.app.ax("focus", role, label)
+        tree, focused = ctx.app.wait_for(lambda t: (ctx.app.focused(t) or {}).get("label") == label)
+        ctx.require(focused, "Academy catalog search did not receive focus")
+        academy_inputs.append(focused)
+        evidence.append(ctx.save(f"c49-academy-search-focused-{theme.lower().replace(' ', '-')}", tree))
+        captures.append(ctx.capture(f"c49-academy-search-focused-{theme.lower().replace(' ', '-')}"))
         tree = _academy_reader(ctx)
         evidence.append(ctx.save(f"c49-guest-reader-{theme.lower().replace(' ', '-')}", tree))
         captures.append(ctx.capture(f"c49-guest-reader-{theme.lower().replace(' ', '-')}"))
@@ -196,6 +209,7 @@ def _themes(ctx, original_appearance, original_theme):
     ctx.record("C49-N02", {"four_palette_controls_observed": len(captures) >= 4,
         "alternate_theme_and_appearance_survived_restart": persisted,
         "desktop_add_portal_opened_in_both_themes": all(desktop_portals) and len(desktop_portals) == 2,
+        "guest_academy_in_page_search_focus_observed_in_both_desktop_themes": all(academy_inputs) and len(academy_inputs) == 2,
         "guest_academy_reader_and_contents_portal_opened_in_both_themes": all(portal_observed) and len(portal_observed) == 2},
         evidence, captures)
 
