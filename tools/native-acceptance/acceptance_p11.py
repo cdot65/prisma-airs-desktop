@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 ROOT = Path.cwd().resolve()
 TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS))
+sys.path.insert(0, str(ROOT/'tools/p10'))
 _spec = importlib.util.spec_from_file_location('p11_candidate_bindings', ROOT/'tools/p10/candidate.py')
 _binding = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_binding)
@@ -72,6 +73,7 @@ class Context:
         self.log, self.rows, self.errors, self.artifacts = [], {}, [], {}
         self.fixture_root_owned = False
         self.argv = list(getattr(sys, "orig_argv", [sys.executable, *sys.argv]))
+        self.argv_source = "sys.orig_argv" if hasattr(sys, "orig_argv") else "sys.executable + sys.argv (Python has no orig_argv)"
         self.state = {'bootstrap_tenant': 'P11 Northwind', 'spare_tenant': 'P11 Secondary', 'scan_absent': True}
         self.closure = _binding.helper_closure(ROOT, 'acceptance_p11')
         self.binding = {'prepare': {'path': str(self.prepare_path), 'sha256': sha(self.prepare_path)},
@@ -165,7 +167,7 @@ class Context:
 
     def observations(self, complete):
         return {'schema': 'airs-desktop/p11-native-observations/1', 'subject': 'P11', 'complete': complete,
-                'argv': self.argv, 'started_utc': self.started, 'finished_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                'argv': self.argv, 'argv_source': self.argv_source, 'started_utc': self.started, 'finished_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 'performed_by': os.environ.get('AIRS_NATIVE_ORCHESTRATOR'), 'host': platform.platform(),
                 'execution_id': self.out.name, 'status': 'observed' if complete else 'failed', 'exit_code': self.execution_exit_code,
                 'executable_sha256': self.prepared['executable_sha256'], 'bundle_sha256': self.prepared['bundle_sha256'], 'helper_closure': self.closure,
@@ -293,7 +295,8 @@ def finalize(args):
             or raw['bundle_sha256'] != binding['bundle_sha256'] or raw['executable_sha256'] != prepared['executable_sha256']
             or raw['bundle_sha256'] != prepared['bundle_sha256']):
         raise RuntimeError('capture manifest candidate/helper aliases differ')
-    if raw['argv'][:2] != ['python3', 'tools/native-acceptance/acceptance_p11.py'] or raw['execution_id'] != raw_path.parent.name:
+    if (len(raw['argv']) < 2 or Path(raw['argv'][0]).name.lower() not in ('python3', 'python')
+            or raw['argv'][1] != 'tools/native-acceptance/acceptance_p11.py' or raw['execution_id'] != raw_path.parent.name):
         raise RuntimeError('capture manifest does not name the executed driver/attempt')
     started = time.strptime(raw['started_utc'], '%Y-%m-%dT%H:%M:%SZ')
     finished = time.strptime(raw['finished_utc'], '%Y-%m-%dT%H:%M:%SZ')
