@@ -37,6 +37,55 @@ def c46_helpers(root):
     return sorted(paths)
 
 
+
+def positive_rows(raw):
+    return {row['id']: row for row in raw['checks']
+            if row['facts'] and all(value is True for value in row['facts'].values())}
+
+
+def excluded_checks(raw):
+    return [{'id': row['id'],
+             'failed_facts': sorted(name for name, value in row['facts'].items() if value is not True),
+             'reason': 'Measured assertion was not completed; a later positive replacement is required.'}
+            for row in raw['checks'] if row['id'] not in positive_rows(raw)]
+
+
+def artifact_carry(root, raw, candidate, prior_refs):
+    """Only the diagnosed N01 layout facts/captures may support its repair."""
+    carry = raw.get('artifact_carry')
+    if not carry: return {}
+    require(carry['assertion'] == 'C47-N01' and carry['observations'] in prior_refs,
+            'unapproved native artifact carry')
+    path = bound(root, carry['observations'])
+    old = read(path)
+    rows = [row for row in old['checks'] if row['id'] == 'C47-N01']
+    require(len(rows) == 1 and rows[0]['facts'].get('named_actions_keyboard_reachable') is False
+            and all(value is True for name, value in rows[0]['facts'].items()
+                    if name != 'named_actions_keyboard_reachable'),
+            'N01 carry does not retain the original isolated keyboard failure')
+    require(old['executable_sha256'] == candidate['executable_sha256']
+            and old['bundle_sha256'] == candidate['bundle_sha256']
+            and old['binding']['conditions'] == candidate['conditions']
+            and all(candidate['helper_closure'].get(name) == digest
+                    for name, digest in old['helper_closure'].items()),
+            'N01 retained layout artifact/helper/VM conditions differ')
+    allowed = set(rows[0]['evidence']+rows[0]['visual'])
+    repaired = [row for row in raw['checks'] if row['id'] == 'C47-N01']
+    matrices = [name for name in rows[0]['evidence'] if Path(name).name == 'shell-layout-measurements.json']
+    require(len(repaired) == 1 and len(matrices) == 1
+            and matrices[0] in repaired[0]['evidence']
+            and set(rows[0]['visual']) <= set(repaired[0]['visual'])
+            and {matrices[0], *rows[0]['visual']} <= set(carry['artifact_sha256']),
+            'N01 repair omitted retained matrix or capture review scope')
+    require(carry['artifact_sha256'] and set(carry['artifact_sha256']) <= allowed,
+            'N01 carry includes unrelated artifacts')
+    for name, digest in carry['artifact_sha256'].items():
+        require((root/name).resolve().is_relative_to(path.parent)
+                and old['artifact_sha256'].get(name) == digest == sha(root/name),
+                'retained N01 layout artifact changed')
+    return carry['artifact_sha256']
+
+
 def origins(root, selection, candidate):
     require(selection['schema'] == 'airs-desktop/p11-native-selection/1'
             and selection['native_inventory_sha256'] == sha(inventory_root(root)/'docs/architecture/native-checks.json'),
@@ -54,9 +103,11 @@ def origins(root, selection, candidate):
         path = bound(root, origin['observations'])
         raw = read(path)
         final = i == len(selection['origins'])-1
-        rows = {row['id']: row for row in raw['checks']}
+        all_rows = {row['id']: row for row in raw['checks']}
+        rows = positive_rows(raw)
         ids = sorted(rows)
-        require(rows and len(rows) == len(raw['checks']) and origin['ids'] == ids
+        require(len(all_rows) == len(raw['checks']) and origin['ids'] == ids
+                and origin.get('excluded_checks', []) == excluded_checks(raw)
                 and set(ids) <= set(inventory(root))-set(selected)
                 and origin['disposition'] == ('executed' if final else 'reused_exact'),
                 'native origin membership or disposition differs')
@@ -69,7 +120,8 @@ def origins(root, selection, candidate):
                     'tools/native-acceptance/acceptance_p11.py',
                     'tools/native-acceptance/acceptance_p11_resume.py',
                     'tools/native-acceptance/acceptance_p11_continue.py',
-                    'tools/native-acceptance/acceptance_p11_finish.py', 'tools/native-acceptance/acceptance_p11_last.py']
+                    'tools/native-acceptance/acceptance_p11_finish.py', 'tools/native-acceptance/acceptance_p11_last.py',
+                    'tools/native-acceptance/acceptance_p11_verify.py', 'tools/native-acceptance/acceptance_p11_warn.py']
                 and (i != 0 or driver == 'acceptance_p11.py'),
                 'native origin execution identity differs')
         require(raw['executable_sha256'] == candidate['executable_sha256']
@@ -117,11 +169,13 @@ def origins(root, selection, candidate):
         for artifact, digest in raw['artifact_sha256'].items():
             file = (root/artifact).resolve()
             require(file.is_relative_to(path.parent) and sha(file) == digest, 'native origin artifact changed')
+        combined_artifacts = dict(raw['artifact_sha256'])
+        combined_artifacts.update(artifact_carry(root, raw, candidate, prior_refs))
         for check_id, row in rows.items():
             require(row['facts'] and all(value is True for value in row['facts'].values()),
                     'native assertion has incomplete or failed facts')
             for name in row['evidence']+row['visual']:
-                require(name in raw['artifact_sha256'] and sha(root/name) == raw['artifact_sha256'][name],
+                require(name in combined_artifacts and sha(root/name) == combined_artifacts[name],
                         'native row evidence was not captured by its contributing run')
             selected[check_id] = dict(raw_path=path, raw=raw, row=row,
                                      helper_paths=paths, disposition=origin['disposition'])
@@ -182,7 +236,7 @@ def finalize(args):
         prepare=reference(root, prepare), source_context=reference(root, args.source_context),
         native_inventory_sha256=sha(inventory_root(root)/'docs/architecture/native-checks.json'),
         visual_review=reference(root, args.visual_review), origins=[
-            dict(observations=reference(root, path), ids=sorted(row['id'] for row in read(path)['checks']),
+            dict(observations=reference(root, path), ids=sorted(positive_rows(read(path))), excluded_checks=excluded_checks(read(path)),
                  disposition='reused_exact' if i < len(previous) else 'executed',
                  helper_paths=c46_helpers(root) if i == 0 else sorted(read(path)['helper_closure']))
             for i, path in enumerate([*previous, continuation])])

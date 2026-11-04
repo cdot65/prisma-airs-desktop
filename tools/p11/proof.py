@@ -99,7 +99,7 @@ def native_driver(root, performed):
     raw = (read(bound(root, performed['origins'][-1]['observations']))
            if performed.get('schema') == 'airs-desktop/p11-native-selection/1' else performed)
     argv = raw.get('argv', [])
-    names = ('acceptance_p11', 'acceptance_p11_resume', 'acceptance_p11_continue', 'acceptance_p11_finish', 'acceptance_p11_last')
+    names = ('acceptance_p11', 'acceptance_p11_resume', 'acceptance_p11_continue', 'acceptance_p11_finish', 'acceptance_p11_last', 'acceptance_p11_verify', 'acceptance_p11_warn')
     require(len(argv) > 1 and argv[1] in ['tools/native-acceptance/' + name + '.py' for name in names],
             'unknown actual native driver')
     return Path(argv[1]).stem

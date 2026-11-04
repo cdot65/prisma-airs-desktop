@@ -792,10 +792,12 @@ class ProofTests(unittest.TestCase):
         selection = dict(schema='airs-desktop/p11-native-selection/1',
                          origins=[dict(observations=proof.reference(self.root, raw_path))])
         self.assertEqual(proof.native_driver(self.root, selection), 'acceptance_p11_continue')
-        raw['argv'][1] = 'tools/native-acceptance/acceptance_p11_last.py'
-        raw_path.write_text(json.dumps(raw))
-        selection['origins'][-1]['observations'] = proof.reference(self.root, raw_path)
-        self.assertEqual(proof.native_driver(self.root, selection), 'acceptance_p11_last')
+        for driver in ('acceptance_p11_finish', 'acceptance_p11_last',
+                       'acceptance_p11_verify', 'acceptance_p11_warn'):
+            raw['argv'][1] = 'tools/native-acceptance/' + driver + '.py'
+            raw_path.write_text(json.dumps(raw))
+            selection['origins'][-1]['observations'] = proof.reference(self.root, raw_path)
+            self.assertEqual(proof.native_driver(self.root, selection), driver)
         candidate = dict(source_inventory_sha256='current-equivalence-context',
                          execution_root='/original/execution-root', prepare={'fixture': 'prepare'},
                          executable_sha256='fixture-executable', bundle_sha256='fixture-bundle',

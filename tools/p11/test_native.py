@@ -196,6 +196,43 @@ class NativeOriginsTests(unittest.TestCase):
 
 
 
+    def test_positive_selector_preserves_failed_measurement_explicitly(self):
+        raw = copy.deepcopy(self.raws[1])
+        row = next(row for row in raw['checks'] if row['id'] == 'C47-N01')
+        row['facts'] = {'header': True, 'named_actions_keyboard_reachable': False}
+        self.assertNotIn('C47-N01', n.positive_rows(raw))
+        self.assertFalse(row['facts']['named_actions_keyboard_reachable'])
+        self.assertEqual(n.excluded_checks(raw)[0]['id'], 'C47-N01')
+        self.assertEqual(n.excluded_checks(raw)[0]['failed_facts'], ['named_actions_keyboard_reachable'])
+
+    def test_repaired_keyboard_fact_binds_retained_matrix_and_all_old_pixels(self):
+        raw = copy.deepcopy(self.raws[1])
+        row = next(row for row in raw['checks'] if row['id'] == 'C47-N01')
+        matrix = self.write('continuation/shell-layout-measurements.json',
+                            {'fixture': 'retained measured layout, not a new execution'})
+        image = self.root/'continuation/old-layout.png'
+        image.write_bytes(b'synthetic retained image')
+        name = str(image.relative_to(self.root))
+        row.update(facts={'header': True, 'named_actions_keyboard_reachable': False},
+                   evidence=[matrix['path']], visual=[name])
+        raw['artifact_sha256'].update({matrix['path']: matrix['sha256'], name: n.sha(image)})
+        old_ref = self.write('continuation/observations.json', raw)
+        current = {'checks': [{'id': 'C47-N01', 'facts': {'header': True,
+                    'named_actions_keyboard_reachable': True}, 'evidence': [matrix['path']], 'visual': [name]}],
+            'artifact_carry': {'observations': old_ref, 'assertion': 'C47-N01',
+                'artifact_sha256': {matrix['path']: matrix['sha256'], name: n.sha(image)}}}
+        self.assertEqual(set(n.artifact_carry(self.root, current, self.candidate, [old_ref])),
+                         {matrix['path'], name})
+        current['checks'][0]['visual'] = []
+        with self.assertRaisesRegex(ValueError, 'omitted retained matrix or capture'):
+            n.artifact_carry(self.root, current, self.candidate, [old_ref])
+        current['checks'][0]['visual'] = [name]
+        image.write_bytes(b'changed original image')
+        with self.assertRaisesRegex(ValueError, 'artifact changed'):
+            n.artifact_carry(self.root, current, self.candidate, [old_ref])
+
+
+
 class ResumeAdmissionTests(unittest.TestCase):
     def test_state_artifact_helper_and_process_drift_fail_before_ui(self):
         import sys
