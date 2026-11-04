@@ -697,14 +697,14 @@ pub fn models(integration: &str, reply: &Value) -> Option<GatewayModels> {
 
 /// Whether `scope` binds the workspace `slug` (the SDK's binding shape).
 pub fn binds(scope: &Value, slug: &str) -> Option<bool> {
+    if slug.is_empty() {
+        return None;
+    }
     let resources = scope.get("resources")?.as_array()?;
-    Some(
-        !slug.is_empty()
-            && resources.iter().any(|r| {
-                r.get("resource_type").and_then(Value::as_str) == Some("workspace")
-                    && r.get("resource_id").and_then(Value::as_str) == Some(slug)
-            }),
-    )
+    Some(resources.iter().any(|r| {
+        r.get("resource_type").and_then(Value::as_str) == Some("workspace")
+            && r.get("resource_id").and_then(Value::as_str) == Some(slug)
+    }))
 }
 
 /// Service keys among `list` whose scopes allow inference.
@@ -1196,6 +1196,7 @@ mod tests {
         let scope = json!({"name": "s", "resources": [{"resource_type": "workspace", "resource_id": "team-a"}]});
         assert_eq!(binds(&scope, "team-a"), Some(true));
         assert_eq!(binds(&scope, "team-b"), Some(false));
+        assert_eq!(binds(&scope, ""), None);
         assert_eq!(binds(&json!({}), "team-a"), None);
         let keys = list(
             GatewayResource::ServiceKeys,

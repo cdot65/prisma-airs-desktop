@@ -164,6 +164,46 @@ pub struct SetupWarning {
     /// Wall-clock seconds since the Unix epoch when it was recorded
     /// (`u32`: a JSON number, never a bigint, on the TypeScript side).
     pub recorded_secs: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub check: Option<SetupWarningBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub recheck: Option<SetupWarningRecheck>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub resolved_secs: Option<u32>,
+}
+
+/// Scope of the original setup check; absent on historical warnings.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupWarningBinding {
+    pub version: u8,
+    pub line: VerifyLine,
+    pub tsg_id: String,
+    pub origin: String,
+    pub workspace: Option<SetupWarningWorkspace>,
+}
+
+/// Gateway IAM uses the listed workspace slug, not its displayed UUID.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupWarningWorkspace {
+    pub id: String,
+    pub slug: String,
+    pub scope_name: String,
+}
+
+/// Latest dedicated setup recheck. Original reason/time remain unchanged.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupWarningRecheck {
+    pub checked_secs: u32,
+    pub state: VerifyState,
+    pub reason: String,
+    pub equivalent: bool,
+    pub basis: SetupWarningBasis,
 }
 
 /// A Runtime API key named by its identifier and name (never a secret).
@@ -315,4 +355,14 @@ pub fn default_feature() -> FeatureId {
         .find(|e| e.sidebar)
         .map(|e| e.id)
         .unwrap_or(FeatureId::Home)
+}
+
+/// How the latest check was related to the original diagnostic.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum SetupWarningBasis {
+    RecordedScope,
+    LegacyTenantSources,
+    LegacyWorkspaceScope,
+    Unknown,
 }

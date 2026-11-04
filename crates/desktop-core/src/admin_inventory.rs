@@ -414,7 +414,7 @@ pub fn inventory() -> AdminInventoryView {
     };
     let model_skill = AdminProduct {
         id: AdminProductId::ModelSkill,
-        label: "Model and skill scans".to_owned(),
+        label: "AI Supply Chain Security".to_owned(),
         availability: AdminAvailability::Available,
         read_only: true,
         tabs: vec![

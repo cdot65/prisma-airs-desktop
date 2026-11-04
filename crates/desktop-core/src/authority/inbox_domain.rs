@@ -189,7 +189,7 @@ fn product_label(product: ProductId) -> &'static str {
         ProductId::RuntimeSecurity => "AI Runtime Security",
         ProductId::Gateway => "AI Gateway",
         ProductId::RedTeam => "AI Red Teaming",
-        ProductId::ModelSkill => "Model and skill scans",
+        ProductId::ModelSkill => "AI Supply Chain Security",
     }
 }
 
@@ -207,7 +207,8 @@ fn warning_target(product: ProductId) -> (InboxTarget, &'static str) {
     let (feature, label) = match product {
         ProductId::RuntimeSecurity => (FeatureId::Settings, "Open Settings"),
         ProductId::Gateway => (FeatureId::Gateway, "Open AI Gateway"),
-        ProductId::RedTeam | ProductId::ModelSkill => (FeatureId::RedTeam, "Open AI Red Teaming"),
+        ProductId::RedTeam => (FeatureId::RedTeam, "Open AI Red Teaming"),
+        ProductId::ModelSkill => (FeatureId::Administration, "Open AI Supply Chain Security"),
     };
     (
         InboxTarget {
@@ -426,7 +427,13 @@ impl State {
             .active
             .as_ref()
             .and_then(|id| self.tenant(id))
-            .map(|t| t.setup_warnings.iter().map(setup_warning_item).collect())
+            .map(|t| {
+                t.setup_warnings
+                    .iter()
+                    .filter(|w| w.resolved_secs.is_none())
+                    .map(setup_warning_item)
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -742,7 +749,11 @@ impl State {
             });
         }
         if let Some(tenant) = self.data.active.as_ref().and_then(|id| self.tenant(id)) {
-            for w in &tenant.setup_warnings {
+            for w in tenant
+                .setup_warnings
+                .iter()
+                .filter(|w| w.resolved_secs.is_none())
+            {
                 let item = setup_warning_item(w);
                 let (target, label) = warning_target(w.product);
                 items.push(InboxEntry {

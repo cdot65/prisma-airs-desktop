@@ -102,7 +102,9 @@ fn failure_reason(failure: ManagementFailure) -> &'static str {
         }
         ManagementFailure::Denied => "The management client is not allowed to read this tenant.",
         ManagementFailure::NotFound => "The service found nothing for this TSG.",
-        ManagementFailure::RateLimited => "The service is rate-limiting reads; try again shortly.",
+        ManagementFailure::RateLimited => {
+            "The service is rate-limiting requests; try again shortly."
+        }
         ManagementFailure::Unavailable => "The management service could not be reached.",
         ManagementFailure::Rejected => "The service rejected the request.",
         ManagementFailure::Timeout => "The service did not answer in time.",
@@ -513,191 +515,7 @@ impl State {
             return;
         };
         step.operation = None;
-        let (state, reason): (VerifyState, String) = match (&step.step.line, result) {
-            (_, ManagementResult::Failed { failure, .. }) => {
-                (VerifyState::Fail, failure_reason(*failure).to_owned())
-            }
-            (VerifyLine::ManagementClient, ManagementResult::Verified) => (
-                VerifyState::Pass,
-                "Management OAuth authenticated successfully.".to_owned(),
-            ),
-            (
-                VerifyLine::Gateway,
-                ManagementResult::Gateway {
-                    gateway: GatewayResult::List { list },
-                },
-            ) => {
-                // No workspace chosen: the listing is readable, but the
-                // workspace's prerequisites were not checked.
-                if list.count > 0 {
-                    (
-                        VerifyState::Warning,
-                        format!(
-                            "{} Gateway workspace(s) readable; none chosen, so its prerequisites were not checked.",
-                            list.count
-                        ),
-                    )
-                } else {
-                    (
-                        VerifyState::Warning,
-                        "No Gateway workspace in this tenant yet.".to_owned(),
-                    )
-                }
-            }
-            (
-                VerifyLine::Gateway,
-                ManagementResult::Gateway {
-                    gateway: GatewayResult::Prerequisites { prerequisites },
-                },
-            ) => {
-                let sources = [
-                    ("routes", prerequisites.routes_failure),
-                    ("providers", prerequisites.providers_failure),
-                    ("integrations", prerequisites.integrations_failure),
-                    ("service keys", prerequisites.service_keys_failure),
-                ];
-                let mut failed: Vec<String> = sources
-                    .iter()
-                    .filter_map(|(name, f)| f.map(|f| format!("{name}: {}", failure_reason(f))))
-                    .collect();
-                // Every source attempted counts: the IAM scope binding and the
-                // three planes are part of the prerequisites, not decoration.
-                let plane = |name: &str, access: PlaneAccess| match access {
-                    PlaneAccess::Granted => None,
-                    PlaneAccess::Denied => Some(format!("{name} plane: permission refused")),
-                    PlaneAccess::Failed => Some(format!("{name} plane: reads failed")),
-                };
-                failed.extend(plane("data", prerequisites.data_plane));
-                failed.extend(plane("admin", prerequisites.admin_plane));
-                failed.extend(plane("IAM", prerequisites.iam_plane));
-                failed.extend(match prerequisites.scope {
-                    ScopeBinding::Bound => None,
-                    ScopeBinding::Unbound => Some(format!(
-                        "scope {} does not list the workspace",
-                        prerequisites.scope_name
-                    )),
-                    ScopeBinding::Absent => {
-                        Some(format!("scope {} does not exist", prerequisites.scope_name))
-                    }
-                    ScopeBinding::Denied => Some(format!(
-                        "scope {} may not be read by this client",
-                        prerequisites.scope_name
-                    )),
-                    ScopeBinding::Failed => Some(format!(
-                        "scope {} could not be read",
-                        prerequisites.scope_name
-                    )),
-                });
-                let lists_failed = sources.iter().filter(|(_, f)| f.is_some()).count();
-                if failed.is_empty() {
-                    (
-                        VerifyState::Pass,
-                        format!(
-                            "Workspace {}: {} route(s), {} provider(s), {} inference key(s) readable.",
-                            prerequisites.workspace,
-                            prerequisites.routes.as_ref().map_or(0, |l| l.count),
-                            prerequisites.providers.as_ref().map_or(0, |l| l.count),
-                            prerequisites.inference_keys
-                        ),
-                    )
-                } else if lists_failed < sources.len() {
-                    (
-                        VerifyState::Warning,
-                        format!(
-                            "Workspace {}: partial; {}",
-                            prerequisites.workspace,
-                            failed.join("; ")
-                        ),
-                    )
-                } else {
-                    (
-                        VerifyState::Fail,
-                        format!(
-                            "Workspace {}: {}",
-                            prerequisites.workspace,
-                            failed.join("; ")
-                        ),
-                    )
-                }
-            }
-            (VerifyLine::RedTeam, ManagementResult::RedTeam { observation }) => {
-                match (&observation.scans, &observation.statistics) {
-                    (Some(scans), Some(_)) => (
-                        VerifyState::Pass,
-                        format!(
-                            "Red Team scans and statistics readable ({} scans listed).",
-                            scans.rows.len()
-                        ),
-                    ),
-                    (Some(scans), None) => (
-                        VerifyState::Warning,
-                        format!(
-                            "Red Team scans readable ({} listed); statistics did not: {}",
-                            scans.rows.len(),
-                            observation
-                                .statistics_failure
-                                .map_or("no reason", failure_reason)
-                        ),
-                    ),
-                    (None, Some(_)) => (
-                        VerifyState::Warning,
-                        format!(
-                            "Statistics read; the scan list did not: {}",
-                            observation
-                                .scans_failure
-                                .map_or("no reason", failure_reason)
-                        ),
-                    ),
-                    (None, None) => (
-                        VerifyState::Fail,
-                        observation
-                            .scans_failure
-                            .or(observation.statistics_failure)
-                            .map_or("The Red Team reads returned nothing.", failure_reason)
-                            .to_owned(),
-                    ),
-                }
-            }
-            (VerifyLine::ModelSkill, ManagementResult::SupplyChain { observation }) => {
-                let ok = [
-                    observation.models.is_some(),
-                    observation.skills.is_some(),
-                    observation.skill_statistics.is_some(),
-                ];
-                let readable = ok.iter().filter(|b| **b).count();
-                if readable == 3 {
-                    (
-                        VerifyState::Pass,
-                        format!(
-                            "Model and skill scans readable ({} models, {} skills).",
-                            observation.models.as_ref().map_or(0, |m| m.rows.len()),
-                            observation.skills.as_ref().map_or(0, |s| s.rows.len())
-                        ),
-                    )
-                } else if readable > 0 {
-                    (
-                        VerifyState::Warning,
-                        format!("{readable} of 3 model and skill sources readable."),
-                    )
-                } else {
-                    (
-                        VerifyState::Fail,
-                        observation
-                            .models_failure
-                            .or(observation.skills_failure)
-                            .map_or(
-                                "The model and skill reads returned nothing.",
-                                failure_reason,
-                            )
-                            .to_owned(),
-                    )
-                }
-            }
-            _ => (
-                VerifyState::Fail,
-                "The service returned a reply the desktop could not use.".to_owned(),
-            ),
-        };
+        let (state, reason) = verify_result(step.step.line, result);
         step.step.state = state;
         step.step.reason = reason;
     }
@@ -842,6 +660,17 @@ impl State {
                     product: w.product,
                     reason: w.reason,
                     recorded_secs,
+                    check: Some(super::setup_warning_domain::binding_for(
+                        &setup.tenant,
+                        super::setup_warning_domain::line_for(w.product),
+                        setup
+                            .gateway
+                            .selection
+                            .as_ref()
+                            .map(|s| crate::gateway::WorkspaceScope::from(&s.workspace)),
+                    )),
+                    recheck: None,
+                    resolved_secs: None,
                 });
         }
         let id = setup.tenant.profile.id.clone();
@@ -931,5 +760,216 @@ impl State {
                 )
             })
         })
+    }
+}
+
+/// Shared capability evaluation for first setup and dedicated warning rechecks.
+/// A normal product refresh never calls this reconciliation path.
+pub(super) fn verify_result(line: VerifyLine, result: &ManagementResult) -> (VerifyState, String) {
+    match (&line, result) {
+        (_, ManagementResult::Failed { failure, .. }) => {
+            (VerifyState::Fail, failure_reason(*failure).to_owned())
+        }
+        (VerifyLine::ManagementClient, ManagementResult::Verified) => (
+            VerifyState::Pass,
+            "Management OAuth authenticated successfully.".to_owned(),
+        ),
+        (
+            VerifyLine::Gateway,
+            ManagementResult::Gateway {
+                gateway: GatewayResult::List { list },
+            },
+        ) => {
+            // No workspace chosen: the listing is readable, but the
+            // workspace's prerequisites were not checked.
+            if list.count > 0 {
+                (
+                    VerifyState::Warning,
+                    format!(
+                        "{} Gateway workspace(s) readable; none chosen, so its prerequisites were not checked.",
+                        list.count
+                    ),
+                )
+            } else {
+                (
+                    VerifyState::Warning,
+                    "No Gateway workspace in this tenant yet.".to_owned(),
+                )
+            }
+        }
+        (
+            VerifyLine::Gateway,
+            ManagementResult::Gateway {
+                gateway: GatewayResult::Prerequisites { prerequisites },
+            },
+        ) => {
+            let sources = [
+                ("routes", prerequisites.routes_failure),
+                ("providers", prerequisites.providers_failure),
+                ("integrations", prerequisites.integrations_failure),
+                ("service keys", prerequisites.service_keys_failure),
+            ];
+            let mut failed: Vec<String> = sources
+                .iter()
+                .filter_map(|(name, f)| f.map(|f| format!("{name}: {}", failure_reason(f))))
+                .collect();
+            // Every source attempted counts: the IAM scope binding and the
+            // three planes are part of the prerequisites, not decoration.
+            let plane = |name: &str, access: PlaneAccess| match access {
+                PlaneAccess::Granted => None,
+                PlaneAccess::Denied => Some(format!("{name} plane: permission refused")),
+                PlaneAccess::Failed => Some(format!("{name} plane: reads failed")),
+            };
+            failed.extend(plane("data", prerequisites.data_plane));
+            failed.extend(plane("admin", prerequisites.admin_plane));
+            failed.extend(plane("IAM", prerequisites.iam_plane));
+            failed.extend(match prerequisites.scope {
+                ScopeBinding::Bound => None,
+                ScopeBinding::Unbound => Some(format!(
+                    "scope {} does not list the workspace",
+                    prerequisites.scope_name
+                )),
+                ScopeBinding::Absent => {
+                    Some(format!("scope {} does not exist", prerequisites.scope_name))
+                }
+                ScopeBinding::Denied => Some(format!(
+                    "scope {} may not be read by this client",
+                    prerequisites.scope_name
+                )),
+                ScopeBinding::Failed => Some(format!(
+                    "scope {} could not be read",
+                    prerequisites.scope_name
+                )),
+            });
+            let lists_failed = sources.iter().filter(|(_, f)| f.is_some()).count();
+            if failed.is_empty() {
+                (
+                    VerifyState::Pass,
+                    format!(
+                        "Workspace {}: {} route(s), {} provider(s), {} inference key(s) readable.",
+                        prerequisites.workspace,
+                        prerequisites.routes.as_ref().map_or(0, |l| l.count),
+                        prerequisites.providers.as_ref().map_or(0, |l| l.count),
+                        prerequisites.inference_keys
+                    ),
+                )
+            } else if lists_failed < sources.len() {
+                (
+                    VerifyState::Warning,
+                    format!(
+                        "Workspace {}: partial; {}",
+                        prerequisites.workspace,
+                        failed.join("; ")
+                    ),
+                )
+            } else {
+                (
+                    VerifyState::Fail,
+                    format!(
+                        "Workspace {}: {}",
+                        prerequisites.workspace,
+                        failed.join("; ")
+                    ),
+                )
+            }
+        }
+        (VerifyLine::RedTeam, ManagementResult::RedTeam { observation }) => {
+            match (&observation.scans, &observation.statistics) {
+                (Some(scans), Some(_)) => (
+                    VerifyState::Pass,
+                    format!(
+                        "Red Team scans and statistics readable ({} scans listed).",
+                        scans.rows.len()
+                    ),
+                ),
+                (Some(scans), None) => (
+                    VerifyState::Warning,
+                    format!(
+                        "Red Team scans readable ({} listed); statistics did not: {}",
+                        scans.rows.len(),
+                        observation
+                            .statistics_failure
+                            .map_or("no reason", failure_reason)
+                    ),
+                ),
+                (None, Some(_)) => (
+                    VerifyState::Warning,
+                    format!(
+                        "Statistics read; the scan list did not: {}",
+                        observation
+                            .scans_failure
+                            .map_or("no reason", failure_reason)
+                    ),
+                ),
+                (None, None) => (
+                    VerifyState::Fail,
+                    observation
+                        .scans_failure
+                        .or(observation.statistics_failure)
+                        .map_or("The Red Team reads returned nothing.", failure_reason)
+                        .to_owned(),
+                ),
+            }
+        }
+        (VerifyLine::ModelSkill, ManagementResult::SupplyChain { observation }) => {
+            let ok = [
+                observation.models.is_some(),
+                observation.skills.is_some(),
+                observation.skill_statistics.is_some(),
+            ];
+            let readable = ok.iter().filter(|b| **b).count();
+            if readable == 3 {
+                (
+                    VerifyState::Pass,
+                    format!(
+                        "AI Supply Chain Security readable ({} model scans, {} skill scans).",
+                        observation.models.as_ref().map_or(0, |m| m.rows.len()),
+                        observation.skills.as_ref().map_or(0, |s| s.rows.len())
+                    ),
+                )
+            } else {
+                let failures = [
+                    (
+                        "Model scans",
+                        observation.models.is_none(),
+                        observation.models_failure,
+                    ),
+                    (
+                        "Skill scans",
+                        observation.skills.is_none(),
+                        observation.skills_failure,
+                    ),
+                    (
+                        "Skill statistics",
+                        observation.skill_statistics.is_none(),
+                        observation.skill_statistics_failure,
+                    ),
+                ]
+                .into_iter()
+                .filter(|(_, missing, _)| *missing)
+                .map(|(source, _, failure)| {
+                    format!(
+                        "{source}: {}",
+                        failure.map_or("The service returned no usable result.", failure_reason)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; ");
+                (
+                    if readable > 0 {
+                        VerifyState::Warning
+                    } else {
+                        VerifyState::Fail
+                    },
+                    format!(
+                        "{readable} of 3 AI Supply Chain Security sources readable. {failures}"
+                    ),
+                )
+            }
+        }
+        _ => (
+            VerifyState::Fail,
+            "The service returned a reply the desktop could not use.".to_owned(),
+        ),
     }
 }

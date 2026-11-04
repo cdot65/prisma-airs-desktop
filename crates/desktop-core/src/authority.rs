@@ -37,6 +37,7 @@ mod offline_domain;
 mod rotation_domain;
 mod sessions_domain;
 mod setup_domain;
+mod setup_warning_domain;
 mod workbench_domain;
 
 pub use change_domain::{
@@ -199,6 +200,11 @@ pub enum Intent {
     RecheckProduct {
         context: ContextRef,
         product: features::ProductId,
+    },
+    /// Recheck one recorded setup finding with the equivalent capability read.
+    RecheckSetupWarning {
+        context: ContextRef,
+        warning: String,
     },
     /// The operator's statement that `application` now uses the key a
     /// rotation issued (C31, I7): recorded once, locally, with its time.
@@ -776,6 +782,7 @@ intent_kinds! {
     DismissSwitchGuard => "dismissSwitchGuard",
     ReadTenant => "readTenant",
     RecheckProduct => "recheckProduct",
+    RecheckSetupWarning => "recheckSetupWarning",
     AcknowledgeDeployment => "acknowledgeDeployment",
     AcknowledgeItem => "acknowledgeItem",
     SnoozeItem => "snoozeItem",
@@ -1678,6 +1685,7 @@ struct State {
     /// One management binding per issued context; cancelled when it retires.
     management_bindings: Vec<management_domain::GenerationBinding>,
     management_calls: Vec<management_domain::ManagementRecord>,
+    warning_rechecks: Vec<setup_warning_domain::Recheck>,
     /// The open Runtime change review (one at a time).
     change_review: Option<change_domain::ChangeReview>,
     change_results: Vec<change_domain::ChangeRecord>,
@@ -1866,7 +1874,12 @@ impl State {
             fixture_build: cfg!(feature = "test-fixtures"),
             storage: self.storage,
             // An import's tenants show once it commits (D050).
-            tenants: self.data.tenants.iter().map(tenant_view).collect(),
+            tenants: self
+                .data
+                .tenants
+                .iter()
+                .map(|t| self.warning_recheck_view(tenant_view(t)))
+                .collect(),
             active: match (&self.data.active, &self.active_ref) {
                 (Some(tenant), Some(context)) => Some(ActiveContext {
                     tenant: tenant.clone(),
@@ -2782,6 +2795,7 @@ impl Core {
             management_endpoints: config.management,
             management_bindings: Vec::new(),
             management_calls: Vec::new(),
+            warning_rechecks: Vec::new(),
             change_review: None,
             change_results: Vec::new(),
             detached_changes: Vec::new(),
@@ -3830,6 +3844,18 @@ fn admit(
             };
             state.set_rechecking(&tenant, Some(product));
             operation_ref = Some(operation);
+            effects.push(Effect::Start(starts));
+            effects.push(Effect::Start(state.take_gateway_starts()));
+            state.changed();
+        }
+        Intent::RecheckSetupWarning { context, warning } => {
+            let (operation, starts) = state.begin_warning_recheck(
+                &context,
+                &warning,
+                Arc::clone(&adapters.keychain),
+                Arc::clone(session),
+            )?;
+            operation_ref = operation;
             effects.push(Effect::Start(starts));
             effects.push(Effect::Start(state.take_gateway_starts()));
             state.changed();

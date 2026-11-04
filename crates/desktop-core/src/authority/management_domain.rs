@@ -342,6 +342,7 @@ impl State {
         // settle into its lines instead of an observation.
         let setup_context = self.data.setup.as_ref().map(|s| s.context.clone());
         let setup_operations = self.setup_operations();
+        let warning_operations = self.warning_recheck_operations();
         let mut setup_results = Vec::new();
         let selected = self.gateway_selection();
         let setup_selected = self.setup_workspace_reference();
@@ -356,7 +357,8 @@ impl State {
             };
             record.settled = true;
             let reply = record.slot.lock().ok().and_then(|mut s| s.take());
-            let for_setup = setup_operations.contains(&record.operation);
+            let for_setup = setup_operations.contains(&record.operation)
+                || warning_operations.contains(&record.operation);
             // The draft's context stays current for every read admitted under
             // it (its verify lines and the presentation's own reads, such as
             // the Gateway workspace listing) until the draft ends.
@@ -426,6 +428,7 @@ impl State {
         }
         for (operation, result) in setup_results {
             self.setup_settled(&operation, &result);
+            self.warning_recheck_settled(&operation, &result);
         }
         for (context, result) in overviews {
             self.overview_settled(&context, result);
