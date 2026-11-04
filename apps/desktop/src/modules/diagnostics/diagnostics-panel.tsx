@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Button } from '@ai-security-academy/presentation'
 import type { DiagnosticsClear, DiagnosticsExport, DiagnosticsView } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, outcomeMessage } from '../tenants/dispatch'
@@ -18,6 +18,7 @@ const CLEAR_TEXT: Record<DiagnosticsClear, string> = {
 interface Props {
     view: DiagnosticsView
     dispatch: Dispatch
+    children?: ReactNode
 }
 
 /**
@@ -27,7 +28,7 @@ interface Props {
  * names. Nothing is sent anywhere: export is explicit and saved where the
  * operator chooses.
  */
-export function DiagnosticsPanel({ view, dispatch }: Props) {
+export function DiagnosticsPanel({ view, dispatch, children }: Props) {
     const legend = useId()
     const [message, setMessage] = useState<string | null>(null)
     const busy = view.export === 'saving'
@@ -87,6 +88,7 @@ export function DiagnosticsPanel({ view, dispatch }: Props) {
                     {message}
                 </p>
             ) : null}
+            {children}
         </fieldset>
     )
 }

@@ -132,10 +132,19 @@ export const Administration = forwardRef<HTMLHeadingElement, AdministrationProps
         if (arrival.product) {
             const product = products.find((p) => p.id === arrival.product)
             if (!product) return
+            const tab = arrival.tab
+                ? product.tabs.find((t) => t.id === arrival.tab && t.disposition.kind !== 'removed')
+                : arrival.resource
+                  ? product.tabs.find((t) => t.resource === arrival.resource) ?? (product.id === 'runtimeSecurity' && DLP.includes(arrival.resource) ? product.tabs.find((t) => t.label === 'DLP') : undefined)
+                  : undefined
+            // Product and resource are one arrival: do not discard a Runtime
+            // inventory/filter when retaining its product, or fall back into
+            // another product while its inventory has not arrived yet.
+            if ((arrival.tab || arrival.resource) && !tab) return
             consumedArrival.current = arrival.sequence
             setOpen((o) => ({ ...o, [product.id]: true }))
-            const tab = arrival.tab ? product.tabs.find((t) => t.id === arrival.tab && t.disposition.kind !== 'removed') : undefined
             if (tab) setTabOf((s) => ({ ...s, [product.id]: tab.id }))
+            if (arrival.resource && product.id === 'runtimeSecurity' && DLP.includes(arrival.resource)) setDlp(arrival.resource)
             return
         }
         if (!arrival.resource) {

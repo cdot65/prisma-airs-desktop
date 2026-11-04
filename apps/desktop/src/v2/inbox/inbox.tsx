@@ -1,11 +1,12 @@
-import { forwardRef, useEffect } from 'react'
-import type { FeatureId, InboxEntry, Intent, ProductId, ShellSnapshot } from '@prisma-airs/desktop-contracts'
+import { forwardRef, useEffect, useRef, useState } from 'react'
+import type { FeatureId, InboxEntry, Intent, ProductId, SetupWarning, ShellSnapshot } from '@prisma-airs/desktop-contracts'
 import type { DispatchOutcome } from '../../modules/tenants/dispatch'
 import { INBOX_COPY as C, READ_COPY, SHELL_COPY, SNOOZE_COPY, clockOf } from '../copy'
 import { Glyph, type GlyphName } from '../icons'
 import { useShellStore } from '../store'
 import type { VerdictTone } from '../verdict'
 import { PageIntro } from '../page-intro'
+import { SetupWarningResult } from '../setup-warning-history'
 
 /**
  * Sends one intent and reports its outcome on the shell's surfaces (DESIGN-V2
@@ -39,7 +40,7 @@ export function follow(entry: InboxEntry, tenant: string, onNavigate: (feature: 
     const target = entry.target
     if (!target) return
     // The target belongs to the tenant it was followed in (I2): another tenant never inherits it.
-    useShellStore.getState().arrive({ tenant, feature: target.feature, resource: target.resource, item: target.item })
+    useShellStore.getState().arrive({ tenant, feature: target.feature, resource: target.resource, item: target.item, ...(target.product ? { product: target.product } : {}) })
     onNavigate(target.feature)
 }
 
@@ -81,6 +82,7 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
     for (const e of items) counts[tabOf(e)] += 1
     const visible = items.filter((e) => tab === 'all' || tabOf(e) === tab)
     const selected = items.find((e) => e.id === selectedId) ?? null
+    const selectedWarning = selected?.kind === 'setupWarning' ? tenant?.setupWarnings.find((w) => w.id === selected.id) : undefined
     useEffect(() => {
         if (selectedId && !items.some((e) => e.id === selectedId)) selectInbox(tenantKey, { tab, item: null })
     }, [items, selectedId, selectInbox, tenantKey, tab])
@@ -269,6 +271,7 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
                             <p className='text-[14px] leading-[1.55]' style={{ color: 'var(--v2-soft)' }}>
                                 {selected.detail}
                             </p>
+                            {selectedWarning ? <SetupWarningResult warning={selectedWarning} live /> : null}
                             {selected.facts.length > 0 && (
                                 <dl aria-label={C.facts} className='grid' style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
                                     {selected.facts.map((f) => (
@@ -298,6 +301,7 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
                                 </p>
                             )}
                             <div className='flex flex-wrap' style={{ gap: 8, marginTop: 'auto' }}>
+                                {selectedWarning && context && selectedWarning.resolvedSecs === undefined ? <WarningRecheck key={`${context}:${selectedWarning.id}`} warning={selectedWarning} context={context} onAct={onAct} /> : null}
                                 {destinationFeature(selected) && selected.actionLabel && (
                                     <button type='button' onClick={() => tenant && follow(selected, tenant.id, onNavigate)} className={`${button32} px-[18px] font-semibold`} style={{ background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }}>
                                         {selected.actionLabel}
@@ -329,3 +333,22 @@ export const Inbox = forwardRef<HTMLHeadingElement, InboxProps>(function Inbox({
         </section>
     )
 })
+
+function WarningRecheck({ warning, context, onAct }: { warning: SetupWarning; context: string; onAct: Act }) {
+    const [sending, setSending] = useState(false)
+    const live = useRef(true)
+    useEffect(() => { live.current = true; return () => { live.current = false } }, [])
+    const pending = sending || warning.recheck?.state === 'pending'
+    const recheck = async () => {
+        if (pending) return
+        setSending(true)
+        try {
+            // Admission failures/unknown deliveries use the shell's existing
+            // scoped report/Retry surface. Only native metadata states a result.
+            await onAct(`setup recheck for ${READ_COPY.products[warning.product]}`, { kind: 'recheckSetupWarning', context, warning: warning.id })
+        } finally {
+            if (live.current) setSending(false)
+        }
+    }
+    return <button type='button' disabled={pending} onClick={() => void recheck()} className={`${button32} border px-3.5`} style={{ borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)', color: 'var(--v2-ink)' }}>Recheck setup</button>
+}

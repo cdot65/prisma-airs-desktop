@@ -141,7 +141,7 @@ export const WIZARD_COPY = {
             managementClient: 'Management OAuth authentication',
             gateway: 'AI Gateway',
             redTeam: 'AI Red Teaming',
-            modelSkill: 'Model and skill scans',
+            modelSkill: 'AI Supply Chain Security',
             ais: 'Agentic Identity Security',
             aes: 'Agentic Endpoint Security',
         },
@@ -238,7 +238,7 @@ export const PRODUCT_CARDS: { id: 'runtimeSecurity' | 'gateway' | 'redTeam' | 'm
     { id: 'runtimeSecurity', label: 'AI Runtime Security', body: 'Prompts, responses and tool calls are scanned as they happen.', icon: 'shield' },
     { id: 'gateway', label: 'AI Gateway', body: 'Workspaces, routes, providers, guardrails and keys.', icon: 'route' },
     { id: 'redTeam', label: 'AI Red Teaming', body: 'Scan inventory, statistics and reports.', icon: 'cross', readOnly: true },
-    { id: 'modelSkill', label: 'Model and skill scans', body: 'Model Security and AgentGuard skill scan summaries.', icon: 'box', readOnly: true },
+    { id: 'modelSkill', label: 'AI Supply Chain Security', body: 'Model Security and AgentGuard skill scan summaries.', icon: 'box', readOnly: true },
     { id: null, label: 'Agentic Identity Security', body: 'Needs an admitted AIS service (D058).', icon: 'idcard' },
     { id: null, label: 'Agentic Endpoint Security', body: 'Needs an admitted AES service (D058).', icon: 'laptop' },
 ]

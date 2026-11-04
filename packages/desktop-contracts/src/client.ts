@@ -378,6 +378,27 @@ function isSetupView(value: unknown): boolean {
 }
 
 const SETUP_WARNING_ID = /^vw-[0-9]{1,20}$/
+const SETUP_RECHECK_BASES = ['recordedScope', 'legacyTenantSources', 'legacyWorkspaceScope', 'unknown']
+
+function isSetupCheckOrigin(value: unknown): boolean {
+    if (typeof value !== 'string') return false
+    try {
+        const origin = new URL(value)
+        return origin.protocol === 'https:' && origin.origin === value && origin.username === '' && origin.password === ''
+    } catch { return false }
+}
+
+function isSetupWarningCheck(value: unknown): boolean {
+    return isRecord(value) && value.version === 1 && oneOf(VERIFY_LINES, value.line) &&
+        typeof value.tsgId === 'string' && value.tsgId.length > 0 && isSetupCheckOrigin(value.origin) &&
+        (value.workspace === null || (isRecord(value.workspace) && typeof value.workspace.id === 'string' && value.workspace.id.length > 0 && typeof value.workspace.slug === 'string' && typeof value.workspace.scopeName === 'string'))
+}
+
+function isSetupWarningRecheck(value: unknown): boolean {
+    return isRecord(value) && isCount(value.checkedSecs) && oneOf(VERIFY_STATES, value.state) &&
+        typeof value.reason === 'string' && typeof value.equivalent === 'boolean' && oneOf(SETUP_RECHECK_BASES, value.basis)
+}
+
 function isSetupWarning(value: unknown): boolean {
     return (
         isRecord(value) &&
@@ -386,9 +407,10 @@ function isSetupWarning(value: unknown): boolean {
         oneOf(PRODUCT_IDS, value.product) &&
         typeof value.reason === 'string' &&
         value.reason.length > 0 &&
-        typeof value.recordedSecs === 'number' &&
-        Number.isInteger(value.recordedSecs) &&
-        value.recordedSecs >= 0
+        isCount(value.recordedSecs) &&
+        (value.check === undefined || isSetupWarningCheck(value.check)) &&
+        (value.recheck === undefined || isSetupWarningRecheck(value.recheck)) &&
+        (value.resolvedSecs === undefined || isCount(value.resolvedSecs))
     )
 }
 

@@ -285,7 +285,7 @@ describe('v2 Administration', () => {
         // Model and skill scans: Codebase scans is unavailable, with its gate and no rows or actions.
         await user.click(
             within(product('modelSkill')).getByRole('button', {
-                name: /Model and skill scans/,
+                name: /AI Supply Chain Security/,
             })
         )
         await user.click(

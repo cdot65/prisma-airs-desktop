@@ -8,6 +8,7 @@ import { AcademyAccount } from '../modules/academy/academy-account'
 import { TenantsSettings } from '../modules/tenants/tenants-settings'
 import type { ObserveManagement } from '../modules/administration/management-read'
 import { PageIntro } from '../v2/page-intro'
+import { SetupWarningHistory } from '../v2/setup-warning-history'
 
 interface HeadingProps {
     id: string
@@ -91,7 +92,9 @@ export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(functi
                     {message && <p role='alert'>{message}</p>}
                 </fieldset>
                 <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
-                <DiagnosticsPanel view={snapshot.diagnostics} dispatch={dispatch} />
+                <DiagnosticsPanel view={snapshot.diagnostics} dispatch={dispatch}>
+                    <SetupWarningHistory warnings={snapshot.tenants.find((t) => t.id === snapshot.active?.tenant)?.setupWarnings ?? []} />
+                </DiagnosticsPanel>
             </div>
             <TenantsSettings snapshot={snapshot} dispatch={dispatch} observeManagement={observeManagement} />
         </section>

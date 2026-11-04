@@ -174,7 +174,7 @@ export const READ_COPY = {
     reading: (tenant: string) => `Reading ${tenant}…`,
     rechecked: (product: string) => `${product} read again.`,
     productState: { pending: 'Pending', ok: 'Read', incomplete: 'Incomplete', needsRole: 'Needs a role', failed: 'Failed', notRead: 'Not read here' } as Record<string, string>,
-    products: { runtimeSecurity: 'AI Runtime Security', gateway: 'AI Gateway', redTeam: 'AI Red Teaming', modelSkill: 'Model and skill scans' } as Record<string, string>,
+    products: { runtimeSecurity: 'AI Runtime Security', gateway: 'AI Gateway', redTeam: 'AI Red Teaming', modelSkill: 'AI Supply Chain Security' } as Record<string, string>,
     sources: (read: number, total: number) => (total === 0 ? '' : `${read} of ${total} sources`),
 }
 
