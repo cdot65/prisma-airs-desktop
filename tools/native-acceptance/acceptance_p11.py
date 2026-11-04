@@ -284,11 +284,21 @@ def test_run(path):
 def finalize(args):
     raw_path = args.finalize.resolve()
     raw = json.loads(raw_path.read_text())
-    if raw.get('schema') != 'airs-desktop/p11-native-observations/1' or not raw.get('complete') or raw.get('errors') or raw.get('status') != 'observed' or raw.get('exit_code') != 0:
+    if raw.get('schema') != 'airs-desktop/p11-native-observations/1' or raw.get('subject') != 'P11' or raw.get('complete') is not True or raw.get('errors') or raw.get('status') != 'observed' or raw.get('exit_code') != 0:
         raise RuntimeError('incomplete or failed native observations cannot qualify')
     binding = raw['binding']
     prepare_path = Path(binding['prepare']['path'])
     prepared, _ = verify_prepare(prepare_path)
+    if (raw['helper_closure'] != binding['helper_closure'] or raw['executable_sha256'] != binding['executable_sha256']
+            or raw['bundle_sha256'] != binding['bundle_sha256'] or raw['executable_sha256'] != prepared['executable_sha256']
+            or raw['bundle_sha256'] != prepared['bundle_sha256']):
+        raise RuntimeError('capture manifest candidate/helper aliases differ')
+    if raw['argv'][:2] != ['python3', 'tools/native-acceptance/acceptance_p11.py'] or raw['execution_id'] != raw_path.parent.name:
+        raise RuntimeError('capture manifest does not name the executed driver/attempt')
+    started = time.strptime(raw['started_utc'], '%Y-%m-%dT%H:%M:%SZ')
+    finished = time.strptime(raw['finished_utc'], '%Y-%m-%dT%H:%M:%SZ')
+    if finished < started or not raw.get('performed_by'):
+        raise RuntimeError('capture execution time/operator missing')
     if sha(ROOT/'docs/architecture/native-checks.json') != binding['native_inventory_sha256']:
         raise RuntimeError('native assertion inventory drift')
     for artifact, expected in raw['artifact_sha256'].items():
