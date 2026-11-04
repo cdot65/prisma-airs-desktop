@@ -102,8 +102,10 @@ interface WorkbenchRecovery {
     generation: number
     pending: boolean
     failed: boolean
+    /** Sanitized delivery/refusal outcome; survives page remount with this recovery. */
+    message: string
 }
-const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false })
+const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false, message: '' })
 
 interface ShellStore {
     /** The scope the shell shows now (set from each snapshot before it renders): what a notification must belong to. */
@@ -112,7 +114,7 @@ interface ShellStore {
     workbenchRecovery: WorkbenchRecovery
     observeWorkbench(tenant: string | null, context: string | null, collection: string | null): void
     beginWorkbenchRestore(tenant: string | null, context: string | null): number | null
-    finishWorkbenchRestore(tenant: string | null, context: string | null, generation: number, failed: boolean): void
+    finishWorkbenchRestore(tenant: string | null, context: string | null, generation: number, failed: boolean, message?: string): void
     resolveWorkbenchRestore(tenant: string | null, context: string | null, generation: number): void
     paletteOpen: boolean
     switcherOpen: boolean
@@ -190,7 +192,7 @@ export const useShellStore = create<ShellStore>((set, get) => ({
     observeWorkbench: (tenant, context, collection) => set((s) => {
         const old = s.workbenchRecovery
         if (old.tenant === tenant && old.context === context && old.collection === collection) return s
-        return { workbenchRecovery: { tenant, context, collection, generation: old.generation + 1, pending: false, failed: false } }
+        return { workbenchRecovery: { tenant, context, collection, generation: old.generation + 1, pending: false, failed: false, message: '' } }
     }),
     beginWorkbenchRestore: (tenant, context) => {
         const old = get().workbenchRecovery
@@ -199,15 +201,15 @@ export const useShellStore = create<ShellStore>((set, get) => ({
         set({ workbenchRecovery: { ...old, generation, pending: true } })
         return generation
     },
-    finishWorkbenchRestore: (tenant, context, generation, failed) => set((s) => {
+    finishWorkbenchRestore: (tenant, context, generation, failed, message = '') => set((s) => {
         const old = s.workbenchRecovery
         if (old.tenant !== tenant || old.context !== context || old.generation !== generation || !old.pending) return s
-        return { workbenchRecovery: { ...old, pending: false, failed } }
+        return { workbenchRecovery: { ...old, pending: false, failed, message } }
     }),
     resolveWorkbenchRestore: (tenant, context, generation) => set((s) => {
         const old = s.workbenchRecovery
         if (old.tenant !== tenant || old.context !== context || old.generation !== generation) return s
-        return { workbenchRecovery: { ...old, generation: old.generation + 1, pending: false, failed: false } }
+        return { workbenchRecovery: { ...old, generation: old.generation + 1, pending: false, failed: false, message: '' } }
     }),
     paletteOpen: false,
     switcherOpen: false,

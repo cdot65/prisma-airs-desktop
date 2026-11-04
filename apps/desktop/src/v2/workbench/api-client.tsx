@@ -72,6 +72,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
     const tenant = snapshot.active?.tenant ?? null
     const context = snapshot.active?.context ?? null
     const startupFailure = useShellStore((s) => s.workbenchRecovery.tenant === tenant && s.workbenchRecovery.context === context && s.workbenchRecovery.failed)
+    const startupMessage = useShellStore((s) => s.workbenchRecovery.tenant === tenant && s.workbenchRecovery.context === context ? s.workbenchRecovery.message : '')
     const restorePreferred = useCallback(async () => {
         const recovery = useShellStore.getState()
         const generation = recovery.beginWorkbenchRestore(tenant, context)
@@ -86,7 +87,10 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
             setMessage('')
             setOfferNew(false)
         }
-        recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused' || (result.kind === 'cancelled' && recovery.workbenchRecovery.failed))
+        // Admission/delivery/observation failure is still unresolved, including on the first load.
+        // Only a positive owned result may retire recovery; keep sanitized text with its scope.
+        const resolved = result.kind === 'opened' || result.kind === 'done'
+        recovery.finishWorkbenchRestore(tenant, context, generation, !resolved, resolved ? '' : resultText(result) ?? recovery.workbenchRecovery.message)
         return result
     }, [call, tenant, context])
     const editors = useRef(new Map<string, EditorHandle>())
@@ -259,7 +263,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
     }, [editorUp, doc])
     const loaded = state.loaded
     useEffect(() => {
-        if (!loaded) void restorePreferred()
+        if (!loaded && !useShellStore.getState().workbenchRecovery.failed) void restorePreferred()
     }, [loaded, restorePreferred])
     // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
     useEffect(() => {
@@ -456,8 +460,8 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
             {!collection ? (
                 <div className='flex flex-col' style={{ gap: 12, padding: '20px var(--v2-page-x)' }}>
                     {alerts}
-                    {state.loaded ? (
-                        <Start state={state} run={run} message={startupFailure ? `${C.start.restoreFailed}${message ? ` ${message}` : ''}` : message} offerNew={offerNew} retry={startupFailure ? async () => { await restorePreferred() } : undefined} />
+                    {state.loaded || startupFailure ? (
+                        <Start state={state} run={run} message={startupFailure ? `${C.start.restoreFailed}${startupMessage ? ` ${startupMessage}` : ''}${message ? ` ${message}` : ''}` : message} offerNew={offerNew} retry={startupFailure ? async () => { await restorePreferred() } : undefined} />
                     ) : (
                         <p role='status' className='text-[13px]' style={soft}>
                             {C.opening}
