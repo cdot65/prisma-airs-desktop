@@ -1,0 +1,162 @@
+{
+  "schema": "airs-desktop/p11-review-remediation/1",
+  "baseline": {
+    "path": "docs/planning/evidence/P11/qualification-final-02/qualification.json",
+    "sha256": "e7817dc4490720470560c3f21124849bdc8a9ab98412f8e1a78c5de62003fd56"
+  },
+  "historical_context": {
+    "path": "docs/planning/evidence/P11/remediation-baseline-01/historical-context.json",
+    "sha256": "6867415a5b9f6f62c75601f7de2bed6afec3c79e58b2b3588af12e1a9119c7db"
+  },
+  "preserved_candidate": {
+    "path": "docs/planning/evidence/P11/remediation-baseline-01/receipt.json",
+    "sha256": "2e03f767395d48de3a9dd797b82ad2df6911878ecec5cbe29b5129e11e13bd9e"
+  },
+  "current_source": {
+    "path": "docs/planning/evidence/P11/remediation-selection-02/source-current.json",
+    "sha256": "802017c8632e05febf7c7f047f249e79b23e20c37e1260492095e15194b3916e"
+  },
+  "fingerprint": {
+    "path": "docs/planning/evidence/P11/remediation-selection-02/fingerprint.json",
+    "sha256": "c489702b6c701f148ed1a9fe631ae3fa0f963da22dd7d906d7f4e09f036f23c5"
+  },
+  "runner_inputs": {
+    "source": "5e8e8bb12e9efda00f04da5be85184190b9c97f6d2bb21a96c82197f86eccbdd",
+    "dependencies": "2c489f82dc23ebf9680a9cb5977071253b226b29c8f019f1fb43db4ff3384326",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "prepare": {
+    "path": "docs/planning/evidence/P11/native-build-05-vm/native-prepare.json",
+    "sha256": "cebe0a9a56aa8902a9e39aadcf4b2f0ca901d4f6c5e6b02e381d9f7c061ee6de"
+  },
+  "build": {
+    "path": "docs/planning/evidence/P11/native-build-05-vm/receipt.json",
+    "sha256": "aa8bb0a1669075e3841e5d761b99cbcbb7e30be012d358da593789aeb2404007"
+  },
+  "scroll": {
+    "path": "docs/planning/evidence/P11/c47-scroll-supplement-01/supplement.json",
+    "sha256": "8ba5e6ee98c54e1d03f802273f7d0651f5040b0ebb451668f154c0ef7a75cac0"
+  },
+  "rust_consumers": {
+    "path": "docs/planning/evidence/P11/c46-consumer-remediation-01/manifest.json",
+    "sha256": "9ced5e47992255bf42e25ba850df2a069246cc37f95aa6a005c34f31305edc9c"
+  },
+  "clippy": {
+    "path": "docs/planning/evidence/P11/c46-consumer-remediation-01/clippy-supplement.json",
+    "sha256": "8d0380cec1dea81cbe7c3d62f1c7e6c45aa4a2e8755a255ad408affd31b3d6bb"
+  },
+  "adapter_qa": {
+    "path": "docs/planning/evidence/P11/native-candidate-adapter-01/manifest.json",
+    "sha256": "c737e9a2cdce237344f675c3b5a11907aec41845901fb30bf2bf9a114571636b"
+  },
+  "format": {
+    "path": "docs/planning/evidence/P11/remediation-format-01/record.json",
+    "sha256": "cd3980d08be302ee2c6fe735cec5cced285eb6a450c7c43373cc7e32475df4bf"
+  },
+  "source_qa": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-02/supplement.json",
+    "sha256": "2993659176b4d2e53ab6ba24051717716310090c10e71d1df30b68e94bf642ab"
+  },
+  "helper_qa": [
+    {
+      "path": "docs/planning/evidence/P11/helper-parser-followup-01/record.json",
+      "sha256": "5f693ec1be0fd2632c1d983f54337c0f59f1d208530f600503f474f6912ca60f"
+    }
+  ],
+  "changed_paths": [
+    ".gitattributes",
+    "apps/desktop/src/app.tsx",
+    "apps/desktop/src/v2/store.ts",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx",
+    "apps/desktop/src/v2/workbench/api-client.tsx",
+    "crates/desktop-core/tests/harness_tools/main.rs",
+    "crates/desktop-core/tests/ui_v2_inbox/main.rs",
+    "crates/xtask/examples/p11_native_candidate.rs",
+    "docs/planning/refinements/2026-11-04/execution.md",
+    "tools/p11/README.md",
+    "tools/p11/proof.py",
+    "tools/p11/remediation.py",
+    "tools/p11/standing.py",
+    "tools/p11/test_remediation.py"
+  ],
+  "unaffected": {
+    "check:C46/check/2": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "check:C46/check/3": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "check:C46/check/5": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "check:C46/check/6": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "check:C46/check/7": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "check:C48/check/6": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "check:C48/check/7": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C46/fixture": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C46/host/1": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C46/host/2": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C46/host/3": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C46/frontend/1": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C46/frontend/2": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C46/frontend/3": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C46/frontend/4": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C46/frontend/5": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C47/frontend/2": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C47/frontend/3": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C47/frontend/4": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "test:C48/fixture": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C48/host/1": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C48/host/2": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C49/fixture": "The registered Rust/bindings/contract target is unaffected: no production Rust, contract, lock/toolchain or resource input changed. Exact changed integration fixture files are separately verified by nine actual named tests and their scoped Clippy; the new build example has its own Clippy/preflight/build evidence. Original raw Check/Test outcomes, including failed whole-run status, retain original sources and provenance.",
+    "test:C49/frontend/1": "The frontend change is the hash-pinned API recovery state and its App observation hook only; this registered consumer retains its behavior, markup, authority and scoped store fields. Actual API recovery, shared shell/workbench and Save/Send selectors plus final typecheck cover the changed/cross-consumer boundary. Retain the original broader outcome with its original source/tool/artifact binding and unchanged dependency proof.",
+    "C46-N01": "Production OAuth admission, setup verification, warnings, Inbox and endpoint authorities are unchanged. The two Rust fixture edits authenticate existing synthetic integration consumers; the production frontend delta is confined to API collection recovery. Retain the original native observation and artifact; relevant helper bytes and conservative production/resource dependencies are unchanged. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C46-N02": "Production OAuth admission, setup verification, warnings, Inbox and endpoint authorities are unchanged. The two Rust fixture edits authenticate existing synthetic integration consumers; the production frontend delta is confined to API collection recovery. Retain the original native observation and artifact; relevant helper bytes and conservative production/resource dependencies are unchanged. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C46-N03": "Production OAuth admission, setup verification, warnings, Inbox and endpoint authorities are unchanged. The two Rust fixture edits authenticate existing synthetic integration consumers; the production frontend delta is confined to API collection recovery. Retain the original native observation and artifact; relevant helper bytes and conservative production/resource dependencies are unchanged. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C47-N01": "Shell/page hierarchy, Explain rendering/interaction, navigation, icons, focus and CSS are unchanged. The added App snapshot call mutates only separately scoped API recovery state; it does not change the existing shell scope action or rendering. C47-N02 additionally binds the actual original-artifact independent-scroll supplement. These old observations are not new-candidate executions. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C47-N02": "Shell/page hierarchy, Explain rendering/interaction, navigation, icons, focus and CSS are unchanged. The added App snapshot call mutates only separately scoped API recovery state; it does not change the existing shell scope action or rendering. C47-N02 additionally binds the actual original-artifact independent-scroll supplement. These old observations are not new-candidate executions. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C47-N03": "Shell/page hierarchy, Explain rendering/interaction, navigation, icons, focus and CSS are unchanged. The added App snapshot call mutates only separately scoped API recovery state; it does not change the existing shell scope action or rendering. C47-N02 additionally binds the actual original-artifact independent-scroll supplement. These old observations are not new-candidate executions. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C48-N01": "The exact API delta changes preferred-collection Load/retry/error retirement only. JSON/URL editor presentation, tab-strip/footer metrics, save/send controllers and their markup/CSS/native helpers are unchanged. The actual source selectors cover the recovery delta and shared consumers; retain old N01/N02 observations on their original artifact, with conservative unchanged dependency identities. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C48-N02": "The exact API delta changes preferred-collection Load/retry/error retirement only. JSON/URL editor presentation, tab-strip/footer metrics, save/send controllers and their markup/CSS/native helpers are unchanged. The actual source selectors cover the recovery delta and shared consumers; retain old N01/N02 observations on their original artifact, with conservative unchanged dependency identities. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C49-N01": "Settings credentials, themes/palettes, Academy and portal composition are unchanged. New scoped API recovery state does not alter those store fields or snapshot consumers. Retain the original per-assertion process, application and captures; relevant native helpers and conservative production/resource dependencies are unchanged. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C49-N02": "Settings credentials, themes/palettes, Academy and portal composition are unchanged. New scoped API recovery state does not alter those store fields or snapshot consumers. Retain the original per-assertion process, application and captures; relevant native helpers and conservative production/resource dependencies are unchanged. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions.",
+    "C49-N03": "Settings credentials, themes/palettes, Academy and portal composition are unchanged. New scoped API recovery state does not alter those store fields or snapshot consumers. Retain the original per-assertion process, application and captures; relevant native helpers and conservative production/resource dependencies are unchanged. The recorded fixture-only ad-hoc trust append is a separate admission-condition change, not a production code change; the successful current recovery reads the existing key. These retained native observations still belong to their original application and execution conditions."
+  },
+  "recovery": {
+    "path": "docs/planning/evidence/P11/recovery-native-02/supplement.json",
+    "sha256": "c065ca71cc63bd3c5be21cbceb8cbb8785058287a2d67151795b1b7484afed6d"
+  },
+  "limitations": [
+    "Original native/source results retain original application/source/process bindings; affected selectors and recovery are separately actual executions.",
+    "Source selector receipts retain their known original timing limitations; no synthetic full RunRecord or current-source81-test rerun is claimed.",
+    "The81-test helper record retains original source; one targeted current parser guard is separately bound.",
+    "C26 stable installed/live acceptance, production signing/publication, Linux qualification and actual fresh reviews remain separate."
+  ],
+  "retained_helper_qa": [
+    {
+      "path": "docs/planning/evidence/P11/helper-qa-remediation-01/record.json",
+      "sha256": "ab9ae81f5112349883dee94fb4bbd6bc27200508adde115b9f55bcd5c0329345"
+    }
+  ],
+  "helper_parser_followup": {
+    "path": "docs/planning/evidence/P11/helper-parser-followup-01/change.json",
+    "sha256": "aef79e7b2644900d5e385d7a98534538f09898e7e5a25d0de76d5206ede2be4f"
+  },
+  "build_source_alias": {
+    "path": "docs/planning/evidence/P11/native-build-05-vm/source-alias.json",
+    "sha256": "27f7a6266072a2387b8f8cc647026abccaa269efebee79161a2326337c1c28c6"
+  },
+  "prepared_utc": "2026-11-04T21:44:31.192462+00:00",
+  "fixture_access_transition": {
+    "path": "docs/planning/evidence/P11/fixture-code-access-verification-01/receipt.json",
+    "sha256": "517f8a8f322303b9409d22756fab429dd45256357b53a86182958eb47e6a2389"
+  },
+  "fixture_access_validator": {
+    "path": "docs/planning/evidence/P11/fixture-code-access-verification-01/validator-receipt.json",
+    "sha256": "fa0760cc72e0d950ddff174883c843f441d1530003dcaa6d75cd40521967dd06"
+  },
+  "picker_cleanup": {
+    "path": "docs/planning/evidence/P11/recovery-native-02/picker-cleanup.json",
+    "sha256": "4e5aa3fdf221e15688b8eaffb4041082f903fce7e44aeb16d4902426a6eb20c7"
+  },
+  "prior_failed_recovery": {
+    "path": "docs/planning/evidence/P11/recovery-native-01/raw/observations.json",
+    "sha256": "ac09eff6d60b38fd0a5f0496ae9579f884839c2fe52eb33541fcddd909fb6351"
+  },
+  "recorded_utc": "2026-11-04T21:52:55.826915+00:00",
+  "execution_condition_changes": "Dedicated synthetic fixture item only: append exact new ad-hoc code requirement, retain old ACL/item value/all other metadata. The original ACL-helper exit1/postcheck failure and recovery01 admission failure remain unchanged. Independent read-only metadata verification and the actual recovery02 existing-key read establish the current fixture admission. No byte-identical application or universal OS-permission equality is claimed."
+}

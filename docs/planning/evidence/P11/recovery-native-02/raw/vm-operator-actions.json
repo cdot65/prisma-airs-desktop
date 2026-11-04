@@ -1,0 +1,151 @@
+{
+  "host": "worf-vm",
+  "operator": "Codex /root",
+  "orchestrator_sha256": "d03a681456ca84f7f88723db0f66ca554cd041a5cf5d9a0a093386b5d80f1552",
+  "actions": [
+    {
+      "utc": "2026-11-04T21:46:02Z",
+      "action": "owned-startup-window-focus",
+      "pid": 10618,
+      "birth": [
+        1793828761,
+        336532
+      ],
+      "window_id": "w-6727",
+      "result": {
+        "command": "focus-window",
+        "error": {
+          "code": "ACTION_FAILED",
+          "disposition": {
+            "delivery": "unknown",
+            "retry": "unknown"
+          },
+          "message": "Window focus did not settle on the requested window",
+          "suggestion": "Run 'list-windows' to refresh window IDs, then retry."
+        },
+        "ok": false,
+        "version": "2.5"
+      }
+    },
+    {
+      "utc": "2026-11-04T21:46:02Z",
+      "operator_error": "RuntimeError: owned startup activation rejected"
+    },
+    {
+      "utc": "2026-11-04T21:46:03Z",
+      "action": "owned-startup-window-already-focused",
+      "pid": 10618,
+      "birth": [
+        1793828761,
+        336532
+      ],
+      "window_id": "w-6727"
+    },
+    {
+      "utc": "2026-11-04T21:46:11Z",
+      "action": "owned-startup-window-focus",
+      "pid": 10697,
+      "birth": [
+        1793828769,
+        716030
+      ],
+      "window_id": "w-6735",
+      "result": {
+        "command": "focus-window",
+        "error": {
+          "code": "ACTION_FAILED",
+          "disposition": {
+            "delivery": "unknown",
+            "retry": "unknown"
+          },
+          "message": "Window focus did not settle on the requested window",
+          "suggestion": "Run 'list-windows' to refresh window IDs, then retry."
+        },
+        "ok": false,
+        "version": "2.5"
+      }
+    },
+    {
+      "utc": "2026-11-04T21:46:11Z",
+      "operator_error": "RuntimeError: owned startup activation rejected"
+    },
+    {
+      "utc": "2026-11-04T21:46:11Z",
+      "action": "owned-startup-window-already-focused",
+      "pid": 10697,
+      "birth": [
+        1793828769,
+        716030
+      ],
+      "window_id": "w-6735"
+    },
+    {
+      "utc": "2026-11-04T21:46:22Z",
+      "action": "owned-startup-window-focus",
+      "pid": 10773,
+      "birth": [
+        1793828780,
+        791780
+      ],
+      "window_id": "w-6743",
+      "result": {
+        "command": "focus-window",
+        "data": {
+          "focused": {
+            "accessible": true,
+            "app_name": "Prisma AIRS Desktop Fixture",
+            "bounds": {
+              "height": 820.0,
+              "width": 1280.0,
+              "x": 320.0,
+              "y": 95.0
+            },
+            "id": "w-6743",
+            "is_focused": true,
+            "minimized": false,
+            "pid": 10773,
+            "process_instance": "macos-proc-v1:1793828780:791780",
+            "title": "Prisma AIRS Desktop (Fixture)",
+            "visible": true
+          }
+        },
+        "ok": true,
+        "version": "2.5"
+      }
+    },
+    {
+      "utc": "2026-11-04T21:46:36Z",
+      "action": "owned-startup-window-focus",
+      "pid": 10887,
+      "birth": [
+        1793828795,
+        406222
+      ],
+      "window_id": "w-6751",
+      "result": {
+        "command": "focus-window",
+        "data": {
+          "focused": {
+            "accessible": true,
+            "app_name": "Prisma AIRS Desktop Fixture",
+            "bounds": {
+              "height": 820.0,
+              "width": 1280.0,
+              "x": 320.0,
+              "y": 95.0
+            },
+            "id": "w-6751",
+            "is_focused": true,
+            "minimized": false,
+            "pid": 10887,
+            "process_instance": "macos-proc-v1:1793828795:406222",
+            "title": "Prisma AIRS Desktop (Fixture)",
+            "visible": true
+          }
+        },
+        "ok": true,
+        "version": "2.5"
+      }
+    }
+  ]
+}
