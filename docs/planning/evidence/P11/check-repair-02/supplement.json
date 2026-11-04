@@ -1,0 +1,145 @@
+{
+  "schema": "airs-desktop/p11-check-supplement/1",
+  "subject": "P11",
+  "kind": "check",
+  "run_id": "check-repair-02",
+  "started_utc": "2026-11-04T13:49:19.080707+00:00",
+  "inputs_before": {
+    "source": "d2f0a9980088add49af650e0f98b029f9376061c64030340f56bbb34fb55acef",
+    "dependencies": "65ef7f60ec3361e31e255ba789bbf995746b4c0b557b2afef87201b5c2fdb9be",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "commands": [
+    {
+      "label": "C46/check/1",
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 772,
+      "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "log": "C46-check-1.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/check/6",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "ui_v2_setup_reads",
+        "--test",
+        "ui_v2_onboarding",
+        "--test",
+        "ui_v2_wizard",
+        "--test",
+        "management_reads",
+        "--test",
+        "refinement_metadata",
+        "--test",
+        "setup_warning_recheck",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 796,
+      "output_sha256": "3c8fcdd12e09daa88a4fb18b68bf704129b38da5a4b71cb6b290d1f6628b6add",
+      "log": "C46-check-6.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C46/check/7",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "xtask",
+        "--lib",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 24449,
+      "output_sha256": "972e9dba08775324fb964ccd9cc993f655b63fca0218b18e005661aeddfe7e8a",
+      "log": "C46-check-7.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C48/check/6",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "-p",
+        "desktop-core",
+        "--features",
+        "test-fixtures",
+        "--test",
+        "workbench_documents",
+        "--test",
+        "workbench_execution",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 675,
+      "output_sha256": "b4e23802c8ab1bf0427cd2a5ed05474a2b4adf04b3a7ce9d78ea05d27fa07eb6",
+      "log": "C48-check-6.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    },
+    {
+      "label": "C48/check/7",
+      "argv": [
+        "cargo",
+        "run",
+        "--locked",
+        "-p",
+        "xtask",
+        "--",
+        "notices",
+        "--check"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "duration_ms": 20726,
+      "output_sha256": "9301f8a00c247189db69ccb758c14d038da5440aea4aa441d6038d42b2cb50e2",
+      "log": "C48-check-7.log",
+      "tests": null,
+      "status": "passed",
+      "note": null
+    }
+  ],
+  "status": "passed",
+  "failure": null,
+  "inputs_after": {
+    "source": "d2f0a9980088add49af650e0f98b029f9376061c64030340f56bbb34fb55acef",
+    "dependencies": "65ef7f60ec3361e31e255ba789bbf995746b4c0b557b2afef87201b5c2fdb9be",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "finished_utc": "2026-11-04T13:50:11.791169+00:00"
+}

@@ -1,0 +1,92 @@
+{
+  "schema": "airs-desktop/p11-check-selection/1",
+  "execution_root": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+  "runner_inputs": {
+    "source": "d2f0a9980088add49af650e0f98b029f9376061c64030340f56bbb34fb55acef",
+    "dependencies": "65ef7f60ec3361e31e255ba789bbf995746b4c0b557b2afef87201b5c2fdb9be",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "original_run": {
+    "path": "docs/planning/evidence/P11/runs/check-20261104T133216Z-7f3bf8/run.json",
+    "sha256": "c12145316a18af5bc603be983019fc31b63379b4b171559c8196cfde4793ed6b"
+  },
+  "supplement": {
+    "path": "docs/planning/evidence/P11/check-repair-02/supplement.json",
+    "sha256": "eb8bef8573104181c3cbb3406c6050eb9c5488fa7eadf6206125f2936a38a690"
+  },
+  "original_source": {
+    "path": "docs/planning/evidence/P11/check-repair-01/source-before.json",
+    "sha256": "b59c1ad8b8fa88d66a71edce94e38f40a1e5e4a695cdd4997035c1bd13bfcbd8"
+  },
+  "current_source": {
+    "path": "docs/planning/evidence/P11/check-repair-02/source-current.json",
+    "sha256": "1453c59052c94b81af9a47456d8a74bb6045d46dc1cfb35525f50b7c2ea5b1a5"
+  },
+  "changed_paths": [
+    "crates/desktop-core/src/authority/setup_warning_domain.rs",
+    "crates/desktop-core/tests/setup_warning_recheck.rs",
+    "docs/planning/refinements/2026-11-04/execution.md",
+    "tools/p11/README.md",
+    "tools/p11/proof.py",
+    "tools/p11/standing.py",
+    "tools/p11/test_proof.py"
+  ],
+  "reason": "Preserve actual unaffected passes from the original failed Check. Execute affected fmt/lint and previously blocked checks. Exact dated conditional/test-message changes preserve product behavior; remaining delta is verifier docs/tests. Original failures remain unchanged.",
+  "rows": [
+    {
+      "label": "setup/1",
+      "disposition": "carried_unaffected",
+      "reason": "Pinned Academy input and staging contract unchanged; retain the original successful setup."
+    },
+    {
+      "label": "setup/2",
+      "disposition": "carried_unaffected",
+      "reason": "Package lock, manifests, pnpm binary and installed dependency fingerprint unchanged."
+    },
+    {
+      "label": "C46/check/1",
+      "disposition": "executed",
+      "reason": null
+    },
+    {
+      "label": "C46/check/2",
+      "disposition": "carried_unaffected",
+      "reason": "Wire types, generated bindings, parsers and binding tool unchanged."
+    },
+    {
+      "label": "C46/check/3",
+      "disposition": "carried_unaffected",
+      "reason": "Contracts TypeScript, manifests and dependencies unchanged."
+    },
+    {
+      "label": "C46/check/4",
+      "disposition": "carried_unaffected",
+      "reason": "All frontend source and dependencies unchanged by Rust conditional/test-only and verifier changes."
+    },
+    {
+      "label": "C46/check/5",
+      "disposition": "carried_unaffected",
+      "reason": "Only the exact conditional collapses changed the library. Current Clippy recompiles it, and the affected app rebuild is byte-identical. Test-only expect messages change no shipping cfg, API, type or dependency."
+    },
+    {
+      "label": "C46/check/6",
+      "disposition": "executed",
+      "reason": null
+    },
+    {
+      "label": "C46/check/7",
+      "disposition": "executed",
+      "reason": null
+    },
+    {
+      "label": "C48/check/6",
+      "disposition": "executed",
+      "reason": null
+    },
+    {
+      "label": "C48/check/7",
+      "disposition": "executed",
+      "reason": null
+    }
+  ]
+}

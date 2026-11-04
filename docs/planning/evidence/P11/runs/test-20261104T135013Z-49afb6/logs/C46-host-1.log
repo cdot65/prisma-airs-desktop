@@ -1,0 +1,71 @@
+
+running 13 tests
+test only_bounded_requests_from_a_tenant_with_a_tsg_are_admitted ... ok
+test a_redirect_is_never_followed_to_another_origin ... ok
+test protected_storage_failures_are_reported_without_any_fallback ... ok
+test the_management_credential_survives_restart_bound_to_its_token_origin ... ok
+test removal_deletion_and_reset_retire_each_capability_as_asked ... ok
+test dlp_details_use_their_own_read_and_a_404_means_absent ... ok
+test denial_unknown_values_secret_fields_and_catalogs_are_reported_faithfully ... ok
+test a_refused_management_grant_never_affects_scanning ... ok
+test later_pages_are_read_one_at_a_time_and_only_the_last_claims_completeness ... ok
+test a_scan_only_tenant_scans_and_management_never_uses_or_replaces_the_scan_key ... ok
+test a_walk_that_ends_before_the_inventory_claims_nothing ... ok
+test credentials_replaced_mid_pagination_retire_the_old_pages ... ok
+test a_result_settled_before_its_context_retired_is_never_delivered_afterwards ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.92s
+
+
+running 3 tests
+test metadata_edit_targets_only_the_selected_profile_without_rebinding_identity ... ok
+test metadata_edit_rolls_back_when_private_persistence_fails ... ok
+test metadata_edit_rejects_invalid_labels_and_has_no_tsg_or_endpoint_fields ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 9 tests
+test known_legacy_scan_configuration_is_rechecked_locally_without_claiming_service_validity ... ok
+test source_specific_denial_remains_active_then_resolves_after_fresh_complete_check ... ok
+test replaced_credential_generation_retires_pending_warning_check ... ok
+test unknown_legacy_scope_and_failed_persistence_do_not_clear_warning ... ok
+test absent_original_gateway_workspace_does_not_mean_any_workspace_matches ... ok
+test known_missing_selection_check_is_superseded_only_by_full_selected_prerequisites ... ok
+test legacy_model_warning_requires_dedicated_check_and_preserves_dated_history ... ok
+test reported_legacy_gateway_scope_is_rechecked_with_slug_not_display_uuid ... ok
+test gateway_wrong_workspace_or_unknown_scope_format_remains_unresolved ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+
+running 10 tests
+test a_draft_id_is_never_selectable_or_deletable_as_a_tenant ... ok
+test a_desktop_with_a_tenant_is_never_sent_through_the_wizard ... ok
+test a_draft_is_not_a_tenant_and_first_run_requires_oauth_not_a_scan_key ... ok
+test credentials_attach_to_the_draft_and_a_stored_key_is_never_a_pass ... ok
+test a_tenant_created_outside_the_wizard_ends_a_first_run_draft_and_the_shell_takes_over ... ok
+test add_mode_without_a_key_verifies_with_a_warning_and_completes_switching_once ... ok
+test a_relaunch_drops_the_draft_and_queues_its_credentials_for_cleanup ... ok
+test add_mode_keeps_the_shell_untouched_until_completion_and_discard_cleans_up ... ok
+test completion_commits_the_draft_once_with_products_warnings_and_onboarding ... ok
+test changing_inputs_makes_authentication_stale_and_product_permissions_warn ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+
+running 2 tests
+test add_mode_has_no_required_scan_key_and_the_sheet_discards_its_draft_on_cancel ... ok
+test the_board_draws_the_draft_the_tags_the_cards_and_the_checks_from_the_setup_view ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+--- stderr ---
+   Compiling desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.57s
+     Running tests/management_reads/main.rs (target/debug/deps/management_reads-b7f5842e096ed5f4)
+     Running tests/refinement_metadata.rs (target/debug/deps/refinement_metadata-3b962ec6dc9a638f)
+     Running tests/setup_warning_recheck.rs (target/debug/deps/setup_warning_recheck-e09d6ce6b8f3f01c)
+     Running tests/ui_v2_onboarding/main.rs (target/debug/deps/ui_v2_onboarding-97155cce11285c6d)
+     Running tests/ui_v2_wizard/main.rs (target/debug/deps/ui_v2_wizard-1bf254bf3c62bff6)

@@ -1,0 +1,25 @@
+
+running 15 tests
+test refinement_invalid_oauth_cannot_complete_an_add_draft ... ok
+test refinement_issuer_403_does_not_prove_authentication ... ok
+test refinement_issuer_400_is_an_authentication_failure ... ok
+test refinement_issuer_401_is_an_authentication_failure ... ok
+test refinement_missing_oauth_cannot_complete_an_add_draft ... ok
+test refinement_production_policy_rejects_the_legacy_create_tenant_bypass ... ok
+test refinement_issuer_429_retains_the_rate_limit_cause ... ok
+test refinement_issuer_503_retains_the_service_failure_cause ... ok
+test refinement_oauth_authentication_does_not_require_profile_permission ... ok
+test a_source_that_fails_inside_a_read_is_a_warning_that_reaches_the_tenant ... ok
+test a_product_permission_denial_is_a_warning_after_successful_oauth ... ok
+test oauth_failure_blocks_commit_without_mutating_the_active_tenant ... ok
+test a_draft_reads_beside_the_active_tenant_without_touching_its_gateway_choice ... ok
+test a_replaced_client_authenticates_afresh_and_profile_changes_retire_the_binding ... ok
+test discarding_a_draft_cancels_its_reads_in_flight_and_leaves_the_active_tenant_alone ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+
+--- stderr ---
+   Compiling desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 18.72s
+     Running tests/ui_v2_setup_reads/main.rs (target/debug/deps/ui_v2_setup_reads-178a7175abed5f1a)

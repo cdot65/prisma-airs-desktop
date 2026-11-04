@@ -1,0 +1,29 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+ ✓ src/v2/modal.test.tsx (4 tests) 182ms
+ ✓ src/v2/shell-refinement.test.tsx (11 tests) 419ms
+ ✓ src/v2/home.test.tsx (8 tests) 447ms
+ ✓ src/v2/v2-shell.test.tsx (27 tests) 2681ms
+   ✓ v2 shell > expires toasts after their lifetime, or keeps them under Reduce Motion  540ms
+   ✓ v2 shell > keeps destination names when the rail is collapsed and does not restart a toast deadline on re-render  336ms
+
+ Test Files  4 passed (4)
+      Tests  50 passed (50)
+   Start at  07:51:19
+   Duration  4.36s (transform 882ms, setup 358ms, collect 3.89s, tests 3.73s, environment 661ms, prepare 115ms)
+
+
+--- stderr ---
+stderr | src/v2/shell-refinement.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/v2-shell.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/home.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+

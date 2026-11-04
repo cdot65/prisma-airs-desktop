@@ -1,0 +1,27 @@
+{
+  "schema": "airs-desktop/rust-test-build-carry/1",
+  "build": {
+    "path": "docs/planning/evidence/P11/native-build-03/receipt.json",
+    "sha256": "6a1a13954c9bb8373c6fbfaafba58dd0f84b7fa78615155b005d02dfe07f7cf0"
+  },
+  "prepare": {
+    "path": "docs/planning/evidence/P11/native-prepare.json",
+    "sha256": "1d8c6dfc15685b4c12fe6e30c68666a82e42b84860e84418185aa8d3eff8ad42"
+  },
+  "changed_inputs": {
+    "crates/desktop-core/tests/setup_warning_recheck.rs": {
+      "before": "e9133b4869104afc448a5701685b4b72dffd1405ed687284f370cec04fa906f5",
+      "after": "e4aef28bf18b15f77d3fac003fbd65c2b6379cd97ee58e8ed43fda1a1f5fc7e5"
+    }
+  },
+  "native_rebuilt": false,
+  "reason": "Only descriptive expect messages in the dated Rust integration test changed after build03. No application source, dependency, resource or native helper changed. The current affected Clippy and full selected P11 Test passed; the retained executable and complete app bundle retain their original verified hashes. This does not report a new native build or native test execution.",
+  "check_selection": {
+    "path": "docs/planning/evidence/P11/check-repair-02/selection.json",
+    "sha256": "ce6d0f7bf778faa63350290ff2f079269833560442ca137aab58aeb39b76b5e6"
+  },
+  "tests": {
+    "path": "docs/planning/evidence/P11/runs/test-20261104T135013Z-49afb6/run.json",
+    "sha256": "7414a3c2276fd8c7f2335fea56f974eb67d3f562510ad21f73ea28cdd46cbefa"
+  }
+}

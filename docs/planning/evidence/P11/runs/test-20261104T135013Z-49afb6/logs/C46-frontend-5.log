@@ -1,0 +1,27 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+ ✓ src/v2/home.test.tsx (8 tests | 7 skipped) 110ms
+ ✓ src/v2/admin/administration.test.tsx (34 tests | 33 skipped) 139ms
+ ✓ src/v2/v2-shell.test.tsx (27 tests | 26 skipped) 309ms
+   ✓ v2 shell > opens the Gateway workspace choice from the tenant menu, and gates the row while no tenant is active (R3)  308ms
+
+ Test Files  3 passed (3)
+      Tests  3 passed | 66 skipped (69)
+   Start at  07:51:17
+   Duration  1.94s (transform 861ms, setup 202ms, collect 3.80s, tests 558ms, environment 455ms, prepare 86ms)
+
+
+--- stderr ---
+stderr | src/v2/v2-shell.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/home.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/admin/administration.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+

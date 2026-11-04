@@ -1,0 +1,118 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+ ✓ src/v2/workbench/request-presentation.test.ts (4 tests) 4ms
+ ✓ src/modules/workbench/document-save.test.tsx (15 tests) 4026ms
+   ✓ API Client document Save > sends the fields typed before the protection debounce fires  684ms
+   ✓ API Client document Save > protects the snapshot when typing pauses, marking unprotected edits once  456ms
+   ✓ API Client document Save > re-arms the close guard after a save and while an older protection is outstanding  538ms
+   ✓ API Client document Save > asks before closing the collection when the latest typing cannot be kept  595ms
+   ✓ API Client document Save > saves a reverted document before the pause, so the older protected draft is superseded  938ms
+ ✓ src/v2/workbench/api-client.test.tsx (39 tests) 6406ms
+   ✓ C41 API Client board > edits Params as rows that are written back as the file’s name=value lines, protected after the typing pause, and shown as text on request  1212ms
+   ✓ C41 API Client board > returning to an edited request after its editor unmounted reloads it from the core: the protected fields come back, never the old snapshot (attempt-09 R1)  597ms
+   ✓ C41 API Client board > a superseded environment or schema open cannot replace the current editor or its typing: a newer selection, a new resource or Close retires it (attempt-09 R2)  339ms
+
+ Test Files  3 passed (3)
+      Tests  58 passed (58)
+   Start at  07:51:47
+   Duration  8.00s (transform 839ms, setup 200ms, collect 2.52s, tests 10.44s, environment 450ms, prepare 77ms)
+
+
+--- stderr ---
+stderr | src/modules/workbench/document-save.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/workbench/api-client.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/v2/workbench/api-client.test.tsx > C41 API Client board > a cURL import's late reply never replaces the current selection: held past the draft's selection, the sheet closing and another selection, it is ignored (attempt-07 R1)
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/workbench/api-client.test.tsx > C41 API Client board > a cURL import's late reply never replaces the current selection: held past the draft's selection, the sheet closing and another selection, it is ignored (attempt-07 R1)
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/workbench/api-client.test.tsx > C41 API Client board > a cURL import's reply held across a collection close and re-open is ignored; the re-opened selection loads afresh (attempt-07 R1)
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | src/v2/workbench/api-client.test.tsx > C41 API Client board > a cURL import's reply held across a collection close and re-open is ignored; the re-opened selection loads afresh (attempt-07 R1)
+An update to ApiClient inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
