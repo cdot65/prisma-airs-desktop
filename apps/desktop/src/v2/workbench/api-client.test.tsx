@@ -213,6 +213,8 @@ async function open(snapshot = board(), extra?: (request: WorkbenchRequest) => W
     })
     const line = () => document_().querySelector('[data-slot="workbench-request-line"]') as HTMLElement
     await waitFor(() => expect(line()).not.toBeNull())
+    // The editor publishes its footer state through a passive effect after its first DOM commit.
+    await waitFor(() => expect(document_().querySelector('[data-slot="workbench-save-status"]')).not.toBeNull())
     return { native, requests, user, tree, line }
 }
 const document_ = () => globalThis.document
