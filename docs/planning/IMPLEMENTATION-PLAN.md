@@ -1,4 +1,9 @@
-# Prisma AIRS Desktop v2 implementation plan
+# Prisma AIRS Desktop implementation plan
+
+Current work: owner-approved [P11 refinements](refinements/2026-11-04/plan.md),
+C46–C49, after accepted P10. The original ordered migration plan below remains
+as its historical design record. C26 stable installed acceptance is still open;
+the published v1.0.0-rc.1 is immutable and remains a prerelease.
 
 Status: product interview decisions D001–D023 accepted; D024/D025 settle source
 terms and all four architecture candidates; D026 makes Codex the independent
@@ -78,6 +83,8 @@ change updates predecessors, plan and review evidence before execution.
 | P07   | C23–C24  | Reviewed imports, native quality, accessibility/privacy closure  |
 | P08   | C25–C26  | Controlled live qualification; signed installed DMG acceptance   |
 | P09   | C27–C44  | UI v2 "Refined Native": spec, shell, wizard, destinations (D058); re-cut from C35 as one screen per chunk ported from the prototype (D059) |
+| P10   | C45      | Fresh application identity and one presentation (D061) |
+| P11   | C46–C49  | Owner refinements: connection diagnostics, shell, API Client and Settings/themes (D063) |
 
 ### G00 — Plan confirmation
 

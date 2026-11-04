@@ -1,7 +1,8 @@
 # Ordered chunk instructions
 
-All chunks are planned, not implemented. G00/G01 must pass before C01. Execute
-in numeric order; external dependency delays do not authorize skipping gates.
+These are the ordered instructions; completion is established by the recorded
+review/evidence ledger, not this index. P11 refinements are the current work.
+G00/G01 preceded C01. External dependency delays do not authorize skipping gates.
 Use the [implementation plan](../IMPLEMENTATION-PLAN.md),
 [review protocol](../review-protocol.md), [test catalogue](../test-catalogue.md),
 and [canonical implementer prompt](../prompts/implement-chunk.md).
@@ -50,3 +51,8 @@ and [canonical implementer prompt](../prompts/implement-chunk.md).
 - [C42 — Academy](C42.md) (P09, D059)
 - [C43 — Wizard re-port](C43.md) (P09, D059)
 - [C44 — Legacy shell removal, P09 closure](C44.md) (P09, D059)
+- [C45 — Application identity and cleanup](C45.md) (P10, D061)
+- [C46 — Tenant connection and setup diagnostics](C46.md) (P11, D063)
+- [C47 — Shell hierarchy and Explain](C47.md) (P11, D063)
+- [C48 — API Client refinement](C48.md) (P11, D063)
+- [C49 — Settings and themes](C49.md) (P11, D063)
