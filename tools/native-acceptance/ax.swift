@@ -61,6 +61,34 @@ struct Node {
     let depth: Int
 }
 
+func owningPid(_ el: AXUIElement) -> pid_t? {
+    var pid: pid_t = 0
+    return AXUIElementGetPid(el, &pid) == .success ? pid : nil
+}
+
+// BEGIN owned-window source selection (also compiled by the isolated policy probe).
+func appWindows(
+    _ app: AXUIElement, _ pid: pid_t,
+    read: (AXUIElement, String) -> AnyObject? = attr,
+    owner: (AXUIElement) -> pid_t? = owningPid
+) -> [AXUIElement] {
+    guard let listed = read(app, kAXWindowsAttribute) as? [AXUIElement] else { return [] }
+    if !listed.isEmpty { return listed }
+    guard pid > 0 else { return [] }
+    // Some WKWebView application states expose a valid Main/Focused window
+    // while AXWindows succeeds with an empty array. Stay in this app's AX
+    // attributes; never substitute another process or a system-wide window.
+    var fallback: [AXUIElement] = []
+    for name in [kAXMainWindowAttribute, kAXFocusedWindowAttribute] {
+        guard let raw = read(app, name), CFGetTypeID(raw) == AXUIElementGetTypeID() else { continue }
+        let window = raw as! AXUIElement
+        guard owner(window) == pid, read(window, kAXRoleAttribute) as? String == kAXWindowRole else { continue }
+        if !fallback.contains(where: { CFEqual($0, window) }) { fallback.append(window) }
+    }
+    return fallback
+}
+// END owned-window source selection.
+
 func walk(_ pid: pid_t) -> [Node] {
     let app = AXUIElementCreateApplication(pid)
     // WebKit builds a web page's accessibility tree only for an AX client
@@ -78,7 +106,7 @@ func walk(_ pid: pid_t) -> [Node] {
         if panel && string(el, kAXRoleAttribute) == "AXScrollArea" { return }
         for child in children(el) { visit(child, depth + 1, panel: panel) }
     }
-    for window in (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [] {
+    for window in appWindows(app, pid) {
         let sheets = children(window).filter { string($0, kAXRoleAttribute) == "AXSheet" }
         if sheets.isEmpty {
             visit(window, 0)
