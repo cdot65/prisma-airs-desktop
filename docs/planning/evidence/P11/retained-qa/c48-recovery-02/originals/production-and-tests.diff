@@ -1,0 +1,297 @@
+diff --git a/apps/desktop/src/app.tsx b/apps/desktop/src/app.tsx
+index e7f1ca85..58236e3c 100644
+--- a/apps/desktop/src/app.tsx
++++ b/apps/desktop/src/app.tsx
+@@ -103,6 +103,7 @@ export function App({ client }: { client: DesktopClient }) {
+                     // The shell's scope follows the snapshot before it renders: a
+                     // notification for another tenant or context is never surfaced.
+                     useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null, next.switchBlocked?.review ?? null)
++                    useShellStore.getState().observeWorkbench(next.active?.tenant ?? null, next.active?.context ?? null, next.workbench.collection?.scope ?? null)
+                     setSnapshot(next)
+                 },
+                 onMenu: (command) => onMenu.current(command),
+diff --git a/apps/desktop/src/v2/store.ts b/apps/desktop/src/v2/store.ts
+index b6f136bf..405d567d 100644
+--- a/apps/desktop/src/v2/store.ts
++++ b/apps/desktop/src/v2/store.ts
+@@ -94,10 +94,26 @@ export interface Toast {
+  * reload and nothing here is authority: every durable fact is observed from
+  * the Rust snapshot.
+  */
++/** Unresolved preferred-collection recovery survives page navigation, but never a retired native scope or collection choice. */
++interface WorkbenchRecovery {
++    tenant: string | null
++    context: string | null
++    collection: string | null
++    generation: number
++    pending: boolean
++    failed: boolean
++}
++const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false })
++
+ interface ShellStore {
+     /** The scope the shell shows now (set from each snapshot before it renders): what a notification must belong to. */
+     scope: { tenant: string | null; context: string | null; switchReview: string | null }
+     setScope(tenant: string | null, context: string | null, switchReview?: string | null): void
++    workbenchRecovery: WorkbenchRecovery
++    observeWorkbench(tenant: string | null, context: string | null, collection: string | null): void
++    beginWorkbenchRestore(tenant: string | null, context: string | null): number | null
++    finishWorkbenchRestore(tenant: string | null, context: string | null, generation: number, failed: boolean): void
++    resolveWorkbenchRestore(tenant: string | null, context: string | null, generation: number): void
+     paletteOpen: boolean
+     switcherOpen: boolean
+     /** The rail's Administration children shown or hidden (C35; the prototype's `adminNav`). */
+@@ -170,6 +186,29 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+             unconfirmed: s.unconfirmed.filter((u) => unconfirmedInContext(u, context) && (!switchResolution(u.intent) || switchResolution(u.intent)?.review === switchReview)),
+             arrival: s.arrival && s.arrival.tenant !== tenant ? null : s.arrival,
+         })),
++    workbenchRecovery: initialWorkbenchRecovery(),
++    observeWorkbench: (tenant, context, collection) => set((s) => {
++        const old = s.workbenchRecovery
++        if (old.tenant === tenant && old.context === context && old.collection === collection) return s
++        return { workbenchRecovery: { tenant, context, collection, generation: old.generation + 1, pending: false, failed: false } }
++    }),
++    beginWorkbenchRestore: (tenant, context) => {
++        const old = get().workbenchRecovery
++        if (old.tenant !== tenant || old.context !== context || old.collection !== null || old.pending) return null
++        const generation = old.generation + 1
++        set({ workbenchRecovery: { ...old, generation, pending: true } })
++        return generation
++    },
++    finishWorkbenchRestore: (tenant, context, generation, failed) => set((s) => {
++        const old = s.workbenchRecovery
++        if (old.tenant !== tenant || old.context !== context || old.generation !== generation || !old.pending) return s
++        return { workbenchRecovery: { ...old, pending: false, failed } }
++    }),
++    resolveWorkbenchRestore: (tenant, context, generation) => set((s) => {
++        const old = s.workbenchRecovery
++        if (old.tenant !== tenant || old.context !== context || old.generation !== generation) return s
++        return { workbenchRecovery: { ...old, generation: old.generation + 1, pending: false, failed: false } }
++    }),
+     paletteOpen: false,
+     switcherOpen: false,
+     adminNavOpen: true,
+@@ -236,5 +275,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
+ 
+ /** Test seam: forget everything (each test starts from an empty store). */
+ export function resetShellStore() {
+-    useShellStore.setState({ scope: { tenant: null, context: null, switchReview: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
++    useShellStore.setState({ workbenchRecovery: initialWorkbenchRecovery(), scope: { tenant: null, context: null, switchReview: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
+ }
+diff --git a/apps/desktop/src/v2/workbench/api-client.test.tsx b/apps/desktop/src/v2/workbench/api-client.test.tsx
+index 7cf40470..f1ff1f57 100644
+--- a/apps/desktop/src/v2/workbench/api-client.test.tsx
++++ b/apps/desktop/src/v2/workbench/api-client.test.tsx
+@@ -361,6 +361,114 @@ describe('C41 API Client board', () => {
+         expect(requests.filter((r) => ['openBuiltIn', 'createCollection', 'openFolder'].includes(r.kind))).toHaveLength(0)
+     })
+ 
++    it.each(['missing', 'notCollection'] as const)('keeps %s preferred-folder recovery across Home and back until an explicit retry succeeds', async (detail) => {
++        const base = fxApi()
++        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
++        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
++        let restored = false
++        let cancelled = false
++        const requests = workbench(native, answers((r) => r.kind === 'load'
++            ? cancelled ? { kind: 'cancelled' } : restored ? { kind: 'opened', name: 'AIRS' } : { kind: 'refused', problem: { kind: 'project', detail } }
++            : r.kind === 'openFolder' ? { kind: 'refused', problem: { kind: 'project', detail: 'io' } } : null))
++        const user = userEvent.setup()
++        render(<App client={new DesktopClient(native.transport)} />)
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1))
++        await native.push(closed)
++        expect(await screen.findByText(/The preferred collection could not be opened/)).toBeInTheDocument()
++        const navigate = async (feature: 'home' | 'apiClient', label: string) => {
++            await user.click(within(screen.getByRole('navigation', { name: 'Destinations' })).getByRole('button', { name: new RegExp(label) }))
++            expect(native.dispatched.at(-1)).toEqual({ kind: 'navigate', feature })
++            await native.push({ ...native.current, activeFeature: feature })
++            await screen.findByRole('heading', { level: 1, name: label })
++        }
++        await navigate('home', 'Home')
++        await navigate('apiClient', 'API Client')
++        expect(screen.getByText(/The preferred collection could not be opened/)).toBeInTheDocument()
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1)
++        // A failed alternative is not a successful choice and must not dismiss recovery.
++        await user.click(screen.getByRole('button', { name: 'Open collection…' }))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1))
++        expect(screen.getByText(/The preferred collection could not be opened/)).toBeInTheDocument()
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2))
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        cancelled = true
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(3))
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        cancelled = false
++        restored = true
++        let releaseRestore: (() => void) | undefined
++        if (detail === 'notCollection') {
++            const observe = native.observeWorkbench
++            native.observeWorkbench = async (operation) => {
++                native.observeWorkbench = observe
++                const result = await observe(operation)
++                await new Promise<void>((resolve) => { releaseRestore = resolve })
++                return result
++            }
++        }
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4))
++        // Both native orders: an opened snapshot may precede the load result.
++        if (detail === 'notCollection') {
++            await waitFor(() => expect(releaseRestore).toBeDefined())
++            await native.push(base)
++            await act(async () => { releaseRestore!() })
++        } else await native.push(base)
++        expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
++        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
++        // The explicit Close preference must remain closed on remount, rather than restoring the default.
++        await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
++        await user.click(screen.getByRole('menuitem', { name: 'Close collection' }))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'closeCollection')).toHaveLength(1))
++        await native.push(closed)
++        await navigate('home', 'Home')
++        await navigate('apiClient', 'API Client')
++        expect(screen.getByText('No collection is open.')).toBeInTheDocument()
++        expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
++        expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
++        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4)
++        expect(requests.filter((r) => ['openBuiltIn', 'createCollection'].includes(r.kind))).toHaveLength(0)
++        expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1)
++    })
++
++    it('settles an in-flight restore after remount without duplicate loads and ignores its reply after context retirement', async () => {
++        const base = fxApi()
++        const closed = { ...base, workbench: { ...base.workbench, collection: null } }
++        const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
++        const requests = workbench(native, answers((r) => r.kind === 'load' ? { kind: 'refused', problem: { kind: 'project', detail: 'missing' } } : null))
++        const observe = native.observeWorkbench
++        let release: (() => void) | undefined
++        native.observeWorkbench = async (operation) => {
++            const result = await observe(operation)
++            await new Promise<void>((resolve) => { release = resolve })
++            return result
++        }
++        const user = userEvent.setup()
++        render(<App client={new DesktopClient(native.transport)} />)
++        await waitFor(() => expect(release).toBeDefined())
++        await native.push({ ...native.current, activeFeature: 'home' })
++        await native.push({ ...native.current, activeFeature: 'apiClient' })
++        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(1)
++        await native.push(closed)
++        await act(async () => { release!() })
++        expect(await screen.findByText(/The preferred collection could not be opened/)).toBeInTheDocument()
++        release = undefined
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(release).toBeDefined())
++        const next = { ...closed, active: { ...closed.active!, context: `cx-${'b'.repeat(24)}` } }
++        await native.push({ ...next, activeFeature: 'home' })
++        await native.push(next)
++        await act(async () => { release!() })
++        expect(screen.getByText('No collection is open.')).toBeInTheDocument()
++        expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
++        expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
++        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2)
++    })
++
+     it('draws the title row with the chips, the tree, the tabs, the request line, the sub-tabs, the response pane and the footer (V2-T14)', async () => {
+         const { tree, line } = await open()
+         expect(document_().querySelector('[data-slot="api-client-v2"]')).not.toBeNull()
+diff --git a/apps/desktop/src/v2/workbench/api-client.tsx b/apps/desktop/src/v2/workbench/api-client.tsx
+index 2314a3ab..fc16341e 100644
+--- a/apps/desktop/src/v2/workbench/api-client.tsx
++++ b/apps/desktop/src/v2/workbench/api-client.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useMemo, useRef, useState } from 'react'
++import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+ import { createPortal } from 'react-dom'
+ import type { DocumentView, ImportNote, ShellSnapshot, WorkbenchView as WorkbenchState } from '@prisma-airs/desktop-contracts'
+ import type { Dispatch } from '../../modules/tenants/dispatch'
+@@ -14,6 +14,7 @@ import { tone, elapsedText } from './response-pane'
+ import { clockOf } from '../copy'
+ import type { EditorStatus } from './presentation-status'
+ import { PageIntro } from '../page-intro'
++import { useShellStore } from '../store'
+ 
+ export interface ApiClientProps {
+     snapshot: ShellSnapshot
+@@ -50,6 +51,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+     const state = snapshot.workbench
+     const collection = state.collection
+     const [message, setMessage] = useState('')
++    const messageAction = useRef(0)
+     const [offerNew, setOfferNew] = useState(false)
+     const [tool, setTool] = useState<Tool | null>(null)
+     const [menu, setMenu] = useState(false)
+@@ -67,7 +69,26 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+     const [editorStatus, setEditorStatus] = useState<{ owner: string; value: EditorStatus } | null>(null)
+     const statusOwner = useRef<string | null>(null)
+     const tabStrip = useRef<HTMLDivElement>(null)
+-    const [startupFailure, setStartupFailure] = useState(false)
++    const tenant = snapshot.active?.tenant ?? null
++    const context = snapshot.active?.context ?? null
++    const startupFailure = useShellStore((s) => s.workbenchRecovery.tenant === tenant && s.workbenchRecovery.context === context && s.workbenchRecovery.failed)
++    const restorePreferred = useCallback(async () => {
++        const recovery = useShellStore.getState()
++        const generation = recovery.beginWorkbenchRestore(tenant, context)
++        if (generation === null) return { kind: 'cancelled' } as const
++        const action = ++messageAction.current
++        const result = await call({ kind: 'load' })
++        const current = useShellStore.getState().workbenchRecovery
++        // A successful retry retires its prior alternative-open message, even if the opened snapshot arrived first.
++        // Another action, context or collection generation must keep its own message.
++        const currentChoice = current.generation === generation || (current.collection !== null && current.generation === generation + 1)
++        if (action === messageAction.current && current.tenant === tenant && current.context === context && currentChoice && (result.kind === 'opened' || result.kind === 'done')) {
++            setMessage('')
++            setOfferNew(false)
++        }
++        recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused' || (result.kind === 'cancelled' && recovery.workbenchRecovery.failed))
++        return result
++    }, [call, tenant, context])
+     const editors = useRef(new Map<string, EditorHandle>())
+     const [closing, setClosing] = useState<Closing | null>(null)
+     // The Collection chip: where focus returns when its menu or a tool it opened closes (the menu item is gone by then).
+@@ -75,13 +96,17 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+ 
+     // A refusal stays shown until the next action that succeeds (a cancelled sheet keeps it).
+     const run: Run = async (request) => {
+-        const r = await call(request)
+-        if (request.kind === 'load' && collectionRef.current !== null) return r
+-        if (request.kind !== 'load' && r.kind !== 'cancelled') setStartupFailure(false)
++        if (request.kind !== 'load') ++messageAction.current
++        const generation = useShellStore.getState().workbenchRecovery.generation
++        const r = request.kind === 'load' ? await restorePreferred() : await call(request)
++        if (request.kind === 'load') return r
++        if (['openFolder', 'openRecent', 'openBuiltIn', 'createCollection', 'closeCollection'].includes(request.kind) && ['done', 'opened', 'created'].includes(r.kind)) {
++            useShellStore.getState().resolveWorkbenchRestore(tenant, context, generation)
++        }
+         const text = resultText(r)
+         if (text) {
+             setMessage(text)
+-            setOfferNew(request.kind !== 'load' && r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
++            setOfferNew(r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
+         } else if (r.kind !== 'cancelled') {
+             setMessage('')
+             setOfferNew(false)
+@@ -234,10 +259,8 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+     }, [editorUp, doc])
+     const loaded = state.loaded
+     useEffect(() => {
+-        if (!loaded) void call({ kind: 'load' }).then((r) => {
+-            if (r.kind === 'refused' && collectionRef.current === null) { setMessage(C.start.restoreFailed); setStartupFailure(true) }
+-        })
+-    }, [loaded, call])
++        if (!loaded) void restorePreferred()
++    }, [loaded, restorePreferred])
+     // The collection menu closes on Escape (focus back on the chip) and on a click elsewhere.
+     useEffect(() => {
+         if (!menu) return
+@@ -434,7 +457,7 @@ export function ApiClient({ snapshot, dispatch, observe }: ApiClientProps) {
+                 <div className='flex flex-col' style={{ gap: 12, padding: '20px var(--v2-page-x)' }}>
+                     {alerts}
+                     {state.loaded ? (
+-                        <Start state={state} run={run} message={message} offerNew={offerNew} retry={startupFailure ? async () => { const r = await run({ kind: 'load' }); if (collectionRef.current === null) { setStartupFailure(r.kind === 'refused'); if (r.kind === 'refused') setMessage(C.start.restoreFailed) } } : undefined} />
++                        <Start state={state} run={run} message={startupFailure ? `${C.start.restoreFailed}${message ? ` ${message}` : ''}` : message} offerNew={offerNew} retry={startupFailure ? async () => { await restorePreferred() } : undefined} />
+                     ) : (
+                         <p role='status' className='text-[13px]' style={soft}>
+                             {C.opening}

@@ -1,0 +1,58 @@
+--- prior-focused/apps/desktop/src/v2/workbench/api-client.tsx
++++ final/apps/desktop/src/v2/workbench/api-client.tsx
+@@ -76,7 +76,7 @@
+         const generation = recovery.beginWorkbenchRestore(tenant, context)
+         if (generation === null) return { kind: 'cancelled' } as const
+         const result = await call({ kind: 'load' })
+-        recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused')
++        recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused' || (result.kind === 'cancelled' && recovery.workbenchRecovery.failed))
+         return result
+     }, [call, tenant, context])
+     const editors = useRef(new Map<string, EditorHandle>())
+@@ -95,7 +95,7 @@
+         const text = resultText(r)
+         if (text) {
+             setMessage(text)
+-            setOfferNew(request.kind !== 'load' && r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
++            setOfferNew(r.kind === 'refused' && r.problem.kind === 'project' && r.problem.detail === 'notCollection')
+         } else if (r.kind !== 'cancelled') {
+             setMessage('')
+             setOfferNew(false)
+--- prior-focused/apps/desktop/src/v2/workbench/api-client.test.tsx
++++ final/apps/desktop/src/v2/workbench/api-client.test.tsx
+@@ -366,8 +366,9 @@
+         const closed = { ...base, workbench: { ...base.workbench, collection: null } }
+         const native = scriptedNative({ ...closed, workbench: { ...closed.workbench, loaded: false } })
+         let restored = false
++        let cancelled = false
+         const requests = workbench(native, answers((r) => r.kind === 'load'
+-            ? restored ? { kind: 'opened', name: 'AIRS' } : { kind: 'refused', problem: { kind: 'project', detail } }
++            ? cancelled ? { kind: 'cancelled' } : restored ? { kind: 'opened', name: 'AIRS' } : { kind: 'refused', problem: { kind: 'project', detail } }
+             : r.kind === 'openFolder' ? { kind: 'refused', problem: { kind: 'project', detail: 'io' } } : null))
+         const user = userEvent.setup()
+         render(<App client={new DesktopClient(native.transport)} />)
+@@ -393,9 +394,14 @@
+         await user.click(screen.getByRole('button', { name: 'Try again' }))
+         await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(2))
+         expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        cancelled = true
++        await user.click(screen.getByRole('button', { name: 'Try again' }))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(3))
++        expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
++        cancelled = false
+         restored = true
+         await user.click(screen.getByRole('button', { name: 'Try again' }))
+-        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(3))
++        await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4))
+         await native.push(base)
+         expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
+         // The explicit Close preference must remain closed on remount, rather than restoring the default.
+@@ -408,7 +414,7 @@
+         expect(screen.getByText('No collection is open.')).toBeInTheDocument()
+         expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+         expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
+-        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(3)
++        expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4)
+         expect(requests.filter((r) => ['openBuiltIn', 'createCollection'].includes(r.kind))).toHaveLength(0)
+         expect(requests.filter((r) => r.kind === 'openFolder')).toHaveLength(1)
+     })

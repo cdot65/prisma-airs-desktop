@@ -1,0 +1,127 @@
+//! C45 selected baseline using the existing manifest, environment and runner.
+//! No new controller completion or review transport. Dependencies were prepared
+//! offline before this run; setup is not repeated or claimed as newly executed.
+use xtask::manifest::Command;
+use xtask::runner::{RunKind, Runner, Status};
+use xtask::{Repo, Subject};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    let repo = Repo::discover();
+    let manifest = xtask::manifest::Manifest::load(&repo.manifest())?;
+    let env = xtask::env::Environment::prepare(&repo)?.with("RUST_TEST_THREADS", "4");
+    if args.as_slice() == ["identity"] {
+        let fingerprints = serde_json::json!({
+            "source": xtask::fingerprint::source(&repo)?,
+            "dependencies": xtask::fingerprint::dependencies(&repo, &env.toolchain_hash())?,
+            "build_flags": xtask::fingerprint::build_flags(&repo, &manifest, Subject::Chunk(45))?
+        });
+        println!("{}", serde_json::to_string_pretty(&fingerprints)?);
+        return Ok(());
+    }
+    // Actual C45 attempt-01 required these omitted synthetic integration targets.
+    // This additive affected check does not modify the frozen broad baseline or
+    // application build flags. No resolver uses a real credential or endpoint.
+    if args.as_slice() == ["followup-live"] {
+        let commands: Vec<_> = [
+            (
+                "C45/followup-live",
+                vec![
+                    "cargo",
+                    "test",
+                    "--locked",
+                    "-p",
+                    "xtask",
+                    "--features",
+                    "test-fixtures",
+                    "--test",
+                    "controlled_live",
+                    "--test",
+                    "live_run",
+                ],
+                true,
+            ),
+            (
+                "C45/followup-live-clippy",
+                vec![
+                    "cargo",
+                    "clippy",
+                    "--locked",
+                    "-p",
+                    "xtask",
+                    "--features",
+                    "test-fixtures",
+                    "--test",
+                    "controlled_live",
+                    "--test",
+                    "live_run",
+                    "--example",
+                    "c45_baseline",
+                    "--",
+                    "-D",
+                    "warnings",
+                ],
+                false,
+            ),
+            (
+                "C45/followup-fmt",
+                vec!["cargo", "fmt", "--all", "--", "--check"],
+                false,
+            ),
+        ]
+        .into_iter()
+        .map(|(label, argv, expects_tests)| Command {
+            label: label.to_owned(),
+            argv: argv.into_iter().map(str::to_owned).collect(),
+            expects_tests,
+        })
+        .collect();
+        let runner = Runner {
+            repo: &repo,
+            manifest: &manifest,
+            env: &env,
+            subject: Subject::Chunk(45),
+        };
+        let record = runner.run(RunKind::Test, &commands, &|_| Ok(()))?;
+        println!("{}", serde_json::to_string_pretty(&record)?);
+        if record.status != Status::Passed {
+            return Err("affected C45 followup failed; preserve actual raw result".into());
+        }
+        return Ok(());
+    }
+    let kind = match args.first().map(String::as_str) {
+        Some("check") => RunKind::Check,
+        Some("test") => RunKind::Test,
+        _ => return Err("usage: c45_baseline check|test [exact-command-label]".into()),
+    };
+    if args.len() > 2 {
+        return Err("too many selection arguments".into());
+    }
+
+    let mut commands = manifest.plan(Subject::Chunk(45), kind)?;
+    commands.retain(|c| !c.label.starts_with("setup/"));
+    // Check already runs the full frontend suite. The test baseline keeps truth
+    // tests; duplicate execution of exactly the same command adds no coverage.
+    if kind == RunKind::Test {
+        let check = manifest.plan(Subject::Chunk(45), RunKind::Check)?;
+        commands.retain(|c| !check.iter().any(|other| other.argv == c.argv));
+    }
+    if let Some(label) = args.get(1) {
+        commands.retain(|c| &c.label == label);
+        if commands.len() != 1 {
+            return Err("unknown/duplicate approved command label".into());
+        }
+    }
+    let runner = Runner {
+        repo: &repo,
+        manifest: &manifest,
+        env: &env,
+        subject: Subject::Chunk(45),
+    };
+    let record = runner.run(kind, &commands, &|_| Ok(()))?;
+    println!("{}", serde_json::to_string_pretty(&record)?);
+    if record.status != Status::Passed {
+        return Err("selected baseline failed; retain raw run and stop".into());
+    }
+    Ok(())
+}

@@ -1,0 +1,6 @@
+{
+  "status": "helper-stopped-before-any-source-write-or-test-run",
+  "reason": "rustfmt --emit stdout includes an exact absolute filename header; initial local guard expected doc-comment at byte0",
+  "correction": "strip only the verified exact owned filename header before writing the two owned files",
+  "no_test_verdict": true
+}

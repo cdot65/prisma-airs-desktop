@@ -1,0 +1,44 @@
+{
+  "schema": "airs-p11-affected-clippy-supplement/1",
+  "aliases": [
+    {
+      "original": ".evidence-private/oauth-consumer-fixtures-01/clippy-affected-tests.json",
+      "public": "docs/planning/evidence/P11/c46-consumer-remediation-01/clippy-affected-tests.json",
+      "sha256": "649d42ecd41051f23c04e5cde5e7d7e5d848f51060715680e2280194955c7075"
+    },
+    {
+      "original": ".evidence-private/oauth-consumer-fixtures-01/clippy-affected-tests.log",
+      "public": "docs/planning/evidence/P11/c46-consumer-remediation-01/clippy-affected-tests.log",
+      "sha256": "2969721d03ee2625b8e5a522d3a44826ac38a45c6821b0fe76d93925048ba180"
+    },
+    {
+      "original": ".evidence-private/oauth-consumer-fixtures-01/clippy-affected-tests-exit-code.txt",
+      "public": "docs/planning/evidence/P11/c46-consumer-remediation-01/clippy-affected-tests-exit-code.txt",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ],
+  "argv": [
+    "cargo",
+    "clippy",
+    "--offline",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "harness_tools",
+    "--test",
+    "ui_v2_inbox",
+    "--",
+    "-D",
+    "warnings"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+  "exit_code": 0,
+  "source_files": {
+    "crates/desktop-core/tests/harness_tools/main.rs": "7a72bcd6afd6a56edf20b04d1195794b32e0cda85d816f4bc886f99281584861",
+    "crates/desktop-core/tests/ui_v2_inbox/main.rs": "d746a8ad524e38502daa9dbb1ffb6d4368a4d9324fe4b6fd5ba11b471b4d2811"
+  },
+  "original_manifest_unchanged": true
+}

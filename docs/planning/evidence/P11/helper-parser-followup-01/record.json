@@ -1,0 +1,40 @@
+{
+  "schema": "airs-desktop/p11-helper-qa/1",
+  "argv": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "-m",
+    "unittest",
+    "test_remediation.RemediationTests.test_native_supplements_reject_foreign_artifacts_vm_and_missing_facts",
+    "-v"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/tools/p11",
+  "started_utc": "2026-11-04T18:50:32.162217+00:00",
+  "finished_utc": "2026-11-04T18:50:32.226169+00:00",
+  "exit_code": 0,
+  "tests": {
+    "passed": 1,
+    "failed": 0
+  },
+  "skipped": 0,
+  "log": {
+    "path": "docs/planning/evidence/P11/helper-parser-followup-01/qa.log",
+    "sha256": "f3f97841715ac6469945f6cdd2a142d294b95247cc1af5b0c82c629ed4953f2d"
+  },
+  "helper_files": {
+    "tools/p11/remediation.py": "395efcbce6da0fa9262d1f7af7db52bccf416d4793acb65d11f61baa2cf8036b",
+    "tools/p11/test_remediation.py": "20a791d080b46f21d2313c3640ccde3580cf03fec5500f37301972883866e197",
+    "tools/p11/proof.py": "3908f0e1878d6269307bb6c12b6e599eb6063b6396365f64ca5eb810697c415a",
+    "tools/p11/standing.py": "2a320b1a754c9bd3494602c9a7bed686945b6cb9c8d1472f3f6aafdd6266e153"
+  },
+  "source_before": "df3ca7dea9303c21d3a9b6ff2f25378397721a469454af3b1ff9856a94804bd5",
+  "source_after": "df3ca7dea9303c21d3a9b6ff2f25378397721a469454af3b1ff9856a94804bd5",
+  "retained_qa": {
+    "path": "docs/planning/evidence/P11/helper-qa-remediation-01/record.json",
+    "sha256": "ab9ae81f5112349883dee94fb4bbd6bc27200508adde115b9f55bcd5c0329345"
+  },
+  "change": {
+    "path": "docs/planning/evidence/P11/helper-parser-followup-01/change.json",
+    "sha256": "aef79e7b2644900d5e385d7a98534538f09898e7e5a25d0de76d5206ede2be4f"
+  },
+  "meaning": "Actual one-test adversarial follow-up for required-fact subset admission. Additional passing facts are preserved; missing/false facts, foreign app/VM/helpers, unreviewed pixels and reversed times still reject. The prior81 remain at their original source/input bindings; no broad helper/application/Rust/frontend/native suite reran."
+}

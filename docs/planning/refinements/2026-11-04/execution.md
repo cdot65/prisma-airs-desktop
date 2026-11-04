@@ -1,102 +1,127 @@
 # Refinement qualification checkpoint — 2026-11-04
 
-At this checkpoint, all four implementation streams are integrated and all
-**12 required P11 native assertions have passing observations**. Independent
-chunk/phase reviews and a new production prerelease remain next. No review score,
-stable acceptance or new publication is claimed here. Later bound review and
-standing receipts are authoritative for acceptance.
+Checkpoint: 2026-11-04 18:39 UTC. The current fixture build05 has passed, but its affected
+recovery-native slice is **not yet complete**. Qualification02 remains the
+original qualified 099/eb9 artifact. The updated candidate and qualification03
+must not inherit an unperformed new execution or an unreturned review score.
 
 The owner-approved 17-item scope and decisions are in [plan.md](plan.md).
-The integration base is Forgejo main
-`f1e58da5cdeb1c67eed650b186081661cefc2fa2`.
+All development, local checks/builds and native UI run inside `admin@worf-vm`,
+branch `refinement/20261104-vm`; Kirk's old native launcher is retired. The
+integration base remains Forgejo main `f1e58da5cdeb1c67eed650b186081661cefc2fa2`.
 
-| Stream | Implemented behavior | Native observations |
+## Actual first reviews and focused remediations
+
+These are the real attempt-01 scores, in architecture / behavior /
+authority_security / validation / overall order. Raw verdicts, audited receipts,
+findings and limitations remain unchanged. No scores were overridden.
+
+| Stream | Actual scores | Finding and focused follow-up |
 | --- | --- | --- |
-| C46 | Required management OAuth before a new tenant is committed; separate optional Scan Key; metadata-only Edit; source-specific warning rechecks/history and Supply Chain routing | N01 in attempt06; N02–N03 in attempt12 |
-| C47 | Header H1 and compact page introductions/actions; nonmodal Explain; removed header Ask Harness; improved sun icon | N02–N03 in attempt10; N01 derived in attempt11 from the unchanged attempt10 layout matrix and two new API keyboard traces |
-| C48 | Colored JSON/URL editing; scoped footer; scrolling tabs; remembered collection choice; safe response filename suggestions | N01–N03 in attempt07 |
-| C49 | Compact Settings cards; independent Appearance/Theme; isolated Add flow; Academy palette isolation; credential and metadata controls | N01 in attempt07, N02 in attempt08, N03 in attempt09 |
+| C46 | 9 / 9 / 9 / 8 / 8 | Older Harness/Inbox integration fixtures completed unauthenticated OAuth drafts and were omitted from affected coverage. Only the two test fixture files changed: authenticate synthetic credentials, reacquire context and assert completable. The nine named consumers passed (3 Harness + 6 Inbox); both targets' scoped Clippy passed. Production authentication gates are unchanged. |
+| C47 | 9 / 9 / 9 / 8 / 8 | Independent Explain scrolling lacked a native observation. A focused supplement on the exact original 099/eb9 app passed in 14 seconds: 11 fixture calls overflowed, lower call index4 was reached, drawer content moved and the underlying page anchor stayed fixed. Both images were individually accepted; fixture state, modes and trust roots stayed unchanged. |
+| C48 | 9 / 8 / 9 / 8 / 8 | A failed preferred-collection restore lost its warning/Retry after Home and back. Recovery now lives in scoped transient store state, observed before App snapshots render, with generation/action guards and explicit successful-choice retirement. Four production-path recovery tests and final typecheck passed. Actual earlier API42, shell29/Test Cases16 and Save/Send20 retain their exact earlier source bindings; bounded later recovery/message deltas are separately captured and tested. |
+| C49 | 9 / 9 / 9 / 9 / 9 | Full gate passed with no findings on qualification02. This historical verdict is not a new review of build05. |
 
-All interactive development, local checks/builds and native UI run inside the
-dedicated `admin@worf-vm` VM, in branch `refinement/20261104-vm`.
-Kirk's old native launcher is retired. The earlier Kirk source checks retain
-their original host, source, command and outcome bindings; they are not reported
-as VM executions.
+C46, C47 and C48 are accepted at eight under D034, with their actual full gates
+still false and the push to nine open. Their acceptance records retain all open
+findings. Every attempt-01 source/transport/qualification audit passed; the source
+stayed frozen throughout those reviews. The P11 phase review has not run.
 
-## Candidate and focused source verification
+Durable focused records:
 
-The current fixture is the actual VM build
-[Native build04](../../evidence/P11/native-build-04-vm), including the Modal
-composition fix. Its executable SHA256 is
-`099669efc96b8b54bc300dda33295be6271e81b59b9d11128434330e8073434d`;
+- [C46 nine consumers and original red failures](../../evidence/P11/c46-consumer-remediation-01/manifest.json), plus [scoped target Clippy](../../evidence/P11/c46-consumer-remediation-01/clippy-supplement.json).
+- [C47 independent-scroll supplement](../../evidence/P11/c47-scroll-supplement-01/supplement.json), with original process/source and exact old-artifact bindings.
+- [C48 final and retained source selectors](../../evidence/P11/retained-qa/c48-recovery-02/supplement.json), including original failures, exact input snapshots and honest missing per-command UTC timing limitations.
+- [Versioned build helper Clippy/preflight](../../evidence/P11/native-candidate-adapter-01/manifest.json), [affected Rust formatting](../../evidence/P11/remediation-format-01/record.json), and [combined helper QA81/81](../../evidence/P11/helper-qa-remediation-01/record.json).
+
+The 81-test helper record retains its original consumer-source bindings. A
+[one-test parser follow-up](../../evidence/P11/helper-parser-followup-01/record.json)
+then passed: extra actual recovery observations are retained, while every
+mandatory fact and every recorded value must pass. Missing/false facts, foreign
+artifacts/VM/helpers, unreviewed captures and reversed times still reject. The
+81 tests are not relabelled as a new execution after that narrow parser change.
+
+## Current candidate and remaining native slice
+
+The one actual [VM build05](../../evidence/P11/native-build-05-vm/receipt.json)
+completed in 1 minute44 seconds. It used source commit
+`685e645366069b505e47e375693689ac3db573fa` plus the separately frozen evidence
+consumer work. All 660 application input identities stayed fixed through the
+build. The executable SHA256 is
+`ba72d82de279be8d311c02125597ae0d5d6f7f5f0f2bdcbc2d951dc3d1e42914`;
 the complete bundle SHA256 is
-`eb9f93a1a4394574ca36e0c0affdd2c9206dfb5b3496649368cb24079394c7f5`.
-The earlier `3239facd…` candidate and every original build/failed run remain
-historical evidence; they are not the current artifact.
+`f558aa269e359e9617191ecd47b8eb63016350086e618c36c4fdfc79d45bd535`.
+Its [versioned preparation](../../evidence/P11/native-build-05-vm/native-prepare.json)
+uses the same fixed ARM64 fixture recipe. The sealed canonical old prepare was
+not overwritten. The exact old099 app survives as a verified CoW snapshot and
+[public tar payload](../../evidence/P11/remediation-baseline-01/receipt.json).
 
-The VM's affected verification executed formatting/typechecking and all twelve
-registered frontend test groups: **379 passing tests**. The original complete
-source Test run had **439 passing executions** on Kirk. Its eight unchanged
-Rust test commands (62 executions), other unaffected checks and their original
-bindings are retained with explicit dependency/tool/impact proofs. They were
-not rerun merely for the VM move, test/helper changes or a new source fingerprint.
+Recovery01 stopped **before assertions** because the new ad-hoc-signed app could
+not read its existing synthetic fixture encryption key. Metadata showed that
+item trusted only the older code signature. The failed attempt is retained.
+The pending admission repair is an exact-item trusted-app append in the dedicated
+fixture Keychain, preserving its value and existing ACL; owner/login credentials
+and default Keychain settings are outside this action. No rebuild is required
+for this fixture permission repair. Its exact synthetic SecurityAgent dialog
+and periodic screen-access renewal await the owner's local confirmation; no
+Mac login password was requested. ACL mutation or repair success is not claimed.
+A fresh recovery02 output will be used after admission.
 
-The real Settings Add failure was fixed by moving desktop dialogs outside inert
-page ancestors and preserving opener focus. Both themed App regressions passed.
-The Administration eager-review test was corrected to await its dialog.
-Application code and artifact bytes have stayed unchanged throughout the later
-driver/provenance corrections.
+Only missing/replaced preferred-collection recovery, Home/back, explicit Retry
+and intentional-close behavior need new native observations. New captures must
+be inspected and bound before qualification03 or fresh reviews. No recovery
+success is claimed at this checkpoint.
 
-The final current Python helper verification passed **75/75 tests**, with no
-skips, source drift or application/Rust/Node-suite replay. Its raw record is
-[helper-qa-final-02](../../evidence/P11/helper-qa-final-02/record.json).
+## Explicit reuse and original qualification
 
-## Native evidence and visibility
+The dated remediation proof pins the exact old/new source hashes for four
+frontend files and two Rust fixture files. It accounts for **35 unaffected
+requirements** with per-ID rationale and conservative unchanged dependency
+identities, including all resources and relevant native helpers. It retains
+original result/candidate/process references; changed executable bytes are not
+called byte-identical. Affected source selectors, formatting and recovery are
+separate actual executions. The six new adversarial consumer tests are included
+in the 81/81 combined Python checks; no app/Rust/Node/native suite was executed by
+that helper QA.
 
-The [native selection](../../evidence/P11/native-final-01/native-selection.json)
-preserves all seven actual origins, attempts06–12. Failed overall process exits
-remain failed. Only completed assertions with all facts true are selected.
-Attempt10's false keyboard fact remains explicitly excluded; attempt11 retains
-its unchanged sixteen layout measurements and supplies two actual API keyboard
-traces. Both traces reached the required controls after 56 tab stops, beyond the
-old driver's arbitrary 24-stop limit.
+The original [qualification02](../../evidence/P11/qualification-final-02/qualification.json)
+accounts for all 41 registered requirements on its original 099/eb9 context.
+Its seven actual native origins, attempts06–12, supply all 12 positive assertions.
+Failed contributing process exits remain failed; attempt10's false keyboard
+fact remains explicitly excluded, replaced by attempt11's two genuine 56-Tab
+traces and retained sixteen-layout matrix. Original source/evidence seals stay
+unchanged. D2, S2 and the exact [S3 archive](../../evidence/P11/remediation-baseline-01/source-S3-archive.json)
+make those old source bindings independently reconstructible.
 
-Later corrections were confined to driver assumptions: AX whitespace/roles,
-reselecting session storage after form remount, measuring actual native chrome,
-the current Manage API keys label, and split latest-check paragraph text.
-Passing assertions were carried with exact app/helper/condition proofs; no
-unrelated native or Rust suite was replayed.
+Original VM source verification had379 passing frontend tests. The original
+complete Kirk source Test run had439 passing executions; its eight unchanged
+Rust commands (62 executions) retain their original host/source/tool bindings.
+The later build04 099/eb9 included the real Modal composition/focus fix and the
+Administration test correction. Those results were not relabelled as new VM or
+build05 executions.
 
-Attempt12 exited **0**, completed both remaining warning assertions and recorded
-no errors. A denied recheck remained active; a matching successful recheck
-resolved the finding while preserving its original reason/date. The original
-history screenshot shows its Settings container. A separate
-[read-only visibility supplement](../../evidence/P11/warning-history-visual-01/receipt.json)
-shows the original dated warning, latest Passed result and resolution time.
-That eight-second capture changed no persisted fixture state and replayed no
-assertion. The derived native acceptance adds its bound evidence while retaining
-the original acceptance and raw observations unchanged.
+The old warning-history visibility supplement, original dated reason, latest
+Passed/resolved timestamps and capture-specific reviews remain retained. Academy
+captures prove the stated palette/focus/portal scope, not new responsiveness of
+its unchanged guest reader layout. No complete native/Rust suite is repeated
+merely for commits, review attempts, helper/test edits or new source fingerprints.
 
-All selected captures were individually inspected. Academy theme/focus/portal
-checks preserve its existing guest cosmetics; they do not claim a new responsive
-qualification of its unchanged reader layout.
+## Next and separate lanes
 
-## Remaining work and separate lanes
+Complete the fixture-only admission repair and actual recovery slice, inspect
+its pixels, then seal fresh qualification03. Run fresh independent member reviews
+and the P11 phase review against that one updated qualified candidate. Preserve
+all earlier scores and outcomes. No final P11 standing or production publication
+is claimed yet; `controller_complete` remains false.
 
-Run the actual independent C46–C49 reviews, report every score/finding, then the
-P11 phase review against the same qualified candidate. No scores have been
-recorded at this dated checkpoint.
+The Linux branch's focused typecheck and77/77 DOM tests retain their recorded
+source/platform scope. They are macOS-hosted integration checks, not Linux native,
+AppImage or installed acceptance. Linux qualification remains independent.
+Stable installed/live C26 acceptance remains deferred by the owner. After P11
+acceptance, use the reviewed source pin for the approved builder and a new
+immutable production candidate; preserve RC1. Signing readiness on Jadzia is
+unverified.
 
-The Linux branch `refinement/20261104-linux` includes the later Modal and
-Administration fixes through `e6c88db3`. Its focused typecheck and 77/77 DOM
-tests passed inside the VM; original failures and raw results are retained.
-These are tests of Linux integration source on macOS, not Linux native,
-AppImage or installed acceptance. Linux remains independently unqualified.
-
-After acceptance, pin the accepted source for the approved Jadzia Mac builder,
-prepare a new immutable production candidate and preserve RC1. CI admission
-needs its reviewed P11 source pin; signing readiness on Jadzia is unverified.
-Stable installed/live C26 acceptance remains deferred by the owner.
-
-No real tenant API calls, remote IAM changes, owner credential reads, historical
-seal edits or RC1 asset changes were performed for these refinements.
+No real tenant API calls, remote IAM changes, owner credential-value reads,
+historical seal edits or RC1 asset changes are claimed for these refinements.

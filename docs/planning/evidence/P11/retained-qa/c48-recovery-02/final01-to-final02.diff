@@ -1,0 +1,65 @@
+--- final01/apps/desktop/src/v2/workbench/api-client.tsx
++++ final02/apps/desktop/src/v2/workbench/api-client.tsx
+@@ -51,6 +51,7 @@
+     const state = snapshot.workbench
+     const collection = state.collection
+     const [message, setMessage] = useState('')
++    const messageAction = useRef(0)
+     const [offerNew, setOfferNew] = useState(false)
+     const [tool, setTool] = useState<Tool | null>(null)
+     const [menu, setMenu] = useState(false)
+@@ -75,7 +76,16 @@
+         const recovery = useShellStore.getState()
+         const generation = recovery.beginWorkbenchRestore(tenant, context)
+         if (generation === null) return { kind: 'cancelled' } as const
++        const action = ++messageAction.current
+         const result = await call({ kind: 'load' })
++        const current = useShellStore.getState().workbenchRecovery
++        // A successful retry retires its prior alternative-open message, even if the opened snapshot arrived first.
++        // Another action, context or collection generation must keep its own message.
++        const currentChoice = current.generation === generation || (current.collection !== null && current.generation === generation + 1)
++        if (action === messageAction.current && current.tenant === tenant && current.context === context && currentChoice && (result.kind === 'opened' || result.kind === 'done')) {
++            setMessage('')
++            setOfferNew(false)
++        }
+         recovery.finishWorkbenchRestore(tenant, context, generation, result.kind === 'refused' || (result.kind === 'cancelled' && recovery.workbenchRecovery.failed))
+         return result
+     }, [call, tenant, context])
+@@ -86,6 +96,7 @@
+ 
+     // A refusal stays shown until the next action that succeeds (a cancelled sheet keeps it).
+     const run: Run = async (request) => {
++        if (request.kind !== 'load') ++messageAction.current
+         const generation = useShellStore.getState().workbenchRecovery.generation
+         const r = request.kind === 'load' ? await restorePreferred() : await call(request)
+         if (request.kind === 'load') return r
+--- final01/apps/desktop/src/v2/workbench/api-client.test.tsx
++++ final02/apps/desktop/src/v2/workbench/api-client.test.tsx
+@@ -400,10 +400,26 @@
+         expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+         cancelled = false
+         restored = true
++        let releaseRestore: (() => void) | undefined
++        if (detail === 'notCollection') {
++            const observe = native.observeWorkbench
++            native.observeWorkbench = async (operation) => {
++                native.observeWorkbench = observe
++                const result = await observe(operation)
++                await new Promise<void>((resolve) => { releaseRestore = resolve })
++                return result
++            }
++        }
+         await user.click(screen.getByRole('button', { name: 'Try again' }))
+         await waitFor(() => expect(requests.filter((r) => r.kind === 'load')).toHaveLength(4))
+-        await native.push(base)
++        // Both native orders: an opened snapshot may precede the load result.
++        if (detail === 'notCollection') {
++            await waitFor(() => expect(releaseRestore).toBeDefined())
++            await native.push(base)
++            await act(async () => { releaseRestore!() })
++        } else await native.push(base)
+         expect(screen.queryByText(/The preferred collection could not be opened/)).not.toBeInTheDocument()
++        expect(document_().querySelector('[data-slot=workbench-message]')).toBeNull()
+         // The explicit Close preference must remain closed on remount, rather than restoring the default.
+         await user.click(screen.getByRole('button', { name: 'Collection AIRS' }))
+         await user.click(screen.getByRole('menuitem', { name: 'Close collection' }))

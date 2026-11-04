@@ -673,6 +673,9 @@ def verify_plan(source, plan, check_dispositions=None):
 
 def verify_coverage(root, qualified, historical=None):
     """P11 check selection plus the unchanged generic test/native consumer."""
+    if 'review_remediation' in qualified:
+        import remediation
+        return remediation.verify_coverage(root, qualified, historical=historical)
     if 'impact_selection' in qualified:
         return verify_impact_coverage(root, qualified, historical=historical)
     if 'check_selection' not in qualified:
@@ -740,7 +743,10 @@ def verify(root, path):
     require(source_inventory(root) == seal['files'], 'P11 source changed after qualification')
     qualified = read(bound(root, record['coverage']))
     require(digest(seal['files']) == qualified['source_inventory_sha256'], 'P11 source binding')
-    if 'helper_source_carry' in record:
+    if 'review_remediation' in record:
+        require(qualified.get('review_remediation') == record['review_remediation'],
+                'review remediation qualification binding differs')
+    elif 'helper_source_carry' in record:
         validate_helper_source_carry(root, bound(root, record['helper_source_carry']), record['runner_inputs'])
     elif 'impact_selection' in record:
         validate_impact_selection(root, bound(root, record['impact_selection']), record['runner_inputs'])
@@ -758,21 +764,32 @@ def verify(root, path):
     from candidate import verify_candidate
     verify_candidate(root, candidate)
     performed = read(bound(root, record['native_execution']))
-    require(candidate['helper_closure'] == helper_closure(root, native_driver(root, performed)),
-            'P11 native helper membership changed')
-    validate_execution(root, performed, candidate,
-        acceptance=bound(root, record['native_acceptance']) if 'native_acceptance' in record else None,
-        execution=bound(root, record['native_execution']))
+    if 'review_remediation' in record:
+        remedy = read(bound(root, record['review_remediation']))
+        recovery = read(bound(root, remedy['recovery']))
+        require(record['native_execution'] == recovery['raw']
+                and candidate['helper_closure'] == recovery['helper_closure'],
+                'affected recovery helper/execution membership changed')
+    else:
+        require(candidate['helper_closure'] == helper_closure(root, native_driver(root, performed)),
+                'P11 native helper membership changed')
+        validate_execution(root, performed, candidate,
+            acceptance=bound(root, record['native_acceptance']) if 'native_acceptance' in record else None,
+            execution=bound(root, record['native_execution']))
     build_path = bound(root, record['build'])
     build = read(build_path)
     require(build['application_inputs_unchanged'] is True
             and all(step['exit_code'] == 0 for step in build['steps']), 'fixture build failed/drifted')
-    require([step['argv'] for step in build['steps']] == [
-        ['pnpm', '--filter', '@prisma-airs/desktop-contracts', 'typecheck'],
-        ['pnpm', '--filter', '@prisma-airs/desktop', 'typecheck'],
-        ['cargo', 'run', '--locked', '-p', 'xtask', '--', 'native-prepare', '--phase', 'P11',
-         '--target', 'aarch64-apple-darwin', '--features', 'test-fixtures']],
-        'missing or changed fixture build invocation')
+    if 'review_remediation' in record:
+        import remediation
+        remediation.versioned_build(root, build, candidate)
+    else:
+        require([step['argv'] for step in build['steps']] == [
+            ['pnpm', '--filter', '@prisma-airs/desktop-contracts', 'typecheck'],
+            ['pnpm', '--filter', '@prisma-airs/desktop', 'typecheck'],
+            ['cargo', 'run', '--locked', '-p', 'xtask', '--', 'native-prepare', '--phase', 'P11',
+             '--target', 'aarch64-apple-darwin', '--features', 'test-fixtures']],
+            'missing or changed fixture build invocation')
     require(set(build['application_inputs_before']) == application_files(root),
             'built application input membership differs or is incomplete')
     require(read(build_path.parent / 'native-prepare.json') == read(bound(root, candidate['prepare'])),

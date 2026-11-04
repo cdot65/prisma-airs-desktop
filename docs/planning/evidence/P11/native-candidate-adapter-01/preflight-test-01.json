@@ -1,0 +1,30 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "xtask",
+    "--example",
+    "p11_native_candidate",
+    "--",
+    "--exact",
+    "tests::invalid_paths_collisions_and_symlink_parents_refuse_before_build",
+    "--nocapture"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+  "source": "crates/xtask/examples/p11_native_candidate.rs",
+  "source_sha256": "704087ca7cec096359e17731bea859a7c9bcf814e05856e5819af1f874610062",
+  "started_utc": "2026-11-04T18:11:52.966960+00:00",
+  "environment": {
+    "PATH": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "CARGO_TARGET_DIR": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true"
+  },
+  "exit_code": 0,
+  "finished_utc": "2026-11-04T18:11:54.662915+00:00",
+  "log": ".evidence-private/native-candidate-adapter-01/preflight-test-01.log",
+  "log_sha256": "1d5f679559e50aaf27035c3bfbc21668c97b8ed4c0faf197d81c9cce83240ee9"
+}

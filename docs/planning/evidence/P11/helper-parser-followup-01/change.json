@@ -1,0 +1,26 @@
+{
+  "schema": "airs-desktop/p11-helper-parser-followup/1",
+  "original_qa": {
+    "path": "docs/planning/evidence/P11/helper-qa-remediation-01/record.json",
+    "sha256": "ab9ae81f5112349883dee94fb4bbd6bc27200508adde115b9f55bcd5c0329345"
+  },
+  "reason": "The actual recovery probe records additional observations. Require every mandatory fact and every actual recorded value true, while preserving extra passing facts. No application/native/helper driver or behavior changed. Only this adversarial guard is rerun; original81 remains at its actual source.",
+  "changed_files": {
+    "remediation.py": {
+      "original": {
+        "path": "docs/planning/evidence/P11/helper-parser-followup-01/original/remediation.py",
+        "sha256": "d7e2a87a70a5947de7aea4bce33ae1ee46184abe725bf7da83f8dec48c27918a"
+      },
+      "current_path": "tools/p11/remediation.py",
+      "current_sha256": "395efcbce6da0fa9262d1f7af7db52bccf416d4793acb65d11f61baa2cf8036b"
+    },
+    "test_remediation.py": {
+      "original": {
+        "path": "docs/planning/evidence/P11/helper-parser-followup-01/original/test_remediation.py",
+        "sha256": "f2ae2dcb814fdcf64687b8a3657fce7d2f8e7bf826f56265f786290722b71e78"
+      },
+      "current_path": "tools/p11/test_remediation.py",
+      "current_sha256": "20a791d080b46f21d2313c3640ccde3580cf03fec5500f37301972883866e197"
+    }
+  }
+}

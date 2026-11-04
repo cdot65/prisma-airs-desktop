@@ -1,0 +1,363 @@
+{
+  "schema": "airs-desktop/p11-c48-source-supplement/1",
+  "recorded_utc": "2026-11-04T17:58:44.822356+00:00",
+  "original_receipt": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/receipt.json",
+    "sha256": "fc32368741315e5e16deedc809ed679265f57fd203f2b6a38432cec4f4d10a02"
+  },
+  "copy_map": {
+    "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/copy-map.json",
+    "sha256": "498e500238e2788c6b49a477d0ed527cda5c25e727c0b13f923e49e679be259c"
+  },
+  "final_source_hashes": {
+    "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+    "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+    "apps/desktop/src/v2/workbench/api-client.tsx": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03"
+  },
+  "source_policy_hash_pairs": {
+    "apps/desktop/src/app.tsx": {
+      "red": "9de8de88cb261f3b826d05ab2c2c1ca195a7dc1ba05f68e6bfbb60ad20fdef89",
+      "prior_focused": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+      "final": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+      "prior_to_final": "unchanged"
+    },
+    "apps/desktop/src/v2/store.ts": {
+      "red": "e5569371c60bd473fab6f3a944d32b458a7878223e89d883918ca0d4e88d143d",
+      "prior_focused": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+      "final": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+      "prior_to_final": "unchanged"
+    },
+    "apps/desktop/src/v2/workbench/api-client.tsx": {
+      "red": "c510a3118520f2cbef52f310b70662f0a1cb06e5a42f71a9937088e847000116",
+      "prior_focused": "50b881c165ce183abe845f4c572d687fe7bc4b0041a1a69c875394c55a67bb1d",
+      "final": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3",
+      "prior_to_final": "exact bounded delta in prior-focused-to-final.diff"
+    },
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+      "red": "2854009261757dbac80c3c986f898a32765d6c41f9dc14d98146dd4bfacdae78",
+      "prior_focused": "2d07b3ec2c0d340b30c4cf23877c05b548d30f34c7a4a98fe2dc72433f2f01eb",
+      "final": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03",
+      "prior_to_final": "exact bounded delta in prior-focused-to-final.diff"
+    }
+  },
+  "checks": [
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx",
+        "-t",
+        "preferred-folder recovery|in-flight restore|offers explicit restore recovery"
+      ],
+      "exit_code": 0,
+      "passed": 4,
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/green-recovery-final.log",
+        "sha256": "178cf756ec44c86ece4eff048fb99495b5d32b2022f071c1fbd7727a064c66f5"
+      },
+      "id": "C48/recovery-final",
+      "source_hashes": {
+        "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+        "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+        "apps/desktop/src/v2/workbench/api-client.tsx": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03"
+      },
+      "source_inputs": {
+        "apps/desktop/src/app.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/app.tsx",
+          "sha256": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/store.ts",
+          "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+        },
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3"
+        },
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/workbench/api-client.test.tsx",
+          "sha256": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03"
+        }
+      },
+      "meaning": "Actually executed final four recovery regressions; missing/replaced folder navigation, failed/canceled retry, successful restore/intentional close, and pending reply context retirement.",
+      "timing": {
+        "exact_utc_started": null,
+        "exact_utc_finished": null,
+        "reason": "No separate per-command UTC start/end record was retained; the original raw log and original receipt recording time are preserved.",
+        "raw_start_at": "17:55:23",
+        "raw_duration": "3.86s (transform 1.45s, setup 78ms, collect 2.25s, tests 1.03s, environment 172ms, prepare 42ms)"
+      }
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/modules/workbench/document-save.test.tsx",
+        "src/modules/workbench/request-send.test.tsx"
+      ],
+      "exit_code": 0,
+      "passed": 20,
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/green-controller-final.log",
+        "sha256": "3b0f9e0fa32392272b494b2ec0f3561e2a201906ed99aa9fba35c737db9e26d3"
+      },
+      "id": "C48/controllers-final",
+      "source_hashes": {
+        "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+        "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+        "apps/desktop/src/v2/workbench/api-client.tsx": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3",
+        "apps/desktop/src/modules/workbench/document-save.test.tsx": "319d73423eda559aedba6323425f00cc583a6a0a13e5346eb888a6fdb39a5f3b",
+        "apps/desktop/src/modules/workbench/request-send.test.tsx": "e06210ca00a6801494615674b86f96c0e9a2a6c983c879d391c1447d907da381"
+      },
+      "source_inputs": {
+        "apps/desktop/src/app.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/app.tsx",
+          "sha256": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/store.ts",
+          "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+        },
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3"
+        },
+        "apps/desktop/src/modules/workbench/document-save.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/modules/workbench/document-save.test.tsx",
+          "sha256": "319d73423eda559aedba6323425f00cc583a6a0a13e5346eb888a6fdb39a5f3b"
+        },
+        "apps/desktop/src/modules/workbench/request-send.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/modules/workbench/request-send.test.tsx",
+          "sha256": "e06210ca00a6801494615674b86f96c0e9a2a6c983c879d391c1447d907da381"
+        }
+      },
+      "meaning": "Actually executed 20 document Save/request Send controller regressions against the final production boundary.",
+      "timing": {
+        "exact_utc_started": null,
+        "exact_utc_finished": null,
+        "reason": "No separate per-command UTC start/end record was retained; the original raw log and original receipt recording time are preserved.",
+        "raw_start_at": "17:55:23",
+        "raw_duration": "7.45s (transform 1.40s, setup 158ms, collect 4.35s, tests 5.41s, environment 361ms, prepare 236ms)"
+      }
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "apps/desktop/node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "-p",
+        "apps/desktop/tsconfig.json"
+      ],
+      "exit_code": 0,
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/typecheck-final.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "id": "C48/typecheck-final",
+      "source_hashes": {
+        "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+        "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+        "apps/desktop/src/v2/workbench/api-client.tsx": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03"
+      },
+      "source_inputs": {
+        "apps/desktop/src/app.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/app.tsx",
+          "sha256": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/store.ts",
+          "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+        },
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3"
+        },
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/final/apps/desktop/src/v2/workbench/api-client.test.tsx",
+          "sha256": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03"
+        }
+      },
+      "meaning": "Actually executed final desktop TypeScript check; empty raw log is successful exit0, not an omitted execution.",
+      "timing": {
+        "exact_utc_started": null,
+        "exact_utc_finished": null,
+        "reason": "No separate per-command UTC start/end record was retained; the original raw log and original receipt recording time are preserved.",
+        "raw_start_at": null,
+        "raw_duration": null
+      }
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx"
+      ],
+      "exit_code": 0,
+      "passed": 42,
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/green-api.log",
+        "sha256": "b9736c0e34ff67e949819159b2489b782995c769ac65af4a0b269a42b19ffc29"
+      },
+      "id": "C48/api-prior",
+      "source_hashes": {
+        "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+        "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+        "apps/desktop/src/v2/workbench/api-client.tsx": "50b881c165ce183abe845f4c572d687fe7bc4b0041a1a69c875394c55a67bb1d",
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": "2d07b3ec2c0d340b30c4cf23877c05b548d30f34c7a4a98fe2dc72433f2f01eb"
+      },
+      "source_inputs": {
+        "apps/desktop/src/app.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/app.tsx",
+          "sha256": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/store.ts",
+          "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+        },
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "50b881c165ce183abe845f4c572d687fe7bc4b0041a1a69c875394c55a67bb1d"
+        },
+        "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/workbench/api-client.test.tsx",
+          "sha256": "2d07b3ec2c0d340b30c4cf23877c05b548d30f34c7a4a98fe2dc72433f2f01eb"
+        }
+      },
+      "meaning": "Actually executed 42 API component tests before the exact two-line production/test delta; retained with original source identities, not relabeled current.",
+      "timing": {
+        "exact_utc_started": null,
+        "exact_utc_finished": null,
+        "reason": "No separate per-command UTC start/end record was retained; the original raw log and original receipt recording time are preserved.",
+        "raw_start_at": "17:54:03",
+        "raw_duration": "10.45s (transform 1.10s, setup 57ms, collect 1.72s, tests 8.34s, environment 143ms, prepare 38ms)"
+      }
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/workbench.test.tsx",
+        "src/v2/v2-shell.test.tsx"
+      ],
+      "exit_code": 0,
+      "passed": 45,
+      "log": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/green-controller-shell.log",
+        "sha256": "06ecb4b3d643abbee3b3398c2f8fd60b8a905c09273a76984f349127b6f2be95"
+      },
+      "id": "C48/shell-and-cases-prior",
+      "source_hashes": {
+        "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e",
+        "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+        "apps/desktop/src/v2/workbench/api-client.tsx": "50b881c165ce183abe845f4c572d687fe7bc4b0041a1a69c875394c55a67bb1d",
+        "apps/desktop/src/v2/workbench/workbench.test.tsx": "865fe1759944710368ae5ece60a6fc9823970162be9feef738ed22698c8a3b2f",
+        "apps/desktop/src/v2/v2-shell.test.tsx": "8b1444d21bf8ee447f0858415a34babe5dc371e0fd523effaacef9694de7978a"
+      },
+      "source_inputs": {
+        "apps/desktop/src/app.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/app.tsx",
+          "sha256": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e"
+        },
+        "apps/desktop/src/v2/store.ts": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/store.ts",
+          "sha256": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8"
+        },
+        "apps/desktop/src/v2/workbench/api-client.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/workbench/api-client.tsx",
+          "sha256": "50b881c165ce183abe845f4c572d687fe7bc4b0041a1a69c875394c55a67bb1d"
+        },
+        "apps/desktop/src/v2/workbench/workbench.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/workbench/workbench.test.tsx",
+          "sha256": "865fe1759944710368ae5ece60a6fc9823970162be9feef738ed22698c8a3b2f"
+        },
+        "apps/desktop/src/v2/v2-shell.test.tsx": {
+          "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/inputs/prior-focused/apps/desktop/src/v2/v2-shell.test.tsx",
+          "sha256": "8b1444d21bf8ee447f0858415a34babe5dc371e0fd523effaacef9694de7978a"
+        }
+      },
+      "meaning": "Actually executed 29 shell and 16 Test Cases tests before the exact bounded delta; command contains both files, total45, not two invented runs.",
+      "timing": {
+        "exact_utc_started": null,
+        "exact_utc_finished": null,
+        "reason": "No separate per-command UTC start/end record was retained; the original raw log and original receipt recording time are preserved.",
+        "raw_start_at": "17:54:16",
+        "raw_duration": "5.37s (transform 1.12s, setup 123ms, collect 3.42s, tests 5.29s, environment 302ms, prepare 81ms)"
+      }
+    }
+  ],
+  "red": {
+    "exit_code": 1,
+    "failed": 2,
+    "log": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/red.log",
+      "sha256": "325affeb64f74c094899e8517f9e9e3d567fcb146824e491a8d8c33f3564858b"
+    },
+    "source_hashes": {
+      "apps/desktop/src/v2/workbench/api-client.tsx": "c510a3118520f2cbef52f310b70662f0a1cb06e5a42f71a9937088e847000116",
+      "apps/desktop/src/v2/workbench/api-client.test.tsx": "2854009261757dbac80c3c986f898a32765d6c41f9dc14d98146dd4bfacdae78",
+      "apps/desktop/src/v2/store.ts": "e5569371c60bd473fab6f3a944d32b458a7878223e89d883918ca0d4e88d143d",
+      "apps/desktop/src/app.tsx": "9de8de88cb261f3b826d05ab2c2c1ca195a7dc1ba05f68e6bfbb60ad20fdef89"
+    },
+    "source_manifest": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/red-source.sha256",
+      "sha256": "921d4fa1d5291c7d09271ba04bcbdad248778f9f1fc2231aef3003468bd7c42b"
+    },
+    "source_inputs": {
+      "apps/desktop/src/v2/workbench/api-client.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/red-inputs/apps/desktop/src/v2/workbench/api-client.tsx",
+        "sha256": "c510a3118520f2cbef52f310b70662f0a1cb06e5a42f71a9937088e847000116"
+      },
+      "apps/desktop/src/v2/workbench/api-client.test.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/red-inputs/apps/desktop/src/v2/workbench/api-client.test.tsx",
+        "sha256": "2854009261757dbac80c3c986f898a32765d6c41f9dc14d98146dd4bfacdae78"
+      },
+      "apps/desktop/src/v2/store.ts": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/red-inputs/apps/desktop/src/v2/store.ts",
+        "sha256": "e5569371c60bd473fab6f3a944d32b458a7878223e89d883918ca0d4e88d143d"
+      },
+      "apps/desktop/src/app.tsx": {
+        "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/originals/red-inputs/apps/desktop/src/app.tsx",
+        "sha256": "9de8de88cb261f3b826d05ab2c2c1ca195a7dc1ba05f68e6bfbb60ad20fdef89"
+      }
+    },
+    "meaning": "Original two production App navigation regressions actually failed for missing/replaced preferred folder; exact archived red inputs reproduce the recorded source manifest, no historical failure edited."
+  },
+  "retention_policy": {
+    "prior_production_delta": {
+      "path": "docs/planning/evidence/P11/retained-qa/c48-recovery-01/prior-focused-to-final.diff",
+      "sha256": "48f4adb15fdf607a42f8eb21c37b20f82b77e792dba333e030c58b75090c400b"
+    },
+    "unchanged_production_paths": [
+      "apps/desktop/src/app.tsx",
+      "apps/desktop/src/v2/store.ts"
+    ],
+    "changed_production_path": "apps/desktop/src/v2/workbench/api-client.tsx",
+    "exact_changed_behavior": "Canceled preferred restore no longer clears an existing failure; final recovery regressions explicitly exercise the transition. Removing the redundant request.kind load comparison after an early return changes no behavior and resolves TS2367.",
+    "test_delta": "The existing missing/replaced parameterized regression gains canceled-retry assertions and one additional explicit read, changing expected final count3 to4. The other40 tests are unchanged.",
+    "disposition": "Earlier42/29/16 remain actual prior-source executions. Final4/20/typecheck cover the affected delta. No whole-suite rerun requested or claimed.",
+    "global_source_fingerprint_claimed": false,
+    "scoped_hash_reconstruction": "Prior input snapshots are reconstructed from the frozen final source by reversing the exact recorded two-line production delta and canceled-retry test delta, consistent with the preserved original producer receipt. They are identified as reconstructed inputs; no new execution is claimed."
+  },
+  "no_rerun": true,
+  "qualification_claimed": false
+}

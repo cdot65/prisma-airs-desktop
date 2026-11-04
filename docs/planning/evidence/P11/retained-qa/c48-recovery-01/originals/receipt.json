@@ -1,0 +1,119 @@
+{
+  "schema": "airs-desktop/c48-recovery-remediation/1",
+  "recorded_utc": "2026-11-04T17:56:25.918508+00:00",
+  "host": "worf-vm",
+  "source_files": {
+    "apps/desktop/src/v2/workbench/api-client.tsx": "0d1da0ed31d0ff86e4d46fb0392f08ad06945b30eb47c7cf97c114fba46e63d3",
+    "apps/desktop/src/v2/workbench/api-client.test.tsx": "7a68e497d5056c30ebb8aa1f9f9c8216d7a28e979d86496ea74cbce9c255de03",
+    "apps/desktop/src/v2/store.ts": "8bc2feec3d7de4c6dc8ef31ab6233c88b8209218285917de0c50acd1e70225d8",
+    "apps/desktop/src/app.tsx": "c3492519fa99eebf5e4bc24bcd603a528d1b0a4ca4c958ebedef8c008714169e"
+  },
+  "red": {
+    "argv": [
+      "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "--config",
+      "vitest.config.ts",
+      "src/v2/workbench/api-client.test.tsx",
+      "-t",
+      "preferred-folder recovery"
+    ],
+    "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+    "exit_code": 1,
+    "failed": 2,
+    "log": ".evidence-private/c48-recovery-01/red.log",
+    "log_sha256": "325affeb64f74c094899e8517f9e9e3d567fcb146824e491a8d8c33f3564858b",
+    "source_manifest": ".evidence-private/c48-recovery-01/red-source.sha256",
+    "exact_input_archive": ".evidence-private/c48-recovery-01/red-inputs",
+    "failure": "warning and explicit retry missing after production Home/back navigation for missing and replaced preferred folder"
+  },
+  "final_checks": [
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx",
+        "-t",
+        "preferred-folder recovery|in-flight restore|offers explicit restore recovery"
+      ],
+      "exit_code": 0,
+      "passed": 4,
+      "log": ".evidence-private/c48-recovery-01/green-recovery-final.log",
+      "log_sha256": "178cf756ec44c86ece4eff048fb99495b5d32b2022f071c1fbd7727a064c66f5"
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/modules/workbench/document-save.test.tsx",
+        "src/modules/workbench/request-send.test.tsx"
+      ],
+      "exit_code": 0,
+      "passed": 20,
+      "log": ".evidence-private/c48-recovery-01/green-controller-final.log",
+      "log_sha256": "3b0f9e0fa32392272b494b2ec0f3561e2a201906ed99aa9fba35c737db9e26d3"
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "apps/desktop/node_modules/typescript/bin/tsc",
+        "--noEmit",
+        "-p",
+        "apps/desktop/tsconfig.json"
+      ],
+      "exit_code": 0,
+      "log": ".evidence-private/c48-recovery-01/typecheck-final.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "retained_prior_focused_checks": [
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/api-client.test.tsx"
+      ],
+      "exit_code": 0,
+      "passed": 42,
+      "log": ".evidence-private/c48-recovery-01/green-api.log",
+      "log_sha256": "b9736c0e34ff67e949819159b2489b782995c769ac65af4a0b269a42b19ffc29"
+    },
+    {
+      "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop",
+      "argv": [
+        "/Users/admin/.nvm/versions/node/v24.21.0/bin/node",
+        "node_modules/vitest/vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "src/v2/workbench/workbench.test.tsx",
+        "src/v2/v2-shell.test.tsx"
+      ],
+      "exit_code": 0,
+      "passed": 45,
+      "log": ".evidence-private/c48-recovery-01/green-controller-shell.log",
+      "log_sha256": "06ecb4b3d643abbee3b3398c2f8fd60b8a905c09273a76984f349127b6f2be95"
+    }
+  ],
+  "prior_check_delta": "After green-api/controller-shell, removed a redundant narrowed request.kind check (typecheck TS2367); retained prior coverage. Added canceled retry preservation and its affected final regression only. The shared store and App snapshot integration stayed byte-identical throughout the green checks.",
+  "failures_preserved": [
+    "typecheck.log"
+  ],
+  "native_executed": false,
+  "app_build_executed": false,
+  "staged_or_committed": false
+}

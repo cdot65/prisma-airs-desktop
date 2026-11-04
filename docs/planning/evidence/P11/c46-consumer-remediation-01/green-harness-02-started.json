@@ -1,0 +1,35 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "harness_tools",
+    "--",
+    "completing_a_tenant_setup_is_the_guarded_switch_path",
+    "setup_archive_resolution_save_failure_preserves_pending_work",
+    "setup_discard_resolution_save_failure_preserves_pending_work",
+    "--exact",
+    "--nocapture"
+  ],
+  "started_utc": "2026-11-04T17:51:22.056848+00:00",
+  "source_files": {
+    "crates/desktop-core/tests/harness_tools/main.rs": "7a72bcd6afd6a56edf20b04d1195794b32e0cda85d816f4bc886f99281584861",
+    "crates/desktop-core/tests/ui_v2_inbox/main.rs": "d746a8ad524e38502daa9dbb1ffb6d4368a4d9324fe4b6fd5ba11b471b4d2811",
+    "crates/desktop-core/src/authority/setup_domain.rs": "6a52a4c1e2e0567990c0efaae36348848bd85e84991d525b479d9ac8d299050d",
+    "crates/desktop-core/Cargo.toml": "c61aab70870501455a80bc418447408b3e78eb59d50490ba23d2b68f5858ef01",
+    "Cargo.lock": "513de038ab408300d06721d75a2390d94c76312520505c82c6693eecace163c4",
+    "rust-toolchain.toml": "3ac87df98c6720396dac364b4b94273e9261ee2b1a971af6c43e0a714efa84cd"
+  },
+  "environment": {
+    "PATH": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "CARGO_TARGET_DIR": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true"
+  }
+}

@@ -25,7 +25,9 @@ ACCEPTED = BASE / 'accepted'
 COMPLETION = BASE / 'completion-proof.json'
 D2_SOURCE = BASE / 'source-history/D2'
 S2_SOURCE = BASE / 'source-history/S2'
-LFS_PATHS = (str(S2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+S3_SOURCE = BASE / 'source-history/S3'
+LFS_PATHS = (str(S3_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
+             str(S2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
              str(D2_SOURCE / 'resources/harness/darwin-arm64.tar.gz'),
              str(ACCEPTED / 'application/Contents/MacOS/prisma-airs-desktop'),
              str(ACCEPTED / 'application/Contents/Resources/harness/airs-harness'),
@@ -37,7 +39,7 @@ class ArchivedP11(Historical):
     def archive_path(self, name):
         path = self.root / name
         require(path.resolve().is_relative_to((self.root / ACCEPTED).resolve())
-                or path.resolve() in ((self.root / D2_SOURCE).resolve(), (self.root / S2_SOURCE).resolve()),
+                or path.resolve() in ((self.root / D2_SOURCE).resolve(), (self.root / S2_SOURCE).resolve(), (self.root / S3_SOURCE).resolve()),
                 'historical archive escapes accepted P11 evidence')
         return path
 
@@ -127,9 +129,10 @@ def verify(root):
     verify_candidate(root, candidate, historical=history)
     require(coverage['candidate']['sha256'] == qualified['candidate_sha256'],
             'P11 accepted candidate reference differs')
-    proof.validate_execution(root, read(bound(root, original['native_execution'])), candidate,
-        acceptance=bound(root, original['native_acceptance']) if 'native_acceptance' in original else None,
-        execution=bound(root, original['native_execution']))
+    if 'review_remediation' not in original:
+        proof.validate_execution(root, read(bound(root, original['native_execution'])), candidate,
+            acceptance=bound(root, original['native_acceptance']) if 'native_acceptance' in original else None,
+            execution=bound(root, original['native_execution']))
     inventory = read(bound(root, record['evidence']))['files']
     require(inventory, 'P11 raw evidence inventory missing')
     require(set(inventory) == {str(p.relative_to(root)) for p in evidence_files(root, record['attempts'])},
@@ -207,6 +210,13 @@ def finalize(root, qualification_path, attempts):
         baseline = read(bound(root, helper['baseline_source']))
         sources[digest(baseline['files'])] = {
             'path': str(S2_SOURCE), 'seal': helper['baseline_source']}
+    if 'review_remediation' in original:
+        remedy = read(bound(root, original['review_remediation']))
+        prior = read(bound(root, remedy['historical_context']))
+        for fingerprint, value in prior['sources'].items():
+            require(fingerprint not in sources or sources[fingerprint] == value,
+                    'remediation historical source conflicts with accepted source')
+            sources[fingerprint] = value
     context = write('historical-context.json', {
         'schema': 'airs-desktop/historical-qualification-context/1',
         'sources': sources,
