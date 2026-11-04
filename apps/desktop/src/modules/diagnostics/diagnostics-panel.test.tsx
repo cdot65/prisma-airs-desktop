@@ -22,7 +22,7 @@ describe('diagnostics (C24)', () => {
         render(<App client={new DesktopClient(native.transport)} />)
         await native.push({ ...native.current, onboarding: 'done', activeFeature: 'settings' })
         const group = await screen.findByRole('group', { name: 'Diagnostics' })
-        expect(within(group).getByText(/Kept only on this Mac for 14 days and never sent anywhere/)).toBeInTheDocument()
+        expect(within(group).getByText(/Kept only on this device for 14 days and never sent anywhere/)).toBeInTheDocument()
         expect(within(group).getByText(/Prompts, responses, keys, tokens and names are never kept/)).toBeInTheDocument()
         expect(within(group).getByText('12 events kept.')).toBeInTheDocument()
         expect(native.dispatched.some((i) => i.kind === 'exportDiagnostics')).toBe(false)

@@ -38,10 +38,10 @@ describe('reset local data', () => {
             resetFailure: { stage: 'credentials', reason: 'locked' },
         })
         const alert = within(resetSection()).getByRole('alert')
-        expect(alert).toHaveTextContent(/Reset stopped while deleting scan keys because the Keychain is locked/)
+        expect(alert).toHaveTextContent(/Reset stopped while deleting scan keys because secure storage is locked/)
         expect(alert).toHaveTextContent(/removed from use/)
         expect(alert).not.toHaveTextContent(/data was kept/i)
-        expect(screen.getByText(/scan key missing/)).toBeInTheDocument()
+        expect(screen.getByText(/No scan key\./)).toBeInTheDocument()
     })
 
     it('explains a stop while removing the document after the keys were deleted', async () => {
@@ -70,7 +70,7 @@ describe('reset local data', () => {
         expect(document.querySelector('[data-slot="durability-notice"]')).toBeNull()
         await native.push({ ...withTenant(baseSnapshot, tenant()), durabilityUnconfirmed: true })
         expect(document.querySelector('[data-slot="durability-notice"]')).toHaveTextContent(
-            /saved, but macOS did not confirm it was written to disk/
+            /saved, but the system did not confirm it was written to disk/
         )
     })
 })

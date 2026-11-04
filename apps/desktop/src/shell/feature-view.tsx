@@ -1,12 +1,13 @@
 import { forwardRef, useId, useState } from 'react'
-import { Button, Callout } from '@ai-security-academy/presentation'
+import { Callout } from '@ai-security-academy/presentation'
 import { Info } from 'lucide-react'
-import type { FeatureEntry, Intent, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
+import type { FeatureEntry, ShellSnapshot, Theme } from '@prisma-airs/desktop-contracts'
 import { type Dispatch, outcomeMessage } from '../modules/tenants/dispatch'
 import { DiagnosticsPanel } from '../modules/diagnostics/diagnostics-panel'
 import { AcademyAccount } from '../modules/academy/academy-account'
 import { TenantsSettings } from '../modules/tenants/tenants-settings'
 import type { ObserveManagement } from '../modules/administration/management-read'
+import { PageIntro } from '../v2/page-intro'
 
 interface HeadingProps {
     id: string
@@ -25,11 +26,10 @@ export const PageHeading = forwardRef<HTMLHeadingElement, HeadingProps>(function
     )
 })
 
-export const UnavailableView = forwardRef<HTMLHeadingElement, { feature: FeatureEntry }>(function UnavailableView({ feature }, ref) {
+export const UnavailableView = forwardRef<HTMLHeadingElement, { feature: FeatureEntry }>(function UnavailableView({ feature }) {
     const planned = feature.availability.state === 'unavailable' ? feature.availability.plannedChunk : ''
     return (
-        <section aria-labelledby={`${feature.id}-heading`} data-slot='feature-unavailable'>
-            <PageHeading ref={ref} id={`${feature.id}-heading`} kicker='Not available' title={feature.label} />
+        <section aria-label={feature.label} data-slot='feature-unavailable'>
             <Callout tone='default' icon={Info}>
                 <p>
                     {feature.label} is not available in this build. Nothing here contacts a Prisma AIRS
@@ -43,12 +43,6 @@ export const UnavailableView = forwardRef<HTMLHeadingElement, { feature: Feature
     )
 })
 
-const THEMES: { value: Theme; label: string; hint: string }[] = [
-    { value: 'system', label: 'Match System', hint: 'Follow the macOS appearance' },
-    { value: 'light', label: 'Light', hint: 'Paper light theme' },
-    { value: 'dark', label: 'Dark', hint: 'Gruvbox dark theme' },
-]
-
 interface SettingsProps {
     snapshot: ShellSnapshot
     pending: boolean
@@ -58,47 +52,48 @@ interface SettingsProps {
 }
 
 export const SettingsView = forwardRef<HTMLHeadingElement, SettingsProps>(function SettingsView(
-    { snapshot, pending, onSetAppearance, dispatch, observeManagement },
-    ref
+    { snapshot, pending, onSetAppearance, dispatch, observeManagement }
 ) {
     const legend = useId()
-    const appearance = snapshot.appearance
+    const [themeBusy, setThemeBusy] = useState(false)
+    const [message, setMessage] = useState<string | null>(null)
+    async function setColorTheme(theme: ShellSnapshot['colorTheme']) {
+        setThemeBusy(true)
+        setMessage(null)
+        const outcome = await dispatch({ kind: 'setColorTheme', theme })
+        setThemeBusy(false)
+        setMessage(outcomeMessage(outcome))
+    }
     return (
-        <section aria-labelledby='settings-heading' data-slot='settings'>
-            <PageHeading ref={ref} id='settings-heading' kicker='Desktop' title='Settings' />
-            <fieldset aria-labelledby={legend} aria-busy={pending} className='border-academy-rule flex flex-col gap-3 rounded-[12px] border p-5'>
-                <legend id={legend} className='text-academy-ink px-1 text-[15px] font-semibold'>
-                    Appearance
-                </legend>
-                <p className='text-academy-ink-soft text-[13px]'>
-                    A desktop-wide preference. It does not change your Academy account settings.
-                </p>
-                {THEMES.map((option) => (
-                    <label key={option.value} className='flex min-h-11 cursor-pointer items-center gap-3'>
-                        <input
-                            type='radio'
-                            name='appearance'
-                            value={option.value}
-                            checked={appearance === option.value}
-                            onChange={() => onSetAppearance(option.value)}
-                            className='accent-[var(--academy-accent)] size-4'
-                        />
-                        <span className='flex flex-col'>
-                            <span className='text-academy-ink text-[14px] font-medium'>{option.label}</span>
-                            <span className='text-academy-ink-faint text-[12px]'>{option.hint}</span>
-                        </span>
-                    </label>
-                ))}
-            </fieldset>
-            <div className='mt-6'>
+        <section aria-label='Settings' data-slot='settings' className='flex flex-col gap-4'>
+            <PageIntro description='Personalize the desktop, manage tenant connections and review local diagnostics.' />
+            <div className='settings-grid'>
+                <fieldset aria-labelledby={legend} aria-busy={pending || themeBusy} className='settings-card'>
+                    <legend id={legend}>Appearance</legend>
+                    <p className='settings-description'>Desktop preferences do not change your Academy account settings.</p>
+                    <div className='settings-fields'>
+                        <label className='settings-field'>
+                            Appearance
+                            <select aria-label='Appearance' value={snapshot.appearance} disabled={pending} onChange={(e) => onSetAppearance(e.target.value as Theme)}>
+                                <option value='system'>Match system</option>
+                                <option value='light'>Light</option>
+                                <option value='dark'>Dark</option>
+                            </select>
+                        </label>
+                        <label className='settings-field'>
+                            Theme
+                            <select aria-label='Theme' value={snapshot.colorTheme} disabled={themeBusy} onChange={(e) => void setColorTheme(e.target.value as ShellSnapshot['colorTheme'])}>
+                                <option value='prismaAirs'>Prisma AIRS</option>
+                                <option value='gruvbox'>Gruvbox</option>
+                            </select>
+                        </label>
+                    </div>
+                    {message && <p role='alert'>{message}</p>}
+                </fieldset>
                 <AcademyAccount view={snapshot.academy} dispatch={dispatch} />
-            </div>
-            <div className='mt-6'>
-                <TenantsSettings snapshot={snapshot} dispatch={dispatch} observeManagement={observeManagement} />
-            </div>
-            <div className='mt-6'>
                 <DiagnosticsPanel view={snapshot.diagnostics} dispatch={dispatch} />
             </div>
+            <TenantsSettings snapshot={snapshot} dispatch={dispatch} observeManagement={observeManagement} />
         </section>
     )
 })

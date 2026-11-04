@@ -6,8 +6,8 @@ import { MANAGEMENT_FAILURE_TEXT, type ObserveManagement, readManagement } from 
 import { type Dispatch, outcomeMessage } from './dispatch'
 
 const FAILURE_TEXT: Record<VaultError, string> = {
-    locked: 'The Keychain is locked. Unlock it and enter the secret again, or keep it for this session only.',
-    denied: 'macOS did not allow access to the Keychain. Enter the secret again, or keep it for this session only.',
+    locked: 'Secure storage is locked. Unlock it and enter the secret again, or keep it for this session only.',
+    denied: 'The system did not allow access to secure storage. Enter the secret again, or keep it for this session only.',
     unavailable: 'The credential store is not available. Enter the secret again, or keep it for this session only.',
     notFound: 'The stored client secret is missing. Enter it again.',
     corrupt: 'The stored client secret could not be read. Enter it again.',
@@ -29,7 +29,7 @@ function status(tenant: TenantView): { tone: 'default' | 'success' | 'danger'; t
                 text:
                     mode === 'session'
                         ? 'Management client secret held for this session only.'
-                        : 'Management client secret saved in the Keychain.',
+                        : 'Management client secret saved in secure storage.',
             }
         case 'failed':
             return { tone: 'danger', text: failure ? FAILURE_TEXT[failure] : 'The management client could not be saved.' }
@@ -47,8 +47,7 @@ interface Props {
  * The tenant's separate management OAuth client (C08). It never replaces or
  * reads the scan key. The secret is read from its field at submission and
  * the field is cleared before the request is awaited; it is never held in
- * React state, storage or any snapshot. Verify performs one bounded
- * management read with the stored client.
+ * React state, storage or any snapshot. Verify authenticates the stored OAuth client without reading product inventories.
  */
 export function ManagementCredentialForm({ tenant, context, dispatch, observe }: Props) {
     const [mode, setMode] = useState<StorageMode>('keychain')
@@ -96,7 +95,7 @@ export function ManagementCredentialForm({ tenant, context, dispatch, observe }:
         const outcome = await readManagement(dispatch, observe, context, { kind: 'verify' })
         setBusy(false)
         if (outcome.kind === 'notAdmitted') setMessage(outcome.message)
-        else if (outcome.result.kind === 'verified') setVerified('The management client can read this tenant.')
+        else if (outcome.result.kind === 'verified') setVerified('Management OAuth authentication succeeded.')
         else if (outcome.result.kind === 'failed') setMessage(MANAGEMENT_FAILURE_TEXT[outcome.result.failure])
         else setMessage('The service returned a reply the desktop could not use.')
     }
@@ -111,7 +110,7 @@ export function ManagementCredentialForm({ tenant, context, dispatch, observe }:
     }
 
     return (
-        <section aria-labelledby={`${ids}-heading`} data-slot='management-credential' className='flex flex-col gap-3'>
+        <section aria-labelledby={`${ids}-heading`} data-slot='management-credential' className='settings-card'>
             <h3 id={`${ids}-heading`} className='text-academy-ink text-[14px] font-semibold'>
                 Management client
             </h3>
@@ -131,7 +130,7 @@ export function ManagementCredentialForm({ tenant, context, dispatch, observe }:
             </Callout>
             {noTsg ? (
                 <Callout tone='warning' icon={AlertTriangle} data-slot='management-no-tsg'>
-                    This tenant has no TSG ID. Add one to its profile before configuring a management client.
+                    This tenant has no TSG ID. Add a replacement tenant with its TSG ID to configure a management client.
                 </Callout>
             ) : null}
             <p className='text-academy-ink-faint text-[12px]' data-slot='management-sso-pointer'>
@@ -178,11 +177,11 @@ export function ManagementCredentialForm({ tenant, context, dispatch, observe }:
                     </legend>
                     {(
                         [
-                            ['keychain', 'In the Keychain', 'Available after restarting the desktop'],
+                            ['keychain', 'In secure storage', 'Available after restarting the desktop'],
                             ['session', 'For this session only', 'Forgotten when the desktop quits'],
                         ] as const
                     ).map(([value, label, hint]) => (
-                        <label key={value} className='flex min-h-11 cursor-pointer items-center gap-3'>
+                        <label key={value} className='flex min-h-8 cursor-pointer items-center gap-3'>
                             <input
                                 type='radio'
                                 name='management-mode'

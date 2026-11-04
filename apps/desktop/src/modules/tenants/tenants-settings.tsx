@@ -6,6 +6,7 @@ import type {
     Region,
     ResetFailure,
     ShellSnapshot,
+    TenantEnvironment,
     TenantView,
     VaultError,
 } from '@prisma-airs/desktop-contracts'
@@ -13,6 +14,8 @@ import { ScanKeyForm } from './credential-entry'
 import { ManagementCredentialForm } from './management-credential'
 import type { ObserveManagement } from '../administration/management-read'
 import { type Dispatch, outcomeMessage } from './dispatch'
+import { Wizard } from '../../v2/wizard/wizard'
+import { Modal } from '../../v2/modal'
 
 const REGIONS: { value: Region; label: string }[] = [
     { value: 'unitedStates', label: 'United States' },
@@ -22,8 +25,8 @@ const REGIONS: { value: Region; label: string }[] = [
 ]
 
 const REASON: Record<VaultError, string> = {
-    locked: 'the Keychain is locked',
-    denied: 'macOS denied access to the Keychain',
+    locked: 'secure storage is locked',
+    denied: 'the system denied access to secure storage',
     unavailable: 'local storage is unavailable',
     notFound: 'a stored item was missing',
     corrupt: 'a stored item was unreadable',
@@ -53,7 +56,7 @@ function DestinationFields({ name, initial }: { name: string; initial?: Destinat
         <fieldset className='flex flex-col gap-2'>
             <legend className='text-academy-ink text-[13px] font-medium'>Scan destination</legend>
             {(['region', 'custom'] as const).map((value) => (
-                <label key={value} className='flex min-h-11 cursor-pointer items-center gap-3'>
+                <label key={value} className='flex min-h-8 cursor-pointer items-center gap-3'>
                     <input
                         type='radio'
                         name={`${name}-kind`}
@@ -76,7 +79,7 @@ function DestinationFields({ name, initial }: { name: string; initial?: Destinat
                         id={selectId}
                         name={`${name}-region`}
                         defaultValue={initial?.kind === 'region' ? initial.region : 'unitedStates'}
-                        className='border-academy-rule bg-academy-bg text-academy-ink min-h-11 rounded-[8px] border px-3 text-[13px]'
+                        className='border-academy-rule bg-academy-bg text-academy-ink min-h-8 rounded-[8px] border px-3 text-[13px]'
                     >
                         {REGIONS.map((r) => (
                             <option key={r.value} value={r.value}>
@@ -139,7 +142,7 @@ function EndpointChange({ tenant, snapshot, dispatch }: { tenant: TenantView; sn
     const review = snapshot.endpointReview?.tenant === tenant.id ? snapshot.endpointReview : null
     if (!context) return null
     return (
-        <section aria-labelledby={headingId} data-slot='endpoint' className='flex flex-col gap-3'>
+        <section aria-labelledby={headingId} data-slot='endpoint' className='settings-card'>
             <h3 id={headingId} className='text-academy-ink text-[14px] font-semibold'>
                 Scan destination
             </h3>
@@ -210,135 +213,64 @@ function EndpointChange({ tenant, snapshot, dispatch }: { tenant: TenantView; sn
     )
 }
 
-function TenantList({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch: Dispatch }) {
+function UpdateTenant({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch: Dispatch }) {
     const { message, busy, run } = useAction(dispatch)
+    const [selected, setSelected] = useState(snapshot.active?.tenant ?? '')
+    const [editing, setEditing] = useState<string | null>(null)
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
     const headingId = useId()
-    if (snapshot.tenants.length === 0) {
-        return (
-            <p className='text-academy-ink-soft text-[13px]' data-slot='no-tenants'>
-                No tenants yet. Add one below or import tenant profiles.
-            </p>
-        )
-    }
+    const tenant = snapshot.tenants.find((t) => t.id === selected) ?? snapshot.tenants[0]
     return (
-        <section aria-labelledby={headingId} className='flex flex-col gap-2'>
-            <h3 id={headingId} className='text-academy-ink text-[14px] font-semibold'>
-                Tenants
-            </h3>
-            <ul className='flex flex-col gap-2' data-slot='tenant-list'>
-                {snapshot.tenants.map((tenant) => {
-                    const active = snapshot.active?.tenant === tenant.id
-                    return (
-                        <li
-                            key={tenant.id}
-                            className='border-academy-rule flex flex-wrap items-center justify-between gap-3 rounded-[10px] border px-4 py-3'
-                            aria-current={active ? 'true' : undefined}
-                        >
-                            <span className='flex flex-col'>
-                                <span className='text-academy-ink text-[14px] font-medium'>
-                                    {tenant.label}
-                                    {active ? (
-                                        <span className='text-academy-accent ml-2 text-[12px]'> (active)</span>
-                                    ) : null}
-                                </span>
-                                <span className='text-academy-ink-faint text-[12px]'>
-                                    {tenant.tsgId ? `TSG ${tenant.tsgId} · ` : ''}
-                                    {destinationLabel(tenant.destination)} · scan key{' '}
-                                    {tenant.scan.state === 'ready' ? 'saved' : tenant.scan.state === 'failed' ? 'failed' : tenant.scan.state === 'storing' ? 'saving' : 'missing'}
-                                </span>
-                            </span>
-                            <span className='flex flex-wrap gap-2'>
-                                {!active ? (
-                                    <Button
-                                        type='button'
-                                        tier='secondary'
-                                        size='sm'
-                                        disabled={busy}
-                                        aria-label={`Make ${tenant.label} active`}
-                                        onClick={() => void run({ kind: 'selectTenant', tenant: tenant.id, resolution: null })}
-                                    >
-                                        Make active
-                                    </Button>
-                                ) : null}
-                                {confirmDelete === tenant.id ? (
-                                    <Button
-                                        type='button'
-                                        tier='primary'
-                                        size='sm'
-                                        disabled={busy}
-                                        aria-label={`Confirm deleting ${tenant.label} and its scan key`}
-                                        onClick={() => {
-                                            setConfirmDelete(null)
-                                            void run({ kind: 'deleteTenant', tenant: tenant.id })
-                                        }}
-                                    >
-                                        Confirm delete
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        type='button'
-                                        tier='tertiary'
-                                        size='sm'
-                                        disabled={busy}
-                                        aria-label={`Delete ${tenant.label}`}
-                                        onClick={() => setConfirmDelete(tenant.id)}
-                                    >
-                                        Delete
-                                    </Button>
-                                )}
-                            </span>
-                        </li>
-                    )
-                })}
-            </ul>
+        <section aria-labelledby={headingId} data-slot='update-tenant' className='settings-card'>
+            <h3 id={headingId}>Update Tenant</h3>
+            {!tenant ? <p className='settings-description'>No tenants yet. Add a tenant to connect.</p> : <>
+                <label className='settings-field'>Tenant
+                    <select aria-label='Tenant to update' value={tenant.id} disabled={busy} onChange={(e) => { setSelected(e.target.value); setEditing(null); setConfirmDelete(null) }}>
+                        {snapshot.tenants.map((t) => <option key={t.id} value={t.id}>{t.label}{t.id === snapshot.active?.tenant ? ' (active)' : ''}</option>)}
+                    </select>
+                </label>
+                <p className='settings-description'>{tenant.tsgId ? `TSG ${tenant.tsgId} · ` : ''}{destinationLabel(tenant.destination)}</p>
+                {editing === tenant.id ? <form key={tenant.id} className='flex flex-col gap-3' onSubmit={(event) => {
+                    event.preventDefault()
+                    const data = new FormData(event.currentTarget)
+                    void run({ kind: 'editTenant', tenant: tenant.id, label: String(data.get('label') ?? '').trim(), environment: String(data.get('environment')) as TenantEnvironment }).then((ok) => { if (ok) setEditing(null) })
+                }}>
+                    <div className='settings-fields'>
+                        <label className='settings-field'>Display name<input name='label' required maxLength={64} defaultValue={tenant.label} autoComplete='off' /></label>
+                        <label className='settings-field'>Environment<select name='environment' defaultValue={tenant.environment}>
+                            <option value='production'>Production</option><option value='staging'>Staging</option><option value='other'>Other</option>
+                        </select></label>
+                    </div>
+                    <p className='settings-description'>Environment labels this profile; it does not change service endpoints. To change the TSG identity, add a replacement tenant.</p>
+                    <div className='flex flex-wrap gap-2'><Button type='submit' tier='primary' disabled={busy}>Save changes</Button><Button type='button' tier='tertiary' disabled={busy} onClick={() => setEditing(null)}>Cancel</Button></div>
+                </form> : <div className='flex flex-wrap gap-2'>
+                    <Button type='button' tier='secondary' disabled={busy} onClick={() => setEditing(tenant.id)}>Edit</Button>
+                    {tenant.id !== snapshot.active?.tenant && <Button type='button' tier='secondary' disabled={busy} onClick={() => void run({ kind: 'selectTenant', tenant: tenant.id, resolution: null })}>Make active</Button>}
+                    {confirmDelete === tenant.id ? <>
+                        <Button type='button' tier='primary' disabled={busy} aria-label={`Confirm deleting ${tenant.label} and its credentials`} onClick={() => void run({ kind: 'deleteTenant', tenant: tenant.id }).then((ok) => { if (ok) setConfirmDelete(null) })}>Confirm delete</Button>
+                        <Button type='button' tier='tertiary' disabled={busy} onClick={() => setConfirmDelete(null)}>Cancel</Button>
+                    </> : <Button type='button' tier='tertiary' disabled={busy} onClick={() => setConfirmDelete(tenant.id)}>Delete</Button>}
+                </div>}
+            </>}
             <Message text={message} />
         </section>
     )
 }
 
-function AddTenant({ dispatch }: { dispatch: Dispatch }) {
-    const { message, busy, run } = useAction(dispatch)
+function AddTenant({ snapshot, dispatch, observeManagement }: Props) {
     const headingId = useId()
-    return (
-        <section aria-labelledby={headingId} className='flex flex-col gap-3'>
-            <h3 id={headingId} className='text-academy-ink text-[14px] font-semibold'>
-                Add a tenant
-            </h3>
-            <form
-                className='flex flex-col gap-3'
-                aria-busy={busy}
-                data-slot='add-tenant'
-                onSubmit={(event: FormEvent<HTMLFormElement>) => {
-                    event.preventDefault()
-                    const form = event.currentTarget
-                    const data = new FormData(form)
-                    const tsg = String(data.get('tenant-tsg') ?? '')
-                    void run({
-                        kind: 'createTenant',
-                        profile: {
-                            label: String(data.get('tenant-label') ?? ''),
-                            tsgId: tsg.trim() === '' ? null : tsg,
-                            destination: readDestination(form, 'tenant'),
-                            environment: 'production',
-                        },
-                    }).then((ok) => {
-                        if (ok) form.reset()
-                    })
-                }}
-            >
-                <TextField label='Label' name='tenant-label' required maxLength={64} autoComplete='off' />
-                <TextField label='TSG ID (optional)' name='tenant-tsg' inputMode='numeric' autoComplete='off' />
-                <DestinationFields name='tenant' />
-                <div>
-                    <Button type='submit' tier='primary' disabled={busy}>
-                        Add tenant
-                    </Button>
-                </div>
-            </form>
-            <Message text={message} />
-        </section>
-    )
+    const [open, setOpen] = useState(false)
+    const [closeRequests, setCloseRequests] = useState(0)
+    const [added, setAdded] = useState<string | null>(null)
+    return <section aria-labelledby={headingId} className='settings-card' data-slot='add-tenant'>
+        <h3 id={headingId}>Add Tenant</h3>
+        <p className='settings-description'>Connect a tenant with its TSG ID, management client and scan region. OAuth authentication is required before it is added; a Scan Key can be configured later.</p>
+        <div><Button type='button' tier='primary' onClick={() => { setCloseRequests(0); setOpen(true) }}>Add tenant…</Button></div>
+        {added && <p role='status'>Added {added}.</p>}
+        {open && <Modal label='Add a tenant' onClose={() => setCloseRequests((n) => n + 1)} width={1160} padding={0} data-slot='settings-add-tenant-sheet'>
+            <Wizard mode='add' snapshot={snapshot} dispatch={dispatch} observeManagement={observeManagement} onNavigate={() => undefined} closeRequests={closeRequests} onClose={(label) => { setOpen(false); setCloseRequests(0); if (label) setAdded(label) }} />
+        </Modal>}
+    </section>
 }
 
 function ResetLocalData({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispatch: Dispatch }) {
@@ -346,13 +278,12 @@ function ResetLocalData({ snapshot, dispatch }: { snapshot: ShellSnapshot; dispa
     const [confirming, setConfirming] = useState(false)
     const headingId = useId()
     return (
-        <section aria-labelledby={headingId} className='flex flex-col gap-3' data-slot='reset'>
+        <section aria-labelledby={headingId} className='settings-card' data-slot='reset'>
             <h3 id={headingId} className='text-academy-ink text-[14px] font-semibold'>
                 Reset local data
             </h3>
             <p className='text-academy-ink-soft text-[13px]'>
-                Removes this desktop’s tenants, preferences and v2 scan keys. Prisma AIRS Desktop v1 data is not
-                touched.
+                Removes this app’s tenant profiles, preferences and stored credentials. Other applications are not changed.
             </p>
             {snapshot.resetFailure ? (
                 <Callout tone='danger' icon={AlertTriangle} role='alert' data-slot='reset-failure'>
@@ -398,8 +329,8 @@ function StorageNotice({ snapshot }: { snapshot: ShellSnapshot }) {
         case 'ready':
             return snapshot.durabilityUnconfirmed ? (
                 <Callout tone='warning' icon={AlertTriangle} role='status' data-slot='durability-notice'>
-                    The last change was saved, but macOS did not confirm it was written to disk. It may be lost if
-                    the Mac stops unexpectedly; the next change retries.
+                    The last change was saved, but the system did not confirm it was written to disk. It may be lost if
+                    this device stops unexpectedly; the next change retries.
                 </Callout>
             ) : null
         case 'resetting':
@@ -429,44 +360,27 @@ interface Props {
     observeManagement: ObserveManagement
 }
 
-/** Tenant profiles, the active tenant's scan key and destination, import and reset. */
+/** Tenant settings keep profile editing separate from credential and destination authority. */
 export function TenantsSettings({ snapshot, dispatch, observeManagement }: Props) {
     const legend = useId()
     const active = snapshot.active ? snapshot.tenants.find((t) => t.id === snapshot.active?.tenant) : undefined
     return (
-        <fieldset
-            aria-labelledby={legend}
-            data-slot='tenants'
-            className='border-academy-rule flex flex-col gap-6 rounded-[12px] border p-5'
-        >
-            <legend id={legend} className='text-academy-ink px-1 text-[15px] font-semibold'>
-                Tenants
-            </legend>
+        <section aria-labelledby={legend} data-slot='tenants' className='flex flex-col gap-3'>
+            <div className='flex flex-wrap items-baseline gap-3'>
+                <h2 id={legend} className='text-[16px] font-semibold'>Tenants</h2>
+                {active && <p className='settings-description'>Active tenant: <strong>{active.label}</strong></p>}
+            </div>
             <StorageNotice snapshot={snapshot} />
-            {active && snapshot.active ? (
-                <div className='flex flex-col gap-6' data-slot='active-tenant'>
-                    <p className='text-academy-ink text-[14px]'>
-                        Active tenant: <span className='font-semibold'>{active.label}</span>
-                    </p>
-                    <ScanKeyForm
-                        key={snapshot.active.context}
-                        tenant={active}
-                        context={snapshot.active.context}
-                        dispatch={dispatch}
-                    />
-                    <ManagementCredentialForm
-                        key={`management-${snapshot.active.context}`}
-                        tenant={active}
-                        context={snapshot.active.context}
-                        dispatch={dispatch}
-                        observe={observeManagement}
-                    />
-                    <EndpointChange tenant={active} snapshot={snapshot} dispatch={dispatch} />
-                </div>
-            ) : null}
-            <TenantList snapshot={snapshot} dispatch={dispatch} />
-            <AddTenant dispatch={dispatch} />
-            <ResetLocalData snapshot={snapshot} dispatch={dispatch} />
-        </fieldset>
+            <div className='settings-grid'>
+                {active && snapshot.active && <>
+                    <ScanKeyForm key={snapshot.active.context} tenant={active} context={snapshot.active.context} dispatch={dispatch} />
+                    <ManagementCredentialForm key={`management-${snapshot.active.context}`} tenant={active} context={snapshot.active.context} dispatch={dispatch} observe={observeManagement} />
+                    <EndpointChange key={`destination-${snapshot.active.context}`} tenant={active} snapshot={snapshot} dispatch={dispatch} />
+                </>}
+                <UpdateTenant snapshot={snapshot} dispatch={dispatch} />
+                <AddTenant snapshot={snapshot} dispatch={dispatch} observeManagement={observeManagement} />
+                <ResetLocalData snapshot={snapshot} dispatch={dispatch} />
+            </div>
+        </section>
     )
 }

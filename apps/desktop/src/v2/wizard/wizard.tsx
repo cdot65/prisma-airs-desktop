@@ -147,6 +147,12 @@ export function Wizard(props: WizardProps) {
     const scanRef = useRef<HTMLInputElement>(null)
     const secretRef = useRef<HTMLInputElement>(null)
     const workspaceKeyRef = useRef<HTMLInputElement>(null)
+    useEffect(() => {
+        const fields = [scanRef.current, secretRef.current, workspaceKeyRef.current]
+        const clear = () => { for (const field of fields) if (field) field.value = '' }
+        clear()
+        return clear
+    }, [context])
     const profileOf = () => ({ label: form.name.trim(), tsgId: form.tsg.trim(), destination: { kind: 'region' as const, region: form.region }, environment: form.environment })
 
     // A draft creation that is in flight, or whose delivery was not confirmed,
@@ -284,7 +290,7 @@ export function Wizard(props: WizardProps) {
     }
     const scanReady = setup?.tenant.scan.state === 'ready'
     const clientReady = setup?.tenant.management.state === 'ready'
-    const tenantContinue = !setup ? { label: C.tenant.continueNeedsDraft, disabled: true } : profileDirty ? { label: C.tenant.continueDirty, disabled: true } : setup.scanRequired && !scanReady ? { label: C.tenant.continueNeedsKey, disabled: true } : { label: C.tenant.continue, disabled: false }
+    const tenantContinue = !setup ? { label: C.tenant.continueNeedsDraft, disabled: true } : profileDirty ? { label: C.tenant.continueDirty, disabled: true } : setup.managementRequired && !clientReady ? { label: C.tenant.continueNeedsClient, disabled: true } : { label: C.tenant.continue, disabled: false }
 
     // ---- products: the choice is recorded in the core as it changes ----
     async function toggleProduct(id: ProductId, on: boolean) {
@@ -500,7 +506,7 @@ export function Wizard(props: WizardProps) {
     )
 
     return (
-        <div data-slot='wizard' data-mode={mode} className='flex' style={{ height: isAdd ? 'min(780px, 92vh)' : '100vh', minHeight: 0, background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
+        <div data-desktop-theme='' data-slot='wizard' data-mode={mode} className='flex' style={{ height: isAdd ? 'min(780px, 92vh)' : '100vh', minHeight: 0, background: 'var(--v2-bg)', color: 'var(--v2-ink)' }}>
             <nav aria-label='Setup steps' className='flex shrink-0 flex-col' style={{ width: isAdd ? 244 : 320, padding: isAdd ? '22px 16px 16px' : '22px 20px 20px', background: 'var(--v2-side)', borderRight: '1px solid var(--v2-rule)' }}>
                 <div className='flex items-center' style={{ gap: 12, marginBottom: 28 }}>
                     <span className='grid shrink-0 place-items-center rounded-[10px]' style={{ width: 40, height: 40, background: 'var(--v2-acc)', color: 'var(--v2-acc-ink)' }} data-slot='brand-tile'>
@@ -660,11 +666,10 @@ export function Wizard(props: WizardProps) {
                                 </form>
                                 {setup && (
                                     <>
-                                        {scanCard}
                                         <form onSubmit={(e) => void saveClient(e)} aria-busy={busy} className='flex flex-col rounded-[12px] border' style={{ gap: 12, padding: '18px 20px', borderColor: 'var(--v2-rule)', background: 'var(--v2-paper)' }} data-slot='management-form'>
                                             <div className='flex items-center' style={{ gap: 8 }}>
                                                 <b className='text-[14px]'>{C.tenant.management}</b>
-                                                {pill(C.optional)}
+                                                {pill(C.required, 'required')}
                                                 <button type='button' aria-expanded={helpOpen} onClick={() => setHelpOpen((h) => !h)} className='ml-auto text-[12px] font-semibold' style={{ color: 'var(--v2-acc)' }}>
                                                     {C.tenant.whereFind}
                                                 </button>
@@ -691,6 +696,7 @@ export function Wizard(props: WizardProps) {
                                                 {clientReady && <Secondary label={C.tenant.removeClient} disabled={busy} onClick={() => void remove('removeManagementCredential', C.tenant.clientRemoved)} />}
                                             </div>
                                         </form>
+                                        {scanCard}
                                         <OptionalCard icon='route' title={C.tenant.gateway} text={C.tenant.gatewayHint} tag={C.optional} open={gatewayOn} onToggle={(on) => setGatewayOn(on)} switchLabel={C.tenant.gatewayOn} slot='gateway-section'>
                                             {!clientReady && (
                                                 <p className='text-[12px]' style={{ color: 'var(--v2-soft)' }}>

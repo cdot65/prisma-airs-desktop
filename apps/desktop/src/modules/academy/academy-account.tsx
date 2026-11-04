@@ -18,10 +18,10 @@ const FAILURE_TEXT: Record<AcademyFailure, string> = {
 }
 
 const VAULT_TEXT: Record<VaultError, string> = {
-    locked: 'The Keychain is locked, so the session could not be saved. Unlock it and sign in again.',
-    denied: 'macOS did not allow the Academy session to be saved in the Keychain.',
-    unavailable: 'The Keychain is not available, so the session could not be saved.',
-    notFound: 'The saved Academy session is missing from the Keychain.',
+    locked: 'Secure storage is locked, so the session could not be saved. Unlock it and sign in again.',
+    denied: 'The system did not allow the Academy session to be saved in secure storage.',
+    unavailable: 'Secure storage is not available, so the session could not be saved.',
+    notFound: 'The saved Academy session is missing from secure storage.',
     corrupt: 'The saved Academy session could not be read.',
 }
 
@@ -53,7 +53,7 @@ export function AcademyAccount({ view, dispatch }: Props) {
             aria-labelledby={legend}
             aria-busy={busy}
             data-slot='academy-account'
-            className='border-academy-rule flex flex-col gap-3 rounded-[12px] border p-5'
+            className='settings-card'
         >
             <legend id={legend} className='text-academy-ink px-1 text-[15px] font-semibold'>
                 Academy account

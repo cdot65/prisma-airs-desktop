@@ -12,7 +12,7 @@ import { App } from '../../app'
 import { scriptedNative, tenant, withTenant, type Native } from '../../test/native'
 import { fxHome, fxSwitcher } from '../fixtures'
 import { resetShellStore } from '../store'
-import { DRAFT_CONTEXT, draft, setupView, verifyView } from './fixtures'
+import { DRAFT_CONTEXT, connectedDraft, draft, setupView, verifyView } from './fixtures'
 
 /** fx.on.welcome: v2 with onboarding still needed. */
 function fxOnboarding(): ShellSnapshot {
@@ -51,7 +51,7 @@ describe('first-run wizard', () => {
         const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress' })
         expect(screen.getByRole('heading', { level: 1, name: 'Connect your tenant' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Create the tenant to continue' })).toBeDisabled()
-        await user.click(screen.getByRole('button', { name: 'Create tenant' }))
+        await user.click(screen.getByRole('button', { name: 'Draft tenant' }))
         const name = screen.getByLabelText(/Display name/)
         expect(name).toHaveAttribute('aria-invalid', 'true')
         expect(name).toHaveAccessibleDescription('Enter a display name.')
@@ -60,14 +60,15 @@ describe('first-run wizard', () => {
         await user.click(within(screen.getByRole('radiogroup', { name: 'Environment' })).getByRole('radio', { name: 'Staging' }))
         await user.selectOptions(screen.getByLabelText('Region'), 'europe')
         await user.type(screen.getByLabelText(/TSG ID/), '1762204418')
-        await user.click(screen.getByRole('button', { name: 'Create tenant' }))
+        await user.click(screen.getByRole('button', { name: 'Draft tenant' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'beginTenantSetup', mode: 'firstRun', profile: { label: 'Northwind Health', tsgId: '1762204418', destination: { kind: 'region', region: 'europe' }, environment: 'staging' } })
         // The core holds the draft; nothing is a tenant yet.
         await native.push({ ...native.current, setup: setupView({ tenant: draft() }) })
-        expect(await screen.findByText('Northwind Health is drafted. Add its scan key below.')).toBeInTheDocument()
+        expect(await screen.findByText('Northwind Health is drafted. Add its management client below.')).toBeInTheDocument()
         expect(native.current.tenants).toEqual([])
         expect(document.querySelector('[data-slot="rail-context"]')).toHaveTextContent('Northwind Health · Staging · TSG 1762204418')
-        expect(screen.getByRole('button', { name: 'Save the scan key to continue' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Save the management client to continue' })).toBeDisabled()
+        await user.click(screen.getByRole('switch', { name: 'Scan API key' }))
         const key = screen.getByLabelText('Scan API key', { selector: 'input' })
         expect(key).toHaveAttribute('type', 'password')
         await user.type(key, 'synthetic-scan-key-aaaa')
@@ -131,8 +132,8 @@ describe('first-run wizard', () => {
         expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
         await user.click(screen.getByRole('button', { name: 'Run the checks' }))
         expect(native.dispatched.at(-1)).toEqual({ kind: 'verifyTenantSetup', context: DRAFT_CONTEXT })
-        const stored = { line: 'scanKey' as const, product: 'runtimeSecurity' as const, state: 'stored' as const, reason: 'Stored in the Keychain. Not checked here: the first scan proves it against the service.' }
-        const warning = { line: 'managementClient' as const, product: 'runtimeSecurity' as const, state: 'warning' as const, reason: 'No management client: AI Gateway stay read-only until one is saved in Administration.' }
+        const stored = { line: 'scanKey' as const, product: 'runtimeSecurity' as const, state: 'stored' as const, reason: 'Stored in secure storage. Not checked here: the first scan proves it against the service.' }
+        const warning = { line: 'managementClient' as const, product: 'runtimeSecurity' as const, state: 'pass' as const, reason: 'OAuth authentication succeeded.' }
         const gatewayPending = { line: 'gateway' as const, product: 'gateway' as const, state: 'pending' as const, reason: 'Reading…' }
         await native.push({ ...native.current, setup: setupView({ products: ['runtimeSecurity', 'gateway'], verify: verifyView([stored, warning, gatewayPending]) }) })
         expect(await screen.findByRole('list', { name: 'Checks' })).toHaveAttribute('aria-busy', 'true')
@@ -175,7 +176,7 @@ describe('first-run wizard', () => {
 
     it('keeps a refused or unconfirmed completion visible with Retry instead of closing', async () => {
         const user = userEvent.setup()
-        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'stored', reason: 'Stored.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])
+        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'stored', reason: 'Stored.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'pass', reason: 'OAuth authentication succeeded.' }])
         const native = await launch({ ...fxOnboarding(), onboarding: 'inProgress', setup: setupView({ verify: verified }) })
         for (const step of ['Continue', 'Continue', 'Continue', 'Continue', 'Skip for now']) await user.click(screen.getByRole('button', { name: step }))
         expect(screen.getByRole('heading', { level: 1, name: /is ready$/ })).toBeInTheDocument()
@@ -222,13 +223,13 @@ describe('first-run wizard', () => {
         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
         await user.type(within(sheet).getByLabelText(/Display name/), 'Coastal Bank')
         await user.type(within(sheet).getByLabelText(/TSG ID/), '2000000001')
-        await user.click(within(sheet).getByRole('button', { name: 'Create tenant' }))
+        await user.click(within(sheet).getByRole('button', { name: 'Draft tenant' }))
         expect(native.dispatched.at(-1)).toMatchObject({ kind: 'beginTenantSetup', mode: 'add', profile: { label: 'Coastal Bank', tsgId: '2000000001' } })
         const before = { tenants: native.current.tenants, active: native.current.active }
         await native.push({ ...native.current, setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001', environment: 'production', destination: { kind: 'region', region: 'unitedStates' } }) }) })
-        await within(sheet).findByText('Coastal Bank is drafted. Add its scan key below.')
-        expect(within(sheet).getByText(/Optional here; without it scans stay unavailable/)).toBeInTheDocument()
-        expect(within(sheet).getByRole('button', { name: 'Continue' })).toBeEnabled()
+        await within(sheet).findByText('Coastal Bank is drafted. Add its management client below.')
+        expect(within(sheet).getByText(/Optional during setup; configure a Scan Key later/)).toBeInTheDocument()
+        expect(within(sheet).getByRole('button', { name: 'Save the management client to continue' })).toBeDisabled()
         expect(native.current.tenants).toEqual(before.tenants)
         expect(native.current.active).toEqual(before.active)
         await user.click(within(sheet).getByRole('button', { name: 'Cancel' }))
@@ -238,7 +239,7 @@ describe('first-run wizard', () => {
 
     it('keeps the sheet open with Retry when the discard is refused, and closes only once the core admits it', async () => {
         const user = userEvent.setup()
-        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }) }) })
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: connectedDraft({ label: 'Coastal Bank', tsgId: '2000000001' }) }) })
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
@@ -255,8 +256,8 @@ describe('first-run wizard', () => {
 
     it('does not let unsaved profile edits reach later steps or completion', async () => {
         const user = userEvent.setup()
-        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])
-        await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
+        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'pass', reason: 'OAuth authentication succeeded.' }])
+        await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: connectedDraft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
@@ -278,7 +279,7 @@ describe('first-run wizard', () => {
         await user.type(within(sheet).getByLabelText(/TSG ID/), '2000000001')
         let answer: (value: unknown) => void = () => undefined
         native.respond = () => new Promise((resolve) => (answer = resolve))
-        await user.click(within(sheet).getByRole('button', { name: 'Create tenant' }))
+        await user.click(within(sheet).getByRole('button', { name: 'Draft tenant' }))
         await user.click(within(sheet).getByRole('button', { name: 'Cancel' }))
         // Nothing closes and nothing is discarded while the creation is undecided.
         expect(screen.getByRole('dialog', { name: 'Add a tenant' })).toBeInTheDocument()
@@ -307,7 +308,7 @@ describe('first-run wizard', () => {
         await user.type(within(sheet).getByLabelText(/TSG ID/), '2000000001')
         let answer: (value: unknown) => void = () => undefined
         native.respond = () => new Promise((resolve) => (answer = resolve))
-        await user.click(within(sheet).getByRole('button', { name: 'Create tenant' }))
+        await user.click(within(sheet).getByRole('button', { name: 'Draft tenant' }))
         await user.click(within(sheet).getByRole('button', { name: 'Cancel' }))
         // The draft shows up first; the receipt is still outstanding.
         await native.push({ ...native.current, setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001', environment: 'production', destination: { kind: 'region', region: 'unitedStates' } }) }) })
@@ -320,7 +321,7 @@ describe('first-run wizard', () => {
 
     it('an unconfirmed discard with the draft still present offers Retry, which discards and closes', async () => {
         const user = userEvent.setup()
-        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }) }) })
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: connectedDraft({ label: 'Coastal Bank', tsgId: '2000000001' }) }) })
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
@@ -351,7 +352,7 @@ describe('first-run wizard', () => {
         native.respond = () => {
             throw new DeliveryOutcomeUnknown('lost')
         }
-        await user.click(within(sheet).getByRole('button', { name: 'Create tenant' }))
+        await user.click(within(sheet).getByRole('button', { name: 'Draft tenant' }))
         await within(sheet).findByText('Sent but not confirmed. The current state is shown.')
         await user.click(within(sheet).getByRole('button', { name: 'Cancel' }))
         expect(screen.getByRole('dialog', { name: 'Add a tenant' })).toBeInTheDocument()
@@ -368,10 +369,10 @@ describe('first-run wizard', () => {
     it('the Done checks line is derived from the verification states: a warning and a failure are counted, a passed line is counted, and "All passed" needs every line to pass (attempt-01 R1)', async () => {
         const warned = verifyView([
             { line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' },
-            { line: 'managementClient', product: 'runtimeSecurity', state: 'fail', reason: 'The client was refused.' },
-            { line: 'gateway', product: 'gateway', state: 'pass', reason: 'Read the workspace.' },
+            { line: 'managementClient', product: 'runtimeSecurity', state: 'pass', reason: 'OAuth authentication succeeded.' },
+            { line: 'gateway', product: 'gateway', state: 'fail', reason: 'The client cannot read the workspace.' },
         ])
-        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }), products: ['runtimeSecurity', 'gateway'], verify: warned }) })
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: connectedDraft({ label: 'Coastal Bank', tsgId: '2000000001' }), products: ['runtimeSecurity', 'gateway'], verify: warned }) })
         const user = userEvent.setup()
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
@@ -407,8 +408,8 @@ describe('first-run wizard', () => {
 
     it('finishes with one completion intent and a toast naming the new tenant', async () => {
         const user = userEvent.setup()
-        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])
-        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
+        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'pass', reason: 'OAuth authentication succeeded.' }])
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: connectedDraft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })
@@ -426,8 +427,8 @@ describe('first-run wizard', () => {
 
     it('completion is the guarded switch path (I1): a pending Harness decision shows the guard in the sheet and the resolution re-sends the completion', async () => {
         const user = userEvent.setup()
-        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'skipped', reason: 'No client.' }])
-        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: draft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
+        const verified = verifyView([{ line: 'scanKey', product: 'runtimeSecurity', state: 'warning', reason: 'No scan key saved; scans stay unavailable until one is added in Administration.' }, { line: 'managementClient', product: 'runtimeSecurity', state: 'pass', reason: 'OAuth authentication succeeded.' }])
+        const native = await launch({ ...fxSwitcher(), setup: setupView({ mode: 'add', scanRequired: false, tenant: connectedDraft({ label: 'Coastal Bank', tsgId: '2000000001' }), verify: verified }) })
         await user.click(screen.getByRole('button', { name: /^Switch tenant/ }))
         await user.click(screen.getByRole('button', { name: 'Add a tenant…' }))
         const sheet = screen.getByRole('dialog', { name: 'Add a tenant' })

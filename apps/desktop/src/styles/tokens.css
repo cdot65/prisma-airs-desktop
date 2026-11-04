@@ -1,30 +1,29 @@
 /*
- * UI v2 "Refined Native" tokens (docs/architecture/ui-v2/tokens.md, C28).
- * The only place a v2 colour, size or rhythm value lives. Light values on
- * :root; dark values follow the shared theme attribute the desktop already
- * sets (`data-theme="gruvbox"` is the dark general theme, `paper` the light
- * one). Academy's --academy-* variables are untouched: the embedded learner
- * view keeps them.
+ * Desktop tokens: independent palette family and light/dark appearance.
+ * Light/dark mode and the selected family paint --v2-* tokens. Root
+ * data-theme keeps Academy's existing general palette. Shared controls
+ * receive desktop aliases only inside explicit data-desktop-theme scopes.
  */
 :root {
-    --v2-bg: #f6f2e9;
-    --v2-side: #ebe5d8;
-    --v2-paper: #fbf8f1;
-    --v2-inset: #efe9dd;
-    --v2-rule: #e0d9ca;
-    --v2-ctl: #857d6e;
-    --v2-ink: #14141a;
-    --v2-soft: #4a463c;
-    --v2-faint: #635d50;
-    --v2-acc: #a33d15;
+    --v2-color-scheme: light;
+    --v2-bg: #f5f6f8;
+    --v2-side: #eef0f3;
+    --v2-paper: #ffffff;
+    --v2-inset: #e9edf2;
+    --v2-rule: #d4d9e1;
+    --v2-ctl: #7b8494;
+    --v2-ink: #17212f;
+    --v2-soft: #435166;
+    --v2-faint: #5c687b;
+    --v2-acc: #b83b16;
     --v2-acc-ink: #ffffff;
-    --v2-acc-soft: #f4dfd3;
+    --v2-acc-soft: #fce6de;
     --v2-block: #b42318;
     --v2-block-bg: #fbe4e1;
-    --v2-flag: #8a5300;
-    --v2-flag-bg: #faeed5;
-    --v2-ok: #1f6f3a;
-    --v2-ok-bg: #def0e3;
+    --v2-flag: #815200;
+    --v2-flag-bg: #fff0c9;
+    --v2-ok: #1a6b40;
+    --v2-ok-bg: #def3e6;
     --v2-sel: var(--v2-acc);
     --v2-sel-ink: var(--v2-acc-ink);
     --v2-get: #245e8f;
@@ -57,7 +56,54 @@
     --v2-scrim-deep: rgba(0, 0, 0, 0.34);
 }
 
-:root[data-theme='gruvbox'] {
+:root[data-appearance='dark'] {
+    --v2-color-scheme: dark;
+    --v2-bg: #151b25;
+    --v2-side: #101620;
+    --v2-paper: #1e2734;
+    --v2-inset: #263243;
+    --v2-rule: #37465b;
+    --v2-ctl: #8190a5;
+    --v2-ink: #f0f3f8;
+    --v2-soft: #c7d0dd;
+    --v2-faint: #aab8cb;
+    --v2-acc: #ff9a70;
+    --v2-acc-ink: #26190f;
+    --v2-acc-soft: #4b2e25;
+    --v2-block: #ff9b94;
+    --v2-block-bg: #492a31;
+    --v2-flag: #f7c567;
+    --v2-flag-bg: #40351e;
+    --v2-ok: #8ddbb1;
+    --v2-ok-bg: #1a3d32;
+    --v2-get: #8cc8ff;
+}
+
+:root[data-color-theme='gruvbox'][data-appearance='light'] {
+    --v2-color-scheme: light;
+    --v2-bg: #fbf1c7;
+    --v2-side: #f2e5bc;
+    --v2-paper: #fff8df;
+    --v2-inset: #ebdbb2;
+    --v2-rule: #d5c4a1;
+    --v2-ctl: #85745b;
+    --v2-ink: #282828;
+    --v2-soft: #504945;
+    --v2-faint: #665c54;
+    --v2-acc: #a3390c;
+    --v2-acc-ink: #ffffff;
+    --v2-acc-soft: #f5d7ac;
+    --v2-block: #9d201b;
+    --v2-block-bg: #f8d7c3;
+    --v2-flag: #785500;
+    --v2-flag-bg: #f5e4a9;
+    --v2-ok: #426421;
+    --v2-ok-bg: #e3ebbb;
+    --v2-get: #076678;
+}
+
+:root[data-color-theme='gruvbox'][data-appearance='dark'] {
+    --v2-color-scheme: dark;
     --v2-bg: #1d2021;
     --v2-side: #161919;
     --v2-paper: #282828;
@@ -421,3 +467,65 @@
     outline: 2px solid var(--v2-acc);
     outline-offset: 1px;
 }
+
+/* Shared controls follow the desktop palette only in explicitly owned scopes.
+ * Academy and its body portals retain the general root palette. */
+[data-desktop-theme] {
+    color-scheme: var(--v2-color-scheme);
+    --academy-bg: var(--v2-bg);
+    --academy-bg-rail: var(--v2-side);
+    --academy-bg-inset: var(--v2-inset);
+    --academy-paper: var(--v2-paper);
+    --academy-paper-deep: var(--v2-inset);
+    --academy-ink: var(--v2-ink);
+    --academy-ink-soft: var(--v2-soft);
+    --academy-ink-faint: var(--v2-faint);
+    --academy-rule: var(--v2-rule);
+    --academy-rule-strong: var(--v2-ctl);
+    --academy-track: var(--v2-rule);
+    --academy-accent: var(--v2-acc);
+    --academy-accent-ink: var(--v2-acc-ink);
+    --academy-accent-soft: var(--v2-acc-soft);
+    --academy-accent-ring: var(--v2-acc);
+    --academy-focus-ring: var(--v2-acc);
+    --academy-accent-warn: var(--v2-block);
+    --academy-saved-dot: var(--v2-ok);
+    --academy-info: var(--v2-get);
+    --academy-active-chip: var(--v2-inset);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 23rem), 1fr));
+    gap: 16px;
+    align-items: start;
+}
+.settings-card {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--v2-rule);
+    border-radius: var(--v2-radius-card);
+    background: var(--v2-paper);
+    color: var(--v2-ink);
+    font-size: 13px;
+}
+.settings-card > legend, .settings-card > h3 {
+    padding: 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.settings-description { color: var(--v2-soft); font-size: 12px; }
+.settings-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: 12px;
+}
+.settings-field { display: flex; min-width: 0; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 500; }
+.settings-card :is(input:not([type='radio']):not([type='checkbox']), select) {
+    width: 100%; min-width: 0; min-height: 32px; padding: 5px 9px; font-size: 13px;
+}
+.settings-card :is(button, [type='radio'], [type='checkbox']) { flex-shrink: 0; }
+.settings-card button { min-height: 32px; height: auto; padding-top: 5px; padding-bottom: 5px; }

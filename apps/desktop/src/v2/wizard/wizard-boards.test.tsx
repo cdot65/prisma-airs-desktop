@@ -29,7 +29,7 @@ describe('R2Onboard boards', () => {
     it('R2On02 tenant empty: nothing drafted, Continue names what is missing, no context line', () => {
         mount(fxOn.tenantEmpty())
         expect(current()).toBe('2Tenant')
-        expect(screen.getByRole('button', { name: 'Create tenant' })).toBeEnabled()
+        expect(screen.getByRole('button', { name: 'Draft tenant' })).toBeEnabled()
         expect(screen.getByRole('button', { name: 'Create the tenant to continue' })).toBeDisabled()
         expect(screen.queryByLabelText('Scan API key', { selector: 'input' })).toBeNull()
         expect(document.querySelector('[data-slot="rail-context"]')).toBeNull()
@@ -42,7 +42,7 @@ describe('R2Onboard boards', () => {
         expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Replace scan key' })).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Remove scan key' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Save management client' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Replace management client' })).toBeInTheDocument()
         expect(screen.getByRole('switch', { name: 'Set up an AI Gateway workspace now' })).not.toBeChecked()
         expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
     })
@@ -53,7 +53,7 @@ describe('R2Onboard boards', () => {
         expect(screen.getByRole('checkbox', { name: /AI Gateway/ })).toBeChecked()
         expect(screen.getByText('Always on')).toBeInTheDocument()
         expect(screen.getByText('Scan key saved')).toBeInTheDocument()
-        expect(screen.getAllByText('Needs the management client')).toHaveLength(3)
+        expect(screen.getAllByText('Reads through the management client')).toHaveLength(3)
         expect(screen.getByText(/Licence state is not readable through the public APIs/)).toBeInTheDocument()
     })
     it('R2On04 verify running: the list is busy and Continue waits', () => {
@@ -120,8 +120,8 @@ describe('R2Onboard boards', () => {
         const { dispatch } = mount(fxOn.done())
         expect(screen.getByRole('heading', { level: 1, name: /is ready$/ })).toBeInTheDocument()
         expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Products: AI Runtime Security')
-        // The checks line counts the verification states (a stored key, a skipped client, two unavailable products): never "All passed".
-        expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Checks: 1 stored, not checked · 1 not checked · 2 not available')
+        // The checks line counts the verification states (a stored key, authenticated OAuth, two unavailable products): never "All passed".
+        expect(document.querySelector('[data-slot="summary"]')).toHaveTextContent('Checks: 1 passed · 1 stored, not checked · 2 not available')
         expect(document.querySelector('[data-slot="summary"]')).not.toHaveTextContent('All passed')
         await user.click(screen.getByRole('button', { name: 'Open Prisma AIRS' }))
         expect(dispatch).toHaveBeenCalledWith({ kind: 'completeTenantSetup', context: DRAFT_CONTEXT, packs: ['runtimeSecurity'], resolution: null })
@@ -138,7 +138,7 @@ describe('R2Onboard boards', () => {
     })
     it('R2AddTenant drafted: the scan key is optional and Continue is open', () => {
         mount(fxAddTenantDrafted())
-        expect(screen.getByText(/Optional here; without it scans stay unavailable/)).toBeInTheDocument()
+        expect(screen.getByText(/Optional during setup; configure a Scan Key later/)).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled()
     })
 })

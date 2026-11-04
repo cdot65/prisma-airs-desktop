@@ -1,5 +1,5 @@
 import { GENERAL_THEMES, applyThemeAttribute, type GeneralThemeId } from '@ai-security-academy/presentation'
-import type { Theme } from '@prisma-airs/desktop-contracts'
+import type { ColorTheme, Theme } from '@prisma-airs/desktop-contracts'
 
 /** Maps the desktop preference to a general shared theme (never an earned skin). */
 export function resolveTheme(theme: Theme, prefersDark: boolean): GeneralThemeId {
@@ -14,9 +14,15 @@ const darkQuery = () =>
         : null
 
 /** Applies the preference now and follows OS changes while it is `system`. */
-export function followAppearance(theme: Theme): () => void {
+export function followAppearance(theme: Theme, colorTheme: ColorTheme = 'prismaAirs'): () => void {
     const query = darkQuery()
-    const apply = () => applyThemeAttribute(resolveTheme(theme, query?.matches ?? true))
+    const apply = () => {
+        const general = resolveTheme(theme, query?.matches ?? true)
+        // Academy keeps its general palette, including portals attached to body.
+        applyThemeAttribute(general)
+        document.documentElement.dataset.appearance = general === GENERAL_THEMES.dark ? 'dark' : 'light'
+        document.documentElement.dataset.colorTheme = colorTheme
+    }
     apply()
     if (theme !== 'system' || !query) return () => undefined
     query.addEventListener('change', apply)

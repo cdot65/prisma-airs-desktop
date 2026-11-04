@@ -59,7 +59,7 @@ describe('scan-key entry', () => {
         await native.push(
             withTenant(baseSnapshot, tenant({ scan: { state: 'ready', mode: 'keychain', failure: null } }), 'cx-bbbbbbbbbbbbbbbbbbbbbbbb')
         )
-        expect(screen.getByText('Scan key saved in the Keychain.')).toBeInTheDocument()
+        expect(screen.getByText('Scan key saved in secure storage.')).toBeInTheDocument()
         const withKey = native.sent.filter((body) => body.includes(KEY))
         expect(withKey).toHaveLength(1)
         expect(JSON.parse(withKey[0]!).intent.kind).toBe('configureScanCredential')
@@ -115,7 +115,7 @@ describe('scan-key entry', () => {
             withTenant(baseSnapshot, tenant({ scan: { state: 'failed', mode: 'keychain', failure: 'locked' } }))
         ), 'settings')
         await openSettings(native)
-        expect(screen.getByText(/Keychain is locked/)).toBeInTheDocument()
+        expect(screen.getByText(/Secure storage is locked/)).toBeInTheDocument()
         await native.push(withTenant(baseSnapshot, tenant({ scan: { state: 'failed', mode: 'keychain', failure: 'denied' } })))
         expect(screen.getByText(/did not allow access/)).toBeInTheDocument()
         expect(screen.getByRole('button', { name: 'Replace key' })).toBeInTheDocument()

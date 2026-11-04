@@ -39,7 +39,7 @@ export function DiagnosticsPanel({ view, dispatch }: Props) {
     }
 
     return (
-        <fieldset aria-labelledby={legend} data-slot='diagnostics' className='border-academy-rule flex flex-col gap-3 rounded-[12px] border p-5'>
+        <fieldset aria-labelledby={legend} data-slot='diagnostics' className='settings-card'>
             <legend id={legend} className='text-academy-ink px-1 text-[15px] font-semibold'>
                 Diagnostics
             </legend>
@@ -48,7 +48,7 @@ export function DiagnosticsPanel({ view, dispatch }: Props) {
             ) : (
                 <>
                     <p className='text-academy-ink-soft max-w-prose text-[13px]'>
-                        Kept only on this Mac for {view.retentionDays} days and never sent anywhere: the kind of each
+                        Kept only on this device for {view.retentionDays} days and never sent anywhere: the kind of each
                         request and why one was refused, storage and reset outcomes, and where the app stopped
                         unexpectedly. Prompts, responses, keys, tokens and names are never kept.
                     </p>

@@ -138,6 +138,7 @@ export function Modal({ label, onClose, children, width = 560, padding = 20, top
             className={sheet ? 'fixed z-50 flex justify-end' : 'fixed inset-0 z-50 grid place-items-start justify-center'}
             style={sheet ? { inset: 'var(--v2-header, 56px) 0 0 0' } : { paddingTop: top ?? '4vh' }}
             data-v2-scrim=''
+            data-desktop-theme=''
             aria-hidden={topmost ? undefined : true}
             inert={topmost ? undefined : true}
             onMouseDown={() => topmost && onClose()}

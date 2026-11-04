@@ -134,9 +134,10 @@ export function App({ client }: { client: DesktopClient }) {
     }, [storage, resetFailed])
 
     const appearance = snapshot?.appearance
+    const colorTheme = snapshot?.colorTheme
     // Apply the theme in the same commit as the snapshot, before paint, so
     // the shell never shows a frame in the previous theme.
-    useLayoutEffect(() => (appearance ? followAppearance(appearance) : undefined), [appearance])
+    useLayoutEffect(() => (appearance ? followAppearance(appearance, colorTheme) : undefined), [appearance, colorTheme])
 
     if (failure && !snapshot) {
         return (

@@ -67,7 +67,7 @@ describe('Academy account', () => {
     it.each([
         [{ state: 'failed', failure: 'denied', vault: null, displayName: null }, 'Sign-in was declined in the browser.'],
         [{ state: 'failed', failure: 'expired', vault: null, displayName: null }, 'The sign-in code expired before it was approved.'],
-        [{ state: 'failed', failure: 'authFailed', vault: 'locked', displayName: null }, 'The Keychain is locked'],
+        [{ state: 'failed', failure: 'authFailed', vault: 'locked', displayName: null }, 'Secure storage is locked'],
         [{ state: 'failed', failure: 'sessionExpired', vault: null, displayName: 'Ada Lovelace' }, 'Your Academy session expired.'],
         [{ state: 'failed', failure: 'notConfigured', vault: null, displayName: null }, 'not available on this server'],
     ] as [AcademyView, string][])('explains %o with an explicit way forward', async (view, text) => {

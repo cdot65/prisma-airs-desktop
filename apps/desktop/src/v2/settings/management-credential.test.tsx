@@ -95,16 +95,16 @@ describe('management client onboarding', () => {
             return answer
         }
         const user = await openSettings(native)
-        expect(within(section()).getByRole('status')).toHaveTextContent('saved in the Keychain')
+        expect(within(section()).getByRole('status')).toHaveTextContent('saved in secure storage')
         expect(within(section()).getByText(`Client ID: ${CLIENT_ID}`)).toBeInTheDocument()
         await user.click(within(section()).getByRole('button', { name: 'Verify' }))
-        expect(await within(section()).findByText('The management client can read this tenant.')).toBeInTheDocument()
+        expect(await within(section()).findByText('Management OAuth authentication succeeded.')).toBeInTheDocument()
         expect(native.dispatched).toEqual([{ kind: 'management', context: CONTEXT, request: { kind: 'verify' } }])
         expect(observed).toEqual(['op-7'])
         answer = { kind: 'management', result: { kind: 'failed', failure: 'unauthorized', outcome: 'rejected' } }
         await user.click(within(section()).getByRole('button', { name: 'Verify' }))
         expect(await within(section()).findByRole('alert')).toHaveTextContent('was not accepted')
-        expect(within(section()).queryByText('The management client can read this tenant.')).toBeNull()
+        expect(within(section()).queryByText('Management OAuth authentication succeeded.')).toBeNull()
     })
 
     it('removes only the management client', async () => {

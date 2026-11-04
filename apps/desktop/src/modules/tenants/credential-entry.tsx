@@ -5,8 +5,8 @@ import type { ContextRef, StorageMode, TenantView, VaultError } from '@prisma-ai
 import { type Dispatch, outcomeMessage } from './dispatch'
 
 const FAILURE_TEXT: Record<VaultError, string> = {
-    locked: 'The Keychain is locked. Unlock it and enter the key again, or keep it for this session only.',
-    denied: 'macOS did not allow access to the Keychain. Enter the key again, or keep it for this session only.',
+    locked: 'Secure storage is locked. Unlock it and enter the key again, or keep it for this session only.',
+    denied: 'The system did not allow access to secure storage. Enter the key again, or keep it for this session only.',
     unavailable: 'The credential store is not available. Enter the key again, or keep it for this session only.',
     notFound: 'The stored key is missing. Enter it again.',
     corrupt: 'The stored key could not be read. Enter it again.',
@@ -22,7 +22,7 @@ function scanStatus(tenant: TenantView): { tone: 'default' | 'success' | 'danger
         case 'ready':
             return {
                 tone: 'success',
-                text: mode === 'session' ? 'Scan key held for this session only.' : 'Scan key saved in the Keychain.',
+                text: mode === 'session' ? 'Scan key held for this session only.' : 'Scan key saved in secure storage.',
             }
         case 'failed':
             return { tone: 'danger', text: failure ? FAILURE_TEXT[failure] : 'The scan key could not be saved.' }
@@ -79,7 +79,7 @@ export function ScanKeyForm({ tenant, context, dispatch }: Props) {
     }
 
     return (
-        <section aria-labelledby={`${keyId}-heading`} data-slot='scan-key' className='flex flex-col gap-3'>
+        <section aria-labelledby={`${keyId}-heading`} data-slot='scan-key' className='settings-card'>
             <h3 id={`${keyId}-heading`} className='text-academy-ink text-[14px] font-semibold'>
                 Scan key
             </h3>
@@ -117,11 +117,11 @@ export function ScanKeyForm({ tenant, context, dispatch }: Props) {
                     </legend>
                     {(
                         [
-                            ['keychain', 'In the Keychain', 'Available after restarting the desktop'],
+                            ['keychain', 'In secure storage', 'Available after restarting the desktop'],
                             ['session', 'For this session only', 'Forgotten when the desktop quits'],
                         ] as const
                     ).map(([value, label, hint]) => (
-                        <label key={value} className='flex min-h-11 cursor-pointer items-center gap-3'>
+                        <label key={value} className='flex min-h-8 cursor-pointer items-center gap-3'>
                             <input
                                 type='radio'
                                 name='scan-key-mode'
