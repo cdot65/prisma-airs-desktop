@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::tenants::{TenantId, TenantProfile};
 use crate::vault::RecordId;
-use crate::wire::Theme;
+use crate::wire::{ColorTheme, Theme};
 
 /// Schema of the persisted state document.
 pub const STATE_SCHEMA: &str = "prisma-airs-desktop/state/1";
@@ -162,6 +162,9 @@ pub struct StoredMcpGrant {
 pub struct PersistedState {
     pub schema: String,
     pub appearance: Theme,
+    /// Missing in earlier state: use the Prisma AIRS family while retaining appearance.
+    #[serde(default, skip_serializing_if = "ColorTheme::is_default")]
+    pub color_theme: ColorTheme,
     pub tenants: Vec<TenantProfile>,
     pub active_tenant: Option<TenantId>,
     pub credentials: Vec<StoredCredential>,
@@ -256,6 +259,7 @@ impl Default for PersistedState {
         Self {
             schema: STATE_SCHEMA.to_owned(),
             appearance: Theme::System,
+            color_theme: ColorTheme::default(),
             tenants: Vec::new(),
             active_tenant: None,
             credentials: Vec::new(),
@@ -717,6 +721,29 @@ mod tests {
             }],
             ..PersistedState::default()
         }
+    }
+
+    #[test]
+    fn color_theme_defaults_existing_state_without_changing_appearance() {
+        let mut value = serde_json::to_value(sample()).expect("state");
+        assert!(value.get("colorTheme").is_none(), "default stays omitted");
+        let state: PersistedState = serde_json::from_value(value.clone()).expect("old state");
+        assert_eq!(state.color_theme, ColorTheme::PrismaAirs);
+        assert_eq!(state.appearance, Theme::Dark);
+        value["colorTheme"] = serde_json::json!("not-a-theme");
+        assert!(serde_json::from_value::<PersistedState>(value).is_err());
+    }
+
+    #[test]
+    fn alternate_color_theme_roundtrips_independently_of_appearance() {
+        let mut state = sample();
+        state.color_theme = ColorTheme::Gruvbox;
+        let value = serde_json::to_value(&state).expect("state");
+        assert_eq!(value["colorTheme"], "gruvbox");
+        assert_eq!(
+            serde_json::from_value::<PersistedState>(value).expect("new state"),
+            state
+        );
     }
 
     #[test]

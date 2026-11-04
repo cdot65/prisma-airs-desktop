@@ -31,6 +31,21 @@ pub enum Theme {
     Dark,
 }
 
+/// Desktop palette family, independent of light/dark appearance and Academy.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+pub enum ColorTheme {
+    #[default]
+    PrismaAirs,
+    Gruvbox,
+}
+
+impl ColorTheme {
+    pub fn is_default(&self) -> bool {
+        *self == Self::PrismaAirs
+    }
+}
+
 /// One Intent delivery from the renderer.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

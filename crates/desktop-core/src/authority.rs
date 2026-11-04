@@ -89,7 +89,7 @@ use crate::store::{
 use crate::tenants::{Destination, ProfileDraft, TenantId, TenantProfile};
 use crate::transport::{PolicyError, TransportFactory, TransportPolicy};
 use crate::vault::{MAX_SECRET_BYTES, RecordId, SessionVault, StorageMode, Vault, VaultError};
-use crate::wire::Theme;
+use crate::wire::{ColorTheme, Theme};
 
 /// Most tenant profiles kept.
 pub const MAX_TENANTS: usize = 256;
@@ -115,6 +115,10 @@ pub enum Intent {
     /// Set the desktop-wide appearance preference (not an Academy setting).
     SetAppearance {
         theme: Theme,
+    },
+    /// Set the desktop palette family, never the Academy account's theme.
+    SetColorTheme {
+        theme: ColorTheme,
     },
     /// Make a destination the active one (C28). Refused unless the feature
     /// is in the current presentation's catalogue and available; the native
@@ -750,6 +754,7 @@ macro_rules! intent_kinds {
 
 intent_kinds! {
     SetAppearance => "setAppearance",
+    SetColorTheme => "setColorTheme",
     Navigate => "navigate",
     SetOnboarding => "setOnboarding",
     SetShowCalls => "setShowCalls",
@@ -1158,6 +1163,7 @@ pub struct ShellSnapshot {
     /// Opaque, monotonically increasing revision (string-encoded u64).
     pub revision: String,
     pub appearance: Theme,
+    pub color_theme: ColorTheme,
     /// Which shell renders (C28, D058); `features` is that shell's catalogue.
     /// First-run wizard state (C28/C29).
     pub onboarding: features::OnboardingState,
@@ -1591,6 +1597,7 @@ impl Tenant {
 #[derive(Clone, Debug, Default)]
 struct Data {
     appearance: Option<Theme>,
+    color_theme: ColorTheme,
     onboarding: Option<features::OnboardingState>,
     show_calls: Option<bool>,
     tenants: Vec<Tenant>,
@@ -1785,6 +1792,10 @@ impl State {
         self.data.appearance.unwrap_or(Theme::System)
     }
 
+    fn color_theme(&self) -> ColorTheme {
+        self.data.color_theme
+    }
+
     fn onboarding(&self) -> features::OnboardingState {
         self.data.onboarding.unwrap_or_default()
     }
@@ -1823,6 +1834,7 @@ impl State {
         ShellSnapshot {
             revision: self.revision.to_string(),
             appearance: self.appearance(),
+            color_theme: self.color_theme(),
             onboarding: self.shown_onboarding(),
             active_feature: self.active_feature(),
             show_calls: self.show_calls(),
@@ -1909,6 +1921,7 @@ impl State {
     fn persisted(&self) -> PersistedState {
         PersistedState {
             appearance: self.appearance(),
+            color_theme: self.color_theme(),
             tenant_products: self
                 .data
                 .tenants
@@ -3264,6 +3277,7 @@ fn data_from(doc: PersistedState) -> Data {
         .collect();
     Data {
         appearance: Some(doc.appearance),
+        color_theme: doc.color_theme,
         onboarding: Some(doc.onboarding),
         show_calls: doc.show_calls_chosen.then_some(doc.show_calls),
         tenants,
@@ -3512,6 +3526,18 @@ fn admit(
             if state.appearance() != theme {
                 let before = state.data.clone();
                 state.data.appearance = Some(theme);
+                if state.storage == StorageHealth::Ready
+                    && let Err(e) = state.save_with(&before)
+                {
+                    return Err(e);
+                }
+                state.changed();
+            }
+        }
+        Intent::SetColorTheme { theme } => {
+            if state.color_theme() != theme {
+                let before = state.data.clone();
+                state.data.color_theme = theme;
                 if state.storage == StorageHealth::Ready
                     && let Err(e) = state.save_with(&before)
                 {
@@ -5984,6 +6010,40 @@ mod tests {
 
     fn core(config: CoreConfig) -> Core {
         Core::new(config, crate::fixtures::adapters().0)
+    }
+
+    #[tokio::test]
+    async fn color_theme_is_persisted_without_changing_appearance_or_tenant_scope() {
+        let core = core(CoreConfig::default());
+        let handle = core.operator();
+        let session = handle.register_delivery_session().expect("session");
+        handle
+            .dispatch(
+                delivery(&session.nonce, 1),
+                Intent::SetAppearance {
+                    theme: Theme::Light,
+                },
+            )
+            .await
+            .expect("appearance");
+        let before = lock(&core.inner).expect("state").snapshot();
+        handle
+            .dispatch(
+                delivery(&session.nonce, 2),
+                Intent::SetColorTheme {
+                    theme: ColorTheme::Gruvbox,
+                },
+            )
+            .await
+            .expect("palette");
+        let state = lock(&core.inner).expect("state");
+        let after = state.snapshot();
+        assert_eq!(after.color_theme, ColorTheme::Gruvbox);
+        assert_eq!(after.appearance, Theme::Light);
+        assert_eq!(after.active, before.active);
+        let saved = state.persisted();
+        assert_eq!(saved.color_theme, ColorTheme::Gruvbox);
+        assert_eq!(saved.appearance, Theme::Light);
     }
 
     #[test]

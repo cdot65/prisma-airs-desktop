@@ -70,4 +70,4 @@ pub use authority::{
 };
 pub use delivery::{Delivery, DeliverySession, SEQUENCE_LIMIT};
 pub use observe::{Subscription, Update};
-pub use wire::Theme;
+pub use wire::{ColorTheme, Theme};
