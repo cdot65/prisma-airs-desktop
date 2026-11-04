@@ -147,16 +147,17 @@
     flex-grow: 1;
     min-width: 0;
 }
-[data-v2-shell] :focus-visible {
+/* Shell ancestry includes Academy; desktop control styling needs ownership. */
+[data-desktop-theme] :focus-visible {
     outline: 2px solid var(--v2-acc);
     outline-offset: 2px;
 }
-[data-v2-shell] [data-inset-focus]:focus-visible {
+[data-desktop-theme] [data-inset-focus]:focus-visible {
     outline-offset: -4px;
 }
-[data-v2-shell] input,
-[data-v2-shell] select,
-[data-v2-shell] textarea {
+[data-desktop-theme] input,
+[data-desktop-theme] select,
+[data-desktop-theme] textarea {
     border: 1px solid var(--v2-ctl);
     border-radius: var(--v2-radius-control);
     background: var(--v2-bg);
@@ -233,7 +234,7 @@
  * a current link on an accent-soft surface (the Academy's section links: the
  * accent is 5.05:1 on the light soft surface and 4.86:1 on the dark one, where
  * the ink-on-accent colour was 1.06:1 and 1.11:1). */
-[data-v2-shell] [data-inset-focus][aria-current='page']:focus-visible {
+[data-desktop-theme] [data-inset-focus][aria-current='page']:focus-visible {
     outline-color: var(--v2-sel-ink);
 }
 [data-v2-shell] [data-v2-scrim] {

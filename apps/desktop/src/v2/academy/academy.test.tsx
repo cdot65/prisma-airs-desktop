@@ -478,8 +478,8 @@ describe('C42 Academy board', () => {
     it('keeps the accent focus ring on its section links, current or not: the shell\'s ink-on-accent ring is scoped to the accent-filled sidebar destination (attempt-05 R1)', async () => {
         const css: string = tokensCss
         // The override names the sidebar destination (data-inset-focus) and never a bare aria-current='page'.
-        expect(css).toMatch(/\[data-v2-shell\] \[data-inset-focus\]\[aria-current='page'\]:focus-visible \{\s*outline-color: var\(--v2-sel-ink\);/)
-        expect(css).not.toMatch(/\[data-v2-shell\] \[aria-current='page'\]:focus-visible/)
+        expect(css).toMatch(/\[data-desktop-theme\] \[data-inset-focus\]\[aria-current='page'\]:focus-visible \{\s*outline-color: var\(--v2-sel-ink\);/)
+        expect(css).not.toMatch(/\[data-desktop-theme\] \[aria-current='page'\]:focus-visible/)
         const native = academyNative((procedure) => (procedure === 'paths.list' ? [PATH] : procedure === 'library.list' ? [] : undefined))
         render(<Academy snapshot={academySnapshot(true, ACCOUNT)} client={native.client} onNavigate={vi.fn()} />)
         const place = await screen.findByRole('region', { name: 'Your place' })
