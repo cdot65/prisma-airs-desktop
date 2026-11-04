@@ -220,17 +220,18 @@ pub fn build_flags(repo: &Repo, manifest: &Manifest, subject: Subject) -> Result
     };
     for chunk in chunks {
         let entry = manifest.chunk(chunk)?;
-        parts.insert(
-            format!("chunk/{chunk}"),
-            // Keys in sorted order so the canonical form is independent of
-            // serde_json's map ordering features.
-            json!({
-                "fixture": entry.fixture_command,
-                "frontend": entry.frontend_commands,
-                "host": entry.host_commands,
-                "native_prepare": entry.native_prepare,
-            }),
-        );
+        let mut flags = json!({
+            "fixture": entry.fixture_command,
+            "frontend": entry.frontend_commands,
+            "host": entry.host_commands,
+            "native_prepare": entry.native_prepare,
+        });
+        // Keep historical canonical objects byte-for-byte equivalent. Only
+        // new chunks bind the D063 selected check list.
+        if let Some(selected) = &entry.check_commands {
+            flags["checks"] = json!(selected);
+        }
+        parts.insert(format!("chunk/{chunk}"), flags);
     }
     parts.insert("setup".to_owned(), json!(manifest.setup_commands));
     parts.insert(

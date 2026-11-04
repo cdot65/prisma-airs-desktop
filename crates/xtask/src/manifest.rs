@@ -50,6 +50,10 @@ pub struct Manifest {
 #[serde(deny_unknown_fields)]
 pub struct Chunk {
     pub rust_target: String,
+    /// D063: explicitly selected checks for new chunks. Historical chunks
+    /// retain the original common checks and cannot override them here.
+    #[serde(default)]
+    pub check_commands: Option<Vec<Argv>>,
     pub fixture_command: Argv,
     pub native_prepare: Argv,
     pub native_acceptance: String,
@@ -149,10 +153,22 @@ impl Manifest {
             }
         }
         if self.chunks.len() != usize::from(Subject::LAST_CHUNK) {
-            return Err(invalid("checks.json must define exactly C01-C45"));
+            return Err(invalid("checks.json must define exactly C01-C49"));
         }
         for (id, chunk) in &self.chunks {
-            let fixed = Subject::parse(id)?.is_docs_only();
+            let subject = Subject::parse(id)?;
+            let focused = matches!(subject, Subject::Chunk(n) if n >= 46);
+            if focused && chunk.check_commands.as_ref().is_none_or(Vec::is_empty) {
+                return Err(invalid(format!(
+                    "{id} requires a nonempty explicit check_commands list (D063)"
+                )));
+            }
+            if !focused && chunk.check_commands.is_some() {
+                return Err(invalid(format!(
+                    "{id} cannot override historical common checks"
+                )));
+            }
+            let fixed = subject.is_docs_only();
             if chunk.docs_only != fixed {
                 return Err(invalid(format!(
                     "{id} docs_only must be {fixed}: the documentation-only policy (D058) is fixed in the controller and cannot be changed from checks.json"
@@ -177,7 +193,13 @@ impl Manifest {
             .map(|n| Subject::Chunk(n).to_string())
             .collect();
         if phase_members != expected || self.phases.len() != usize::from(Subject::LAST_PHASE) {
-            return Err(invalid("phases must partition C01-C45 in order"));
+            return Err(invalid("phases must partition C01-C49 in order"));
+        }
+        let refinements: Vec<String> = (46..=49).map(|n| Subject::Chunk(n).to_string()).collect();
+        if self.phases.get("P11") != Some(&refinements) {
+            return Err(invalid(
+                "P11 must contain exactly C46-C49; historical phases cannot absorb refinement chunks",
+            ));
         }
         for argv in self.all_static_commands() {
             check_argv(argv)?;
@@ -254,6 +276,7 @@ impl Manifest {
                     .chain(std::iter::once(&c.native_prepare))
                     .chain(c.frontend_commands.iter())
                     .chain(c.host_commands.iter())
+                    .chain(c.check_commands.iter().flatten())
             }))
     }
 
@@ -316,6 +339,21 @@ impl Manifest {
 
     /// Commands `check` runs for a chunk, in order.
     pub fn check_commands(&self, chunk: Subject) -> Vec<Command> {
+        if let Some(selected) = self
+            .chunks
+            .get(&chunk.to_string())
+            .and_then(|entry| entry.check_commands.as_ref())
+        {
+            return selected
+                .iter()
+                .enumerate()
+                .map(|(i, argv)| Command {
+                    label: format!("check/{}", i + 1),
+                    argv: argv.clone(),
+                    expects_tests: is_test_runner(argv),
+                })
+                .collect();
+        }
         let mut commands: Vec<Command> = self
             .common_commands
             .iter()
@@ -414,8 +452,8 @@ impl Manifest {
     /// controller's validated substitutions applied. The runner executes this
     /// plan and the completion gate requires a run record to match it.
     ///
-    /// Phases rerun every chunk target from C01 through the phase's last chunk
-    /// so integration regressions are exercised against one tree.
+    /// Historical phases preserve their original plans. P10 uses C45 only;
+    /// P11 selects and deduplicates its four members' affected checks/tests.
     pub fn plan(&self, subject: Subject, kind: RunKind) -> Result<Vec<Command>> {
         let chunks: Vec<Subject> = match subject {
             Subject::Chunk(_) => vec![subject],
@@ -423,6 +461,7 @@ impl Manifest {
             // consumer, not replay of retired C01-C44 commands (including old
             // login-Keychain probes). Subsequent reviews reuse that candidate.
             Subject::Phase(10) => self.phase_chunks(subject)?,
+            Subject::Phase(n) if n >= 11 => self.phase_chunks(subject)?,
             Subject::Phase(_) => {
                 let last = self
                     .phase_chunks(subject)?
@@ -437,6 +476,18 @@ impl Manifest {
         };
         let last = chunks[chunks.len() - 1];
         let mut commands = match kind {
+            RunKind::Check if matches!(subject, Subject::Phase(n) if n >= 11) => {
+                let mut commands: Vec<Command> = Vec::new();
+                for chunk in &chunks {
+                    for mut command in self.check_commands(*chunk) {
+                        command.label = format!("{chunk}/{}", command.label);
+                        if !commands.iter().any(|c| c.argv == command.argv) {
+                            commands.push(command);
+                        }
+                    }
+                }
+                commands
+            }
             RunKind::Check => {
                 let mut commands = self.check_commands(last);
                 if subject.is_phase()
@@ -523,5 +574,188 @@ mod c45_plan_tests {
                 .iter()
                 .any(|c| c.argv.iter().any(|a| a == "imports_rollback"))
         );
+    }
+}
+
+#[cfg(test)]
+mod p11_plan_tests {
+    use super::*;
+    use crate::{Repo, Subject, fingerprint, sha256_hex};
+    use serde_json::json;
+
+    fn approved() -> Manifest {
+        Manifest::load(&Repo::discover().manifest()).expect("approved manifest")
+    }
+
+    fn legacy_digests(manifest: &Manifest) -> (String, String) {
+        let repo = Repo::discover();
+        let subjects = (1..=45)
+            .map(Subject::Chunk)
+            .chain((1..=10).map(Subject::Phase));
+        let mut plans = BTreeMap::new();
+        let mut flags = BTreeMap::new();
+        for subject in subjects {
+            flags.insert(
+                subject.to_string(),
+                fingerprint::build_flags(&repo, manifest, subject).expect("legacy flags"),
+            );
+            for kind in [RunKind::Check, RunKind::Test, RunKind::NativePrepare] {
+                let commands = manifest.plan(subject, kind).expect("legacy plan");
+                plans.insert(format!("{subject}/{kind:?}"), commands.iter().map(|c| json!({"label": c.label, "argv": c.argv, "expects_tests": c.expects_tests})).collect::<Vec<_>>());
+            }
+        }
+        (
+            sha256_hex(&serde_json::to_vec(&plans).expect("plans JSON")),
+            sha256_hex(&serde_json::to_vec(&flags).expect("flags JSON")),
+        )
+    }
+
+    #[test]
+    fn historical_plans_and_build_flag_shape_are_unchanged() {
+        let digests = legacy_digests(&approved());
+        // Captured from the pre-P11 controller with the same native-map bytes.
+        // This does not relabel an older source/native-map fingerprint.
+        assert_eq!(
+            digests.0,
+            "e033aea4da6dd2008edc28f6064f402d2484224a2fc448454b4b037e0a0d91b8"
+        );
+        assert_eq!(
+            digests.1,
+            "9a02f2564ebbf745748de2b22f3749ff291b62283cecf10b14f67b02c27fd107"
+        );
+    }
+
+    #[test]
+    fn p11_has_explicit_focused_checks_and_deduplicates_every_member() {
+        let manifest = approved();
+        let phase = Subject::parse("P11").expect("registered P11");
+        let checks = manifest.plan(phase, RunKind::Check).expect("P11 checks");
+        let tests = manifest.plan(phase, RunKind::Test).expect("P11 tests");
+        assert!(checks.iter().any(|c| c.label.starts_with("C46/")));
+        assert!(
+            checks
+                .iter()
+                .any(|c| c.argv.iter().any(|a| a == "workbench_documents"))
+        );
+        for plan in [&checks, &tests] {
+            for command in plan.iter().filter(|c| !c.label.starts_with("setup/")) {
+                assert!(
+                    ["C46/", "C47/", "C48/", "C49/"]
+                        .iter()
+                        .any(|p| command.label.starts_with(p)),
+                    "unexpected historical command: {}",
+                    command.label
+                );
+                assert!(!command.argv.iter().any(|a| matches!(
+                    a.as_str(),
+                    "--workspace" | "--all-targets" | "imports_rollback"
+                )));
+            }
+            let unique: std::collections::BTreeSet<_> = plan.iter().map(|c| &c.argv).collect();
+            assert_eq!(
+                plan.len(),
+                unique.len(),
+                "phase runs each exact command once"
+            );
+        }
+        assert!(
+            tests
+                .iter()
+                .any(|c| c.argv.iter().any(|a| a == "color_theme"))
+        );
+        assert_eq!(
+            manifest.native_members(phase).expect("native members"),
+            ["C46", "C47", "C48", "C49"]
+        );
+        let (required, identifier) = crate::evidence::required_checks(
+            &Repo::discover().join("docs/architecture/native-checks.json"),
+            &manifest.native_members(phase).expect("members"),
+        )
+        .expect("all refinement inventories");
+        let expected: Vec<String> = (46..=49)
+            .flat_map(|chunk| (1..=3).map(move |n| format!("C{chunk}-N{n:02}")))
+            .collect();
+        assert_eq!(
+            required, expected,
+            "none of the twelve current assertions is silently dropped"
+        );
+        assert_eq!(identifier, crate::native::FIXTURE_IDENTIFIER);
+        let prepare = manifest
+            .plan(phase, RunKind::NativePrepare)
+            .expect("one candidate");
+        assert_eq!(
+            prepare
+                .iter()
+                .filter(|c| c.label == "native-prepare")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn focused_command_lists_are_required_and_cannot_override_historical_checks() {
+        let original: serde_json::Value =
+            crate::read_json(&Repo::discover().manifest()).expect("JSON");
+        let validate = |value| {
+            serde_json::from_value::<Manifest>(value)
+                .and_then(|m| m.validate().map_err(serde::de::Error::custom))
+        };
+        validate(original.clone()).expect("positive control");
+        let mut missing = original.clone();
+        missing["chunks"]["C46"]
+            .as_object_mut()
+            .expect("chunk")
+            .remove("check_commands");
+        assert!(validate(missing).is_err());
+        for argv in [
+            json!([]),
+            json!([[]]),
+            json!([["sh", "-c", "true"]]),
+            json!([["cargo", "check", "--all-features"]]),
+        ] {
+            let mut invalid = original.clone();
+            invalid["chunks"]["C46"]["check_commands"] = argv;
+            assert!(validate(invalid).is_err());
+        }
+        let mut historical = original.clone();
+        historical["chunks"]["C45"]["check_commands"] =
+            json!([["cargo", "check", "-p", "desktop-core"]]);
+        assert!(validate(historical).is_err());
+        let mut wrong_phase = original;
+        wrong_phase["phases"]["P10"] = json!(["C45", "C46"]);
+        wrong_phase["phases"]["P11"] = json!(["C47", "C48", "C49"]);
+        assert!(validate(wrong_phase).is_err());
+    }
+
+    #[test]
+    fn focused_check_changes_bind_new_subjects_without_rewriting_legacy_flags() {
+        let repo = Repo::discover();
+        let before = approved();
+        let mut changed = before.clone();
+        changed
+            .chunks
+            .get_mut("C46")
+            .expect("C46")
+            .check_commands
+            .as_mut()
+            .expect("explicit list")
+            .push(vec![
+                "cargo".into(),
+                "check".into(),
+                "-p".into(),
+                "xtask".into(),
+            ]);
+        for subject in [Subject::Chunk(46), Subject::Phase(11)] {
+            assert_ne!(
+                fingerprint::build_flags(&repo, &before, subject).expect("before"),
+                fingerprint::build_flags(&repo, &changed, subject).expect("changed")
+            );
+        }
+        for subject in [Subject::Chunk(45), Subject::Phase(10)] {
+            assert_eq!(
+                fingerprint::build_flags(&repo, &before, subject).expect("before"),
+                fingerprint::build_flags(&repo, &changed, subject).expect("unchanged legacy")
+            );
+        }
     }
 }

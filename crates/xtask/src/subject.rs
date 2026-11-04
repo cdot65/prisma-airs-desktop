@@ -1,4 +1,4 @@
-//! Validated review subjects: chunks C01–C34 and phases P01–P09 (P09 = C27–C34, D058).
+//! Validated review subjects through the P11 refinement phase (D063).
 
 use std::fmt;
 
@@ -12,8 +12,8 @@ pub enum Subject {
 
 impl Subject {
     /// The last registered chunk and phase (checks.json must define exactly these).
-    pub const LAST_CHUNK: u8 = 45;
-    pub const LAST_PHASE: u8 = 10;
+    pub const LAST_CHUNK: u8 = 49;
+    pub const LAST_PHASE: u8 = 11;
     /// D058: the documentation-only chunks. Fixed in code so the policy (no
     /// native gate, no owner acceptance below 9/10) cannot be switched on for
     /// an application chunk or off for the specification from a manifest.
@@ -44,7 +44,7 @@ impl Subject {
             return Ok(Self::Phase(n));
         }
         Err(invalid(format!(
-            "not a valid chunk (C01-C45) or phase (P01-P10): {text:?}"
+            "not a valid chunk (C01-C49) or phase (P01-P11): {text:?}"
         )))
     }
 
@@ -74,10 +74,12 @@ mod tests {
         assert_eq!(Subject::parse("C34").expect("C34"), Subject::Chunk(34));
         assert_eq!(Subject::parse("C44").expect("C44"), Subject::Chunk(44));
         assert_eq!(Subject::parse("C45").expect("C45"), Subject::Chunk(45));
+        assert_eq!(Subject::parse("C49").expect("C49"), Subject::Chunk(49));
+        assert_eq!(Subject::parse("P11").expect("P11"), Subject::Phase(11));
         assert_eq!(Subject::parse("P10").expect("P10"), Subject::Phase(10));
         assert_eq!(Subject::parse("P08").expect("P08"), Subject::Phase(8));
         assert_eq!(Subject::parse("P09").expect("P09"), Subject::Phase(9));
-        for bad in ["C00", "C46", "P00", "P11", "C7", "C027", "c27", "X01"] {
+        for bad in ["C00", "C50", "P00", "P12", "C7", "C027", "c27", "X01"] {
             assert!(Subject::parse(bad).is_err(), "{bad} must be refused");
         }
         assert_eq!(Subject::Chunk(34).to_string(), "C34");
