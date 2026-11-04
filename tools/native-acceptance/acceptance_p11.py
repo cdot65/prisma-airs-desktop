@@ -214,6 +214,18 @@ def execute(args):
     import acceptance_p11_api as api
     import acceptance_p11_settings as settings
     import acceptance_p11_shell as shell
+    original_sh = fx.sh
+
+    def checked_sh(argv, **kwargs):
+        result = original_sh(argv, **kwargs)
+        if Path(str(argv[0])).name == 'osascript' and result.returncode != 0:
+            # Never echo a script or its possibly secret-bearing input.
+            denied = 'not allowed' in result.stderr.lower() or 'not authorized' in result.stderr.lower()
+            raise RuntimeError('System Events transport failed: exit ' + str(result.returncode)
+                               + (' (permission denied)' if denied else ' (command rejected)'))
+        return result
+
+    fx.sh = checked_sh
     if not os.environ.get('AIRS_NATIVE_ORCHESTRATOR'):
         raise RuntimeError('set AIRS_NATIVE_ORCHESTRATOR to the actual UI operator')
     ctx = Context(args.prepare, args.out)
