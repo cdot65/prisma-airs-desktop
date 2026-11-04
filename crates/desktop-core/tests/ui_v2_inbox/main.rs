@@ -306,21 +306,67 @@ impl Desk {
         );
     }
 
-    /// Adds a tenant through the setup draft with the chosen products (no
-    /// credentials: the lines skip), completes it (active) and keys it.
+    /// Save synthetic OAuth on the draft, then return its fresh context.
+    async fn draft_management_key(&mut self) -> String {
+        let before = self
+            .snap()
+            .setup
+            .expect("draft")
+            .context
+            .as_str()
+            .to_owned();
+        self.send(
+            json!({"kind": "configureManagementCredential", "context": before, "mode": "keychain",
+            "clientId": CLIENT_ID, "secret": CLIENT_SECRET}),
+        )
+        .await
+        .expect("draft management key");
+        assert!(
+            eventually(|| self
+                .snap()
+                .setup
+                .is_some_and(|s| s.tenant.management.state == ScanState::Ready))
+            .await
+        );
+        let current = self
+            .snap()
+            .setup
+            .expect("draft")
+            .context
+            .as_str()
+            .to_owned();
+        assert_ne!(current, before, "the draft credential rotates context");
+        current
+    }
+
+    fn assert_setup_completable(&self) {
+        let setup = self.snap().setup.expect("verified draft");
+        assert!(
+            setup.completable,
+            "synthetic OAuth must allow setup completion"
+        );
+        let verify = setup.verify.expect("verification");
+        assert!(!verify.blocking && !verify.stale);
+        assert_eq!(
+            verify
+                .steps
+                .iter()
+                .find(|s| s.line == desktop_core::features::VerifyLine::ManagementClient)
+                .expect("OAuth line")
+                .state,
+            desktop_core::features::VerifyState::Pass
+        );
+    }
+
+    /// Authenticates a draft with the chosen products, completes it (active),
+    /// then refreshes the active credential for each consumer's later reads.
     async fn tenant_with_products(&mut self, label: &str, products: &[&str]) -> String {
         let origin = self.origin.clone();
         self.send(json!({"kind": "beginTenantSetup", "mode": "add", "profile": {"label": label, "tsgId": TSG,
             "destination": {"kind": "custom", "origin": origin}}}))
             .await
             .expect("draft");
-        let draft = self
-            .snap()
-            .setup
-            .expect("setup")
-            .context
-            .as_str()
-            .to_owned();
+        let draft = self.draft_management_key().await;
         self.send(json!({"kind": "chooseSetupProducts", "context": draft, "products": products}))
             .await
             .expect("products");
@@ -335,6 +381,7 @@ impl Desk {
                 .is_some_and(|v| v.done))
             .await
         );
+        self.assert_setup_completable();
         self.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": []}))
             .await
             .expect("completed");
@@ -584,13 +631,7 @@ async fn setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads() {
         "destination": {"kind": "custom", "origin": origin}}}))
         .await
         .expect("draft");
-    let draft = desk
-        .snap()
-        .setup
-        .expect("setup")
-        .context
-        .as_str()
-        .to_owned();
+    let draft = desk.draft_management_key().await;
     desk.send(json!({"kind": "verifyTenantSetup", "context": draft}))
         .await
         .expect("verify");
@@ -602,6 +643,7 @@ async fn setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads() {
             .is_some_and(|v| v.done))
         .await
     );
+    desk.assert_setup_completable();
     desk.send(json!({"kind": "completeTenantSetup", "context": draft, "packs": []}))
         .await
         .expect("completed");
@@ -614,7 +656,7 @@ async fn setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads() {
         .expect("the warning as an entry");
     assert_eq!(entry.id, "vw-1");
     assert!(entry.needs_action && entry.product == Some(ProductId::RuntimeSecurity));
-    assert!(entry.detail.contains("No scan key saved"));
+    assert!(entry.detail.contains("No scan key configured"));
     assert!(
         snap.overview.attention.iter().any(|i| i.id == "vw-1"),
         "and on Home's attention list"

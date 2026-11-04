@@ -1,0 +1,50 @@
+{
+  "argv": [
+    "cargo",
+    "test",
+    "--offline",
+    "--locked",
+    "-p",
+    "desktop-core",
+    "--features",
+    "test-fixtures",
+    "--test",
+    "ui_v2_inbox",
+    "--",
+    "setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads",
+    "reads_cover_every_chosen_product_with_finite_per_source_outcomes",
+    "a_truncated_listing_is_incomplete_coverage_not_a_complete_read",
+    "a_failed_product_attempt_is_reported_and_never_replaces_its_last_read",
+    "unread_chosen_products_stay_in_coverage_after_a_partial_attempt",
+    "a_first_product_recheck_refused_for_a_role_is_a_settled_attempt",
+    "--exact",
+    "--nocapture"
+  ],
+  "started_utc": "2026-11-04T17:47:18.352827+00:00",
+  "finished_utc": "2026-11-04T17:47:19.871479+00:00",
+  "exit_code": 101,
+  "source_files": {
+    "crates/desktop-core/tests/harness_tools/main.rs": "ad88285ee7ae6b2e3ee1e7828565f50659423fd27483b10f3511eb81a18c287f",
+    "crates/desktop-core/tests/ui_v2_inbox/main.rs": "0d19a3058ba5847fdec43860a53fb1454834bb867b398cd89331494ec8d3f443",
+    "crates/desktop-core/src/authority/setup_domain.rs": "6a52a4c1e2e0567990c0efaae36348848bd85e84991d525b479d9ac8d299050d",
+    "crates/desktop-core/Cargo.toml": "c61aab70870501455a80bc418447408b3e78eb59d50490ba23d2b68f5858ef01",
+    "Cargo.lock": "513de038ab408300d06721d75a2390d94c76312520505c82c6693eecace163c4",
+    "rust-toolchain.toml": "3ac87df98c6720396dac364b4b94273e9261ee2b1a971af6c43e0a714efa84cd"
+  },
+  "log": ".evidence-private/oauth-consumer-fixtures-01/red-inbox.log",
+  "log_sha256": "e53dd227ca6851db7e3bde7dd8e24a8acade0e2181cd1b02e29d65f381be591a",
+  "test_results": [
+    {
+      "passed": 0,
+      "failed": 6,
+      "ignored": 0,
+      "filtered": 11
+    }
+  ],
+  "environment": {
+    "PATH": "/Users/admin/.rustup/toolchains/1.99.0-aarch64-apple-darwin/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+    "CARGO_TARGET_DIR": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_NET_OFFLINE": "true"
+  }
+}

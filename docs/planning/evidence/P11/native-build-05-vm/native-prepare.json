@@ -1,0 +1,40 @@
+{
+  "subject": "P11",
+  "built_utc": "2026-11-04T18:18:10Z",
+  "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+  "identifier": "io.cdot.airs-desktop.fixture",
+  "executable_sha256": "ba72d82de279be8d311c02125597ae0d5d6f7f5f0f2bdcbc2d951dc3d1e42914",
+  "bundle_sha256": "f558aa269e359e9617191ecd47b8eb63016350086e618c36c4fdfc79d45bd535",
+  "features": [
+    "test-fixtures"
+  ],
+  "target": "aarch64-apple-darwin",
+  "commands": [
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "build"
+    ],
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-airs/desktop",
+      "exec",
+      "tauri",
+      "build",
+      "--ci",
+      "--no-sign",
+      "--target",
+      "aarch64-apple-darwin",
+      "--bundles",
+      "app",
+      "--features",
+      "test-fixtures",
+      "--config",
+      "src-tauri/tauri.fixture.conf.json",
+      "--config",
+      "src-tauri/tauri.harness.conf.json"
+    ]
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "airs-desktop/p11-fixture-code-access-verification/1",
+  "recorded_utc": "2026-11-04T21:45:35.391856+00:00",
+  "verified": true,
+  "before": {
+    "path": "docs/planning/evidence/P11/fixture-code-access-verification-01/before.txt",
+    "sha256": "f7ba543fbf616a40d3615f4e8233ddd26735bf1c681ac98417bdadebfb1dfee7"
+  },
+  "after": {
+    "path": "docs/planning/evidence/P11/fixture-code-access-verification-01/after.txt",
+    "sha256": "8e7f85ce7289908585387f603ef39ee447c5ba6a86849d637b02eeef692ea69d"
+  },
+  "original_helper_receipt": {
+    "path": "docs/planning/evidence/P11/fixture-code-access-04/receipt.json",
+    "sha256": "75b1ee5cc472585d1eb380256fb6491c7d04dc99034fe7a1b817e0052c5e4547"
+  },
+  "metadata_only": true,
+  "account": "cr-bf6eae1f4e49ee61",
+  "retained_cdhash": "3950c3d4b7e787d94930e3aac9bcd191cf70dd02",
+  "added_cdhash": "a579105e69b36d05fc8e5f66760688e60b8bb4c2",
+  "exact_only_difference": "Existing decrypt ACL apps1\u21922; exact new fixture code requirement appended. Removing just that two-line application entry and restoring count yields byte-identical before metadata, including all item attributes and all3 ACL entries.",
+  "original_failure_preserved": "The helper succeeded at persistent SetAccess, then its CoreFoundation object-equality postcheck refused deserialized trusted-application objects. Its exit1 remains unchanged; independent exact metadata comparison, not relabeling, verifies transition.",
+  "values_read": false,
+  "values_modified": false,
+  "owner_keychains_accessed": false,
+  "item_recreated": false,
+  "executable_sha256": "ba72d82de279be8d311c02125597ae0d5d6f7f5f0f2bdcbc2d951dc3d1e42914",
+  "bundle_sha256": "f558aa269e359e9617191ecd47b8eb63016350086e618c36c4fdfc79d45bd535",
+  "ui_authorization": "Owner GO after exact dialog instructions; root approved the visible screen-access renewal, pasted only the public fixture password into observed synthetic SecurityAgent dialog, clicked Allow, cleared clipboard; no owner password used.",
+  "recorded_actions": {
+    "path": "docs/planning/evidence/P11/fixture-code-access-verification-01/resume-actions.jsonl",
+    "sha256": "89888747e1f1b03daabdf8f514aabcab476502f702c4cbfb249c7e139aefe5e6"
+  }
+}

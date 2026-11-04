@@ -1,0 +1,25 @@
+
+ RUN  v3.2.6 /Users/cdot/development/redtail/p09-queue/refinement-20261104/core/apps/desktop
+
+stderr | src/modules/workbench/request-send.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+stderr | src/modules/workbench/document-save.test.tsx
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+forwardRef render functions accept exactly two parameters: props and ref. Did you forget to use the ref parameter?
+
+ ✓ src/modules/workbench/request-send.test.tsx (5 tests) 696ms
+   ✓ API Client Send > sends the fields typed before the protection debounce, with the active context  323ms
+ ✓ src/modules/workbench/document-save.test.tsx (15 tests) 4715ms
+   ✓ API Client document Save > sends the fields typed before the protection debounce fires  819ms
+   ✓ API Client document Save > protects the snapshot when typing pauses, marking unprotected edits once  474ms
+   ✓ API Client document Save > re-arms the close guard after a save and while an older protection is outstanding  557ms
+   ✓ API Client document Save > asks before closing the collection when the latest typing cannot be kept  641ms
+   ✓ API Client document Save > saves a reverted document before the pause, so the older protected draft is superseded  1008ms
+
+ Test Files  2 passed (2)
+      Tests  20 passed (20)
+   Start at  17:55:23
+   Duration  7.45s (transform 1.40s, setup 158ms, collect 4.35s, tests 5.41s, environment 361ms, prepare 236ms)
+

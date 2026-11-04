@@ -1,0 +1,19 @@
+    Checking desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+    Checking xtask v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/xtask)
+error[E0308]: `?` operator has incompatible types
+  --> crates/xtask/examples/p11_native_candidate.rs:82:52
+   |
+82 |           built_utc: desktop_core::sessions::rfc3339(i64::try_from(
+   |  ____________________________________________________^
+83 | |             SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs(),
+84 | |         )?),
+   | |__________^ expected `u64`, found `i64`
+   |
+   = note: `?` operator cannot convert from `i64` to `u64`
+help: you can convert an `i64` to a `u64` and panic if the converted value doesn't fit
+   |
+84 |         )?.try_into().unwrap()),
+   |           ++++++++++++++++++++
+
+For more information about this error, try `rustc --explain E0308`.
+error: could not compile `xtask` (example "p11_native_candidate") due to 1 previous error

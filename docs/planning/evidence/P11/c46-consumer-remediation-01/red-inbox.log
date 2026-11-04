@@ -1,0 +1,44 @@
+   Compiling desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.46s
+     Running tests/ui_v2_inbox/main.rs (/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/debug/deps/ui_v2_inbox-f1bdfe8188a53264)
+
+running 6 tests
+
+thread 'setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads' (4863895) panicked at crates/desktop-core/tests/ui_v2_inbox/main.rs:607:10:
+completed: InvalidInput
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'reads_cover_every_chosen_product_with_finite_per_source_outcomes' (4863894) panicked at crates/desktop-core/tests/ui_v2_inbox/main.rs:340:14:
+completed: InvalidInput
+
+thread 'a_first_product_recheck_refused_for_a_role_is_a_settled_attempt' (4863892) panicked at crates/desktop-core/tests/ui_v2_inbox/main.rs:340:14:
+completed: InvalidInput
+
+thread 'a_truncated_listing_is_incomplete_coverage_not_a_complete_read' (4863893) panicked at crates/desktop-core/tests/ui_v2_inbox/main.rs:340:14:
+completed: InvalidInput
+
+thread 'a_failed_product_attempt_is_reported_and_never_replaces_its_last_read' (4863891) panicked at crates/desktop-core/tests/ui_v2_inbox/main.rs:340:14:
+completed: InvalidInput
+
+thread 'unread_chosen_products_stay_in_coverage_after_a_partial_attempt' (4863896) panicked at crates/desktop-core/tests/ui_v2_inbox/main.rs:340:14:
+completed: InvalidInput
+test reads_cover_every_chosen_product_with_finite_per_source_outcomes ... FAILED
+test setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads ... FAILED
+test a_truncated_listing_is_incomplete_coverage_not_a_complete_read ... FAILED
+test a_first_product_recheck_refused_for_a_role_is_a_settled_attempt ... FAILED
+test a_failed_product_attempt_is_reported_and_never_replaces_its_last_read ... FAILED
+test unread_chosen_products_stay_in_coverage_after_a_partial_attempt ... FAILED
+
+failures:
+
+failures:
+    a_failed_product_attempt_is_reported_and_never_replaces_its_last_read
+    a_first_product_recheck_refused_for_a_role_is_a_settled_attempt
+    a_truncated_listing_is_incomplete_coverage_not_a_complete_read
+    reads_cover_every_chosen_product_with_finite_per_source_outcomes
+    setup_warnings_are_inbox_entries_the_operator_can_hold_across_reads
+    unread_chosen_products_stay_in_coverage_after_a_partial_attempt
+
+test result: FAILED. 0 passed; 6 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p desktop-core --test ui_v2_inbox`

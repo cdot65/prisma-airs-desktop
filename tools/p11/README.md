@@ -134,3 +134,33 @@ and unchanged relevant helpers; remaining rows use the successful continuation.
 The native provenance validator binds actual per-row logs, arguments, times,
 capture reviews and app identities. A failed whole process is never relabelled
 as a newly passing process.
+
+### Review remediation without replaying unaffected flows
+
+`remediation.py RECEIPT --out FRESH_FOLDER` consumes the dated C46/C47/C48
+review fixes. `proof.py verify FRESH_FOLDER/qualification.json` remains the
+review entrypoint. This path preserves qualification02 and all original raw
+outcomes; it does not turn a failed contributing process into a passing run.
+
+The receipt (`airs-desktop/p11-review-remediation/1`) binds the original
+qualification, D2/S2/S3 source history, the preserved original app tar, current
+source/fingerprint/build/prepare, the actual nine Rust integration consumers,
+C48 source selectors, the old-artifact drawer-scroll supplement, current-artifact
+recovery, helper QA, and a reason for every carried requirement. Exactly four
+frontend files and two Rust fixture files have pinned before/after hashes. Other
+application, dependency, native-helper or VM changes cannot silently use this
+review decision. The versioned native build example is a build tool, not a
+production-source exemption.
+
+Unchanged rows retain their original result and candidate references. Explicit
+`carried_unaffected` dependency proofs include every resource and the relevant
+native helpers. Source selectors replace only affected verification goals;
+the original registered command remains visible. These custom selector records
+retain actual commands, logs, source inputs and known timing limitations rather
+than manufacturing a complete `airs-v2/run/1` or claiming a whole command reran.
+C48's new recovery slice retains unrelated first-use/save facts as old subfact
+origins. It never presents the original 099/eb9 artifact as the new app.
+
+Historical finalization archives the accepted source/app and retains all three
+prior source contexts. P10's generic coverage and historical consumers are
+unchanged. This path does not assign review scores or complete a controller.

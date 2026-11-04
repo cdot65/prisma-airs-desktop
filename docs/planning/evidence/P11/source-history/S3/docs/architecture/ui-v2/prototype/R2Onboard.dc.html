@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Refined Native v2 — onboarding</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>body{margin:0} input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid #a33d15;outline-offset:2px} [data-theme="dark"] input:focus-visible,[data-theme="dark"] textarea:focus-visible,[data-theme="dark"] select:focus-visible,[data-theme="dark"] button:focus-visible{outline-color:#fe8019} button[data-inset-focus]:focus-visible{outline-offset:-4px}</style>
+</helmet>
+<div data-theme="{{theme}}" style="width: {{W}}px; height: {{H}}px; position: relative; overflow: hidden; display: flex; background: {{t.bg}}; color: {{t.ink}}; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; font-size: 13px; border-radius: 12px; box-sizing: border-box; border: 1px solid {{t.rule}};">
+
+  <aside aria-label="Setup steps" style="width: {{railW}}px; flex-shrink: 0; display: flex; flex-direction: column; background: {{t.side}}; border-right: 1px solid {{t.rule}}; padding: {{railPad}}; box-sizing: border-box;">
+    <sc-if value="{{showLights}}" hint-placeholder-val="{{true}}"><div aria-hidden="true" style="display: flex; gap: 8px; padding: 2px 0 26px;">
+      <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></span>
+      <span style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e;"></span>
+      <span style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></span>
+    </div></sc-if>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 28px; margin-top: {{brandTop}}px;">
+      <span style="width: 40px; height: 40px; border-radius: 10px; background: {{t.acc}}; color: {{t.accInk}}; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="{{I.shield}}"></path></svg></span>
+      <span style="min-width: 0;"><b style="font-size: 15px;">{{railTitle}}</b><br><span style="color: {{t.faint}};">{{railSub}}</span><sc-if value="{{railCtx}}" hint-placeholder-val="{{false}}"><br><span style="display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 600; color: {{t.ink}}; line-height: 1.35; word-break: break-word;">{{railCtx}}</span></sc-if></span>
+    </div>
+    <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;">
+      <sc-for list="{{steps}}" as="st" hint-placeholder-count="7">
+        <li aria-current="{{st.cur}}" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px; border-radius: 8px; background: {{st.bg}};">
+          <span style="width: 24px; height: 24px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid {{st.bd}}; background: {{st.cbg}}; color: {{st.cfg}}; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><sc-if value="{{st.done}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="{{I.check}}"></path></svg></sc-if><sc-if value="{{st.notDone}}" hint-placeholder-val="{{true}}">{{st.n}}</sc-if></span>
+          <span style="flex-grow: 1; font-weight: {{st.w}}; color: {{st.fg}};">{{st.label}}</span>
+          <sc-if value="{{st.opt}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: {{t.faint}};">Optional</span></sc-if>
+          <sc-if value="{{st.skipped}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: {{t.faint}};">Skipped</span></sc-if>
+        </li>
+      </sc-for>
+    </ol>
+    <div style="margin-top: auto; display: flex; gap: 8px; padding: 12px; border-radius: 10px; background: {{t.inset}}; color: {{t.soft}}; font-size: 12px; line-height: 1.5;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px;"><path d="{{I.lock}}"></path></svg><span>Secrets go straight to the macOS Keychain. Tenant calls go only to your own tenant. Joining the Academy is optional and sends your account details and progress to Academy.</span></div>
+    <button onClick="{{toggleTheme}}" style="margin-top: 10px; align-self: flex-start; height: 32px; padding: 0 12px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.paper}}; color: {{t.soft}}; font: inherit; font-size: 12px; cursor: pointer;">{{themeName}} appearance</button>
+  </aside>
+
+  <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column;">
+    <main style="flex-grow: 1; min-height: 0; overflow: auto; padding: {{mainPad}}; box-sizing: border-box;">
+      <div style="max-width: 860px; display: flex; flex-direction: column; gap: 18px;">
+
+        <sc-if value="{{isWelcome}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 18px; padding-top: 30px;">
+            <span style="width: 72px; height: 72px; border-radius: 18px; background: {{t.acc}}; color: {{t.accInk}}; display: flex; align-items: center; justify-content: center;"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="{{I.shield}}"></path></svg></span>
+            <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.02em;">Welcome to Prisma AIRS Desktop</h1>
+            <p style="margin: 0; max-width: 680px; font-size: 15px; line-height: 1.55; color: {{t.soft}};">This app is built entirely on Palo Alto Networks’ own public APIs: the same programmatic interfaces any application builder can use. Everything you will see here, from reading a tenant’s security posture to scanning a prompt, is an API call you could make yourself. It exists to show how much those interfaces make possible.</p>
+            <p style="margin: 0; max-width: 680px; font-size: 14px; line-height: 1.55; color: {{t.soft}};">We will walk you through it: connect a tenant with the credentials an integration would use, pick the products you manage, check the connection, and optionally load starter test cases. It takes about five minutes, and you can change everything later.</p>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 6px;">
+              <sc-for list="{{welcomeCards}}" as="wc" hint-placeholder-count="3"><div style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;"><span style="width: 30px; height: 30px; border-radius: 8px; background: {{t.accSoft}}; color: {{t.acc}}; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{wc.icon}}"></path></svg></span><b>{{wc.title}}</b><span style="color: {{t.soft}}; line-height: 1.45;">{{wc.text}}</span></div></sc-for>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; border: 1px dashed {{t.rule}};"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{t.soft}}" stroke-width="1.8" aria-hidden="true"><path d="{{I.download}}"></path></svg><span style="flex-grow: 1;"><b>Used Prisma AIRS Desktop 1?</b> <span style="color: {{t.soft}};">Bring over your tenants and saved cases instead of typing them again.</span></span><span style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; color: {{t.faint}};">Not in this prototype</span><button disabled title="Import is not in this prototype" style="height: 32px; padding: 0 12px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.inset}}; color: {{t.faint}}; font: inherit; cursor: not-allowed;">Import from v1…</button></span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isTenant}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; align-items: flex-end; gap: 12px;">
+              <div><h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em;">Connect your tenant</h1><p style="margin: 4px 0 0; color: {{t.soft}}; font-size: 14px;">This becomes a managed tenant. The credentials are the same OAuth 2.0 service account any integration uses with the Palo Alto Networks APIs; only the management credentials are required.</p></div>
+              <button onClick="{{fillSample}}" style="margin-left: auto; border: 0; background: transparent; color: {{t.acc}}; font: inherit; font-weight: 600; cursor: pointer;">Use sample values</button>
+            </div>
+            <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;"><b style="font-size: 14px;">Tenant</b><span style="padding: 1px 7px; border-radius: 999px; background: {{t.inset}}; color: {{t.soft}}; font-size: 12px; font-weight: 600;">Required</span></div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">{{nameField.label}}<input autofocus value="{{nameField.value}}" onChange="{{nameField.on}}" placeholder="{{nameField.ph}}" type="text" aria-invalid="{{nameField.inv}}" aria-describedby="{{nameField.did}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid {{nameField.bd}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 400;"><span id="{{nameField.did}}" style="font-weight: 400; color: {{nameField.hfg}};">{{nameField.msg}}</span></label>
+                <sc-for list="{{tsgFields}}" as="fd" hint-placeholder-count="1"><label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">{{fd.label}}<input value="{{fd.value}}" onChange="{{fd.on}}" placeholder="{{fd.ph}}" type="{{fd.type}}" aria-invalid="{{fd.inv}}" aria-describedby="{{fd.did}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid {{fd.bd}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 400;"><span id="{{fd.did}}" style="font-weight: 400; color: {{fd.hfg}};">{{fd.msg}}</span></label></sc-for>
+                <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">Environment<div role="radiogroup" aria-label="Environment" style="display: flex; padding: 2px; border-radius: 8px; background: {{t.inset}}; width: fit-content;"><sc-for list="{{envs}}" as="en" hint-placeholder-count="3"><button role="radio" aria-checked="{{en.on}}" onClick="{{en.pick}}" style="height: 32px; padding: 0 14px; border: 0; border-radius: 6px; background: {{en.bg}}; box-shadow: {{en.sh}}; color: {{t.ink}}; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;">{{en.label}}</button></sc-for></div><span style="font-weight: 400; color: {{t.faint}};">Production tenants ask for confirmation before every change.</span></div>
+                <div style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">Region<select aria-label="Region" value="{{region}}" onChange="{{onRegion}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid {{t.ctl}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 400;"><option value="United States">United States</option><option value="Europe">Europe</option><option value="Asia Pacific">Asia Pacific</option></select><span style="font-weight: 400; color: {{t.faint}};">Where the tenant's data lives. Matches the Strata Cloud Manager region.</span></div>
+              </div>
+            </section>
+            <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;"><b style="font-size: 14px;">Management credentials · OAuth 2.0</b><span style="padding: 1px 7px; border-radius: 999px; background: {{t.inset}}; color: {{t.soft}}; font-size: 12px; font-weight: 600;">Required</span><button onClick="{{toggleHelp}}" aria-expanded="{{helpStr}}" style="margin-left: auto; padding: 0; border: 0; background: transparent; color: {{t.acc}}; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;">Where do I find these?</button></div>
+              <sc-if value="{{helpOpen}}" hint-placeholder-val="{{false}}"><ol style="margin: 0; padding: 12px 14px 12px 32px; border-radius: 8px; background: {{t.inset}}; color: {{t.soft}}; line-height: 1.5; display: flex; flex-direction: column; gap: 4px;"><li>In Strata Cloud Manager, open Identity &amp; Access › Service accounts.</li><li>Create a service account with the roles for the products you will manage.</li><li>Copy the client ID and the secret shown once. The secret is stored in your Keychain here and never shown again.</li></ol></sc-if>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <sc-for list="{{credFields}}" as="fd" hint-placeholder-count="2"><label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">{{fd.label}}<input value="{{fd.value}}" onChange="{{fd.on}}" placeholder="{{fd.ph}}" type="{{fd.type}}" aria-invalid="{{fd.inv}}" aria-describedby="{{fd.did}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid {{fd.bd}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 400;"><span id="{{fd.did}}" style="font-weight: 400; color: {{fd.hfg}};">{{fd.msg}}</span></label></sc-for>
+              </div>
+            </section>
+            <sc-for list="{{optCards}}" as="oc" hint-placeholder-count="2">
+              <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <span style="width: 30px; height: 30px; border-radius: 8px; background: {{t.inset}}; color: {{t.soft}}; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{oc.icon}}"></path></svg></span>
+                  <span style="flex-grow: 1;"><span style="display: flex; align-items: center; gap: 8px;"><b style="font-size: 14px;">{{oc.title}}</b><span style="padding: 1px 7px; border-radius: 999px; background: {{t.inset}}; color: {{t.faint}}; font-size: 12px; font-weight: 600;">Optional</span></span><span style="color: {{t.soft}};">{{oc.text}}</span></span>
+                  <button onClick="{{oc.toggle}}" role="switch" aria-checked="{{oc.onStr}}" aria-label="{{oc.title}}" style="width: 38px; height: 22px; border: 0; border-radius: 999px; background: {{oc.track}}; box-shadow: inset 0 0 0 1px {{oc.ring}}; position: relative; cursor: pointer; flex-shrink: 0;"><span style="position: absolute; top: 3px; left: {{oc.knob}}px; width: 16px; height: 16px; border-radius: 50%; background: {{oc.knobBg}};"></span></button>
+                </div>
+                <sc-if value="{{oc.on}}" hint-placeholder-val="{{false}}">
+                  <div style="display: grid; grid-template-columns: {{oc.grid}}; gap: 12px; padding-left: 42px;">
+                    <sc-for list="{{oc.fields}}" as="fd" hint-placeholder-count="1"><label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">{{fd.label}}<input value="{{fd.value}}" onChange="{{fd.on}}" placeholder="{{fd.ph}}" type="{{fd.type}}" aria-invalid="{{fd.inv}}" aria-describedby="{{fd.did}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid {{fd.bd}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 400;"><span id="{{fd.did}}" style="font-weight: 400; color: {{fd.hfg}};">{{fd.msg}}</span></label></sc-for>
+                  </div>
+                </sc-if>
+              </section>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isProducts}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div><h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em;">Which products will you manage?</h1><p style="margin: 4px 0 0; color: {{t.soft}}; font-size: 14px;">Pick the ones {{f.name}} uses. They appear in Home, Inbox and Administration. You can change this any time.</p></div>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+              <sc-for list="{{prodCards}}" as="pc" hint-placeholder-count="6">
+                <button onClick="{{pc.toggle}}" role="checkbox" aria-checked="{{pc.onStr}}" style="position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 176px; padding: 18px 20px; border: 1.5px solid {{pc.bd}}; border-radius: 12px; background: {{pc.bg}}; color: {{t.ink}}; font: inherit; text-align: left; cursor: pointer; box-sizing: border-box;">
+                  <span style="position: absolute; top: 14px; right: 14px; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid {{pc.cbd}}; background: {{pc.cbg}}; color: {{t.accInk}}; display: flex; align-items: center; justify-content: center;"><sc-if value="{{pc.on}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" aria-hidden="true"><path d="{{I.check}}"></path></svg></sc-if></span>
+                  <span style="width: 36px; height: 36px; border-radius: 10px; background: {{pc.tileBg}}; color: {{pc.tileFg}}; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{pc.icon}}"></path></svg></span>
+                  <span style="display: block; padding-right: 26px; line-height: 1.35;"><b style="font-size: 14px;">{{pc.name}}</b><sc-if value="{{pc.isNew}}" hint-placeholder-val="{{false}}"><span style="display: inline-block; margin-left: 6px; vertical-align: 1px; line-height: 1.4; padding: 1px 6px; border-radius: 999px; background: {{t.accSoft}}; color: {{t.acc}}; font-size: 12px; font-weight: 700;">New</span></sc-if></span>
+                  <span style="color: {{t.soft}}; line-height: 1.45;">{{pc.desc}}</span>
+                  <span style="margin-top: auto; font-size: 12px; color: {{t.faint}};">{{pc.uses}}</span>
+                </button>
+              </sc-for>
+            </div>
+            <sc-if value="{{rtNoScan}}" hint-placeholder-val="{{false}}"><div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; background: {{t.flagBg}}; line-height: 1.45;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{t.flag}}" stroke-width="2" aria-hidden="true" style="flex-shrink: 0;"><path d="{{I.alert}}"></path></svg><span style="flex-grow: 1;">AI Runtime Security works without a scan API key, but the Playground and test runs need one.</span><button onClick="{{goTenantScan}}" style="height: 32px; padding: 0 12px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.paper}}; color: {{t.ink}}; font: inherit; font-size: 12px; cursor: pointer;">Add a scan key</button></div></sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isVerify}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div><h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em;">Check the connection</h1><p style="margin: 4px 0 0; color: {{t.soft}}; font-size: 14px;">We save the credentials, get a token and confirm each product you picked, using only read calls. Nothing in {{f.name}} is changed. Each check below is a public API call you could make from your own code.</p></div>
+            <sc-if value="{{vBanner}}" hint-placeholder-val="{{false}}"><div role="status" style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 12px; background: {{vbBg}};"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{vbFg}}" stroke-width="2.2" aria-hidden="true"><path d="{{vbIcon}}"></path></svg><span style="flex-grow: 1;"><b style="font-size: 14px;">{{vbTitle}}</b><br><span style="color: {{t.soft}};">{{vbText}}</span></span><sc-if value="{{isFail}}" hint-placeholder-val="{{false}}"><button onClick="{{editCreds}}" style="height: 32px; padding: 0 14px; border: 0; border-radius: 7px; background: {{t.acc}}; color: {{t.accInk}}; font: inherit; font-weight: 600; cursor: pointer;">Edit credentials</button></sc-if></div></sc-if>
+            <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; overflow: hidden;">
+              <sc-for list="{{checks}}" as="ck" hint-placeholder-count="9">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid {{ck.top}};">
+                  <span style="width: 26px; height: 26px; border-radius: 50%; background: {{ck.bg}}; color: {{ck.fg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="{{ck.icon}}"></path></svg></span>
+                  <span style="flex-grow: 1; min-width: 0;"><b style="font-weight: 600;">{{ck.name}}</b><br><span style="color: {{ck.dfg}}; line-height: 1.45;">{{ck.detail}}</span></span>
+                  <sc-if value="{{ck.fixable}}" hint-placeholder-val="{{false}}"><span style="display: flex; gap: 6px; flex-shrink: 0;"><button onClick="{{recheckAes}}" style="height: 32px; padding: 0 12px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer;">Check again</button><button onClick="{{dropAes}}" style="height: 32px; padding: 0 12px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer;">Don't manage AES</button></span></sc-if>
+                  <span style="width: 60px; text-align: right; font-size: 12px; color: {{t.faint}};">{{ck.time}}</span>
+                </div>
+              </sc-for>
+            </section>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isCases}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div><h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em;">Load starter test cases</h1><p style="margin: 4px 0 0; color: {{t.soft}}; font-size: 14px;">Ready-made cases for the products you picked. They are sealed on this Mac under {{f.name}}, and you can edit or delete them later.</p></div>
+            <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; overflow: hidden;">
+              <sc-for list="{{packs}}" as="pk" hint-placeholder-count="7">
+                <button onClick="{{pk.toggle}}" role="checkbox" aria-checked="{{pk.onStr}}" aria-disabled="{{pk.offStr}}" data-inset-focus="1" style="width: 100%; display: flex; align-items: center; gap: 14px; padding: 12px 18px; border: 0; border-top: 1px solid {{pk.top}}; background: transparent; color: {{t.ink}}; font: inherit; text-align: left; cursor: pointer; opacity: {{pk.op}};">
+                  <span style="width: 18px; height: 18px; border-radius: 5px; box-sizing: border-box; border: 1.5px solid {{pk.cbd}}; background: {{pk.cbg}}; color: {{t.accInk}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><sc-if value="{{pk.on}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" aria-hidden="true"><path d="{{I.check}}"></path></svg></sc-if></span>
+                  <span style="width: 30px; height: 30px; border-radius: 8px; background: {{t.inset}}; color: {{t.soft}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{pk.icon}}"></path></svg></span>
+                  <span style="flex-grow: 1; min-width: 0;"><b style="font-weight: 600;">{{pk.name}}</b> <span style="color: {{t.faint}};">· {{pk.product}}</span><br><span style="color: {{t.soft}};">{{pk.desc}}</span></span>
+                  <span style="font-size: 12px; color: {{t.faint}}; white-space: nowrap;">{{pk.countTxt}}</span>
+                </button>
+              </sc-for>
+            </section>
+            <div style="color: {{t.soft}};">{{caseSummary}}</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isAcademy}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div><h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em;">Join the AI Security Academy</h1><p style="margin: 4px 0 0; color: {{t.soft}}; font-size: 14px;">Short lessons for each product, practised against your own tenant. Creating an account sends your email, display name and lesson progress to the Academy service; tenant credentials never leave this Mac.</p></div>
+            <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px;">
+              <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;">
+                <b style="font-size: 14px;">Your account</b>
+                <sc-for list="{{acadFields}}" as="fd" hint-placeholder-count="2"><label style="display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: {{t.soft}};">{{fd.label}}<input value="{{fd.value}}" onChange="{{fd.on}}" placeholder="{{fd.ph}}" type="{{fd.type}}" aria-invalid="{{fd.inv}}" aria-describedby="{{fd.did}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid {{fd.bd}}; border-radius: 7px; background: {{t.bg}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 400;"><span id="{{fd.did}}" style="font-weight: 400; color: {{fd.hfg}};">{{fd.msg}}</span></label></sc-for>
+                <sc-for list="{{acadToggles}}" as="tg" hint-placeholder-count="2"><div style="display: flex; align-items: center; gap: 10px;"><span style="flex-grow: 1;"><b style="font-weight: 600;">{{tg.title}}</b><br><span style="font-size: 12px; color: {{t.faint}};">{{tg.text}}</span></span><button onClick="{{tg.toggle}}" role="switch" aria-checked="{{tg.onStr}}" aria-label="{{tg.title}}" style="width: 38px; height: 22px; border: 0; border-radius: 999px; background: {{tg.track}}; box-shadow: inset 0 0 0 1px {{tg.ring}}; position: relative; cursor: pointer; flex-shrink: 0;"><span style="position: absolute; top: 3px; left: {{tg.knob}}px; width: 16px; height: 16px; border-radius: 50%; background: {{tg.knobBg}};"></span></button></div></sc-for>
+              </section>
+              <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;">
+                <b style="font-size: 14px;">Start with</b>
+                <div role="radiogroup" aria-label="Start with" style="display: flex; flex-direction: column; gap: 10px;">
+                <sc-for list="{{acadPaths}}" as="ap" hint-placeholder-count="4"><button onClick="{{ap.pick}}" role="radio" aria-checked="{{ap.onStr}}" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1.5px solid {{ap.bd}}; border-radius: 10px; background: {{ap.bg}}; color: {{t.ink}}; font: inherit; text-align: left; cursor: pointer;"><span style="width: 16px; height: 16px; border-radius: 50%; box-sizing: border-box; border: {{ap.ring}}; flex-shrink: 0;"></span><span style="flex-grow: 1;"><b style="font-weight: 600;">{{ap.name}}</b><br><span style="font-size: 12px; color: {{t.faint}};">{{ap.meta}}</span></span><sc-if value="{{ap.rec}}" hint-placeholder-val="{{false}}"><span style="padding: 1px 7px; border-radius: 999px; background: {{t.accSoft}}; color: {{t.acc}}; font-size: 12px; font-weight: 600;">Recommended</span></sc-if></button></sc-for>
+                </div>
+              </section>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 16px; padding-top: 10px;">
+            <span style="width: 64px; height: 64px; border-radius: 18px; background: {{t.okBg}}; color: {{t.ok}}; display: flex; align-items: center; justify-content: center;"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="{{I.check}}"></path></svg></span>
+            <h1 style="margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.02em;">{{f.name}} is ready</h1>
+            <p style="margin: 0; font-size: 15px; color: {{t.soft}};">Here is what was set up. Everything can be changed later in Administration and Settings.</p>
+            <sc-if value="{{openedDone}}" hint-placeholder-val="{{false}}"><div role="status" style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: {{t.okBg}}; color: {{t.ok}}; font-weight: 600;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="{{I.check}}"></path></svg>Prisma AIRS is open with {{f.name}} selected. This setup closes; find it again under Settings › Tenants.</div></sc-if>
+            <section style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; overflow: hidden;">
+              <sc-for list="{{summary}}" as="sm" hint-placeholder-count="5"><div style="display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid {{sm.top}};"><span style="width: 26px; height: 26px; border-radius: 50%; background: {{sm.bg}}; color: {{sm.fg}}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="{{sm.icon}}"></path></svg></span><span style="width: 130px; font-weight: 600;">{{sm.k}}</span><span style="flex-grow: 1; color: {{t.soft}};">{{sm.v}}</span><button onClick="{{sm.edit}}" style="border: 0; background: transparent; color: {{t.acc}}; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;">Change</button></div></sc-for>
+            </section>
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+              <sc-for list="{{nextUp}}" as="nx" hint-placeholder-count="3"><div style="background: {{t.paper}}; border: 1px solid {{t.rule}}; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px;"><span style="width: 28px; height: 28px; border-radius: 8px; background: {{t.accSoft}}; color: {{t.acc}}; display: flex; align-items: center; justify-content: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{nx.icon}}"></path></svg></span><b>{{nx.title}}</b><span style="color: {{t.soft}}; line-height: 1.45;">{{nx.text}}</span></div></sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </main>
+
+    <footer style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 14px {{footPad}}px; border-top: 1px solid {{t.rule}}; background: {{t.bg}};">
+      <sc-if value="{{isAdd}}" hint-placeholder-val="{{false}}"><button onClick="{{cancel}}" style="height: 32px; padding: 0 14px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.paper}}; color: {{t.ink}}; font: inherit; cursor: pointer;">Cancel</button></sc-if>
+      <sc-if value="{{showBack}}" hint-placeholder-val="{{true}}"><button onClick="{{back}}" style="height: 32px; padding: 0 14px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.paper}}; color: {{t.ink}}; font: inherit; cursor: pointer;">Back</button></sc-if>
+      <span role="{{hintRole}}" aria-live="polite" aria-atomic="true" style="color: {{hintFg}}; font-size: 12.5px;">{{hint}}</span>
+      <span style="margin-left: auto; font-size: 12px; color: {{t.faint}};">{{progress}}</span>
+      <sc-if value="{{canSkip}}" hint-placeholder-val="{{false}}"><button onClick="{{skip}}" style="height: 32px; padding: 0 14px; border: 1px solid {{t.rule}}; border-radius: 7px; background: {{t.paper}}; color: {{t.ink}}; font: inherit; cursor: pointer;">Skip for now</button></sc-if>
+      <button onClick="{{primary}}" disabled="{{primaryDisabled}}" style="height: 32px; padding: 0 18px; border: 0; border-radius: 7px; background: {{primaryBg}}; color: {{primaryFg}}; font: inherit; font-weight: 600; cursor: pointer;">{{primaryLabel}}</button>
+    </footer>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["first-run","add"],"default":"first-run"},"step":{"editor":"enum","options":["welcome","tenant","products","verify","cases","academy","done"],"default":"welcome"},"filled":{"editor":"boolean","default":false},"verify":{"editor":"enum","options":["idle","done","fail"],"default":"idle"},"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const set = (o) => this.setState(o);
+    const theme = s.theme || this.props.theme || 'light';
+    const L = { bg: '#f6f2e9', side: '#ebe5d8', paper: '#fbf8f1', inset: '#efe9dd', rule: '#e0d9ca', ctl: '#857d6e', ink: '#14141a', soft: '#4a463c', faint: '#635d50', acc: '#a33d15', accInk: '#ffffff', accSoft: '#f4dfd3', block: '#b42318', blockBg: '#fbe4e1', flag: '#8a5300', flagBg: '#faeed5', ok: '#1f6f3a', okBg: '#def0e3' };
+    const D = { bg: '#1d2021', side: '#161919', paper: '#282828', inset: '#32302f', rule: '#3c3836', ctl: '#8a7f70', ink: '#ebdbb2', soft: '#d5c4a1', faint: '#bdae93', acc: '#fe8019', accInk: '#1d2021', accSoft: '#4a2f1a', block: '#ff6b57', blockBg: '#3d1f1c', flag: '#fabd2f', flagBg: '#3a3019', ok: '#b8bb26', okBg: '#2b2f17' };
+    const t = theme === 'dark' ? D : L;
+    const I = {
+      shield: 'M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z', cross: 'M12 3v4M12 17v4M3 12h4M17 12h4M12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14z', box: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
+      route: 'M4 12h12M12 6l6 6-6 6M4 5v14', idcard: 'M3 5h18v14H3zM8 9.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM5 17c.6-1.4 1.7-2 3-2s2.4.6 3 2M14 10h4M14 14h4', laptop: 'M5 5h14v10H5zM2 19h20',
+      bot: 'M12 3v3M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3zM9 12h.01M15 12h.01', cap: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2.5 9 2.5 12 0v-5', cases: 'M9 3h6v4H9zM7 5H5v16h14V5h-2M8 12h8M8 16h5',
+      check: 'M5 12l5 5L20 7', x: 'M6 6l12 12M18 6L6 18', alert: 'M12 3l10 18H2zM12 10v5M12 18h.01', dash: 'M6 12h12', clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', dot: 'M12 11v2',
+      lock: 'M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3', key: 'M14 10a4 4 0 1 0-1 2.6L20 20M17 17l2-2', chev: 'M6 9l6 6 6-6', download: 'M12 3v12M7 10l5 5 5-5M4 20h16', home: 'M3 11l9-7 9 7M5 10v10h14V10', inbox: 'M3 13h5l1 3h6l1-3h5M5 5h14l2 8v6H3v-6z'
+    };
+    const FULL = ['welcome', 'tenant', 'products', 'verify', 'cases', 'academy', 'done'];
+    const isAdd = this.props.mode === 'add';
+    const ORDER = isAdd ? ['tenant', 'products', 'verify', 'cases', 'done'] : FULL;
+    const startFull = Math.max(0, FULL.indexOf(this.props.step || 'welcome'));
+    const startIdx = Math.max(0, ORDER.indexOf(FULL[startFull]));
+    const idx = s.idx != null ? s.idx : startIdx;
+    const step = ORDER[idx];
+    const preset = !!this.props.filled || startFull > 1;
+
+    const SAMPLE = { name: 'Northwind Health', tsg: '1408552221', clientId: 'nw-mgmt@1408552221.iam.example', secret: 'sample-client-secret', scanKey: 'sample-scan-api-key', ws: 'harness-ws', endpoint: 'https://gateway.northwind.example/v1', gwKey: 'sample-workspace-key' };
+    if (isAdd) Object.assign(SAMPLE, { name: 'Meridian Retail', tsg: '1762204418', clientId: 'mr-mgmt@1762204418.iam.example', ws: 'retail-ws', endpoint: 'https://gateway.meridian.example/v1' });
+    const EMPTY = { name: '', tsg: '', clientId: '', secret: '', scanKey: '', ws: '', endpoint: '', gwKey: '' };
+    const f = Object.assign({}, preset ? SAMPLE : EMPTY, s.f || {});
+    const presetDone = this.props.verify === 'done' || startFull > 3;
+    const touch = (o) => set(Object.assign({}, o, (s.vs === 'done' || (presetDone && s.vs == null)) ? { vs: 'idle', vsStale: true, aesFixed: false } : {}));
+    const setF = (k) => (e) => touch({ f: Object.assign({}, f, { [k]: e.target.value }) });
+    const env = s.env || 'Production';
+    const region = s.region || 'United States';
+    const scanOn = s.scanOn != null ? s.scanOn : preset;
+    const gwOn = s.gwOn != null ? s.gwOn : preset;
+    const showErr = !!s.tried;
+    const ERR = {
+      name: (v) => v.trim() ? '' : 'Enter a display name.',
+      tsg: (v) => /^\d{10}$/.test(v.trim()) ? '' : 'The TSG ID is exactly 10 digits.',
+      clientId: (v) => v.trim() ? (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim()) ? '' : 'Client IDs look like name@tsg.iam.example.') : 'Enter the client ID.',
+      secret: (v) => v.trim() ? '' : 'Paste the client secret.',
+      scanKey: (v) => scanOn && !v.trim() ? 'Paste the scan API key, or turn this off.' : '',
+      ws: (v) => gwOn && !v.trim() ? 'Enter the workspace name.' : '',
+      endpoint: (v) => gwOn ? (/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)+(:\d{2,5})?(\/[^\s?#]*)?$/i.test(v.trim()) ? '' : 'Enter an https:// URL with a hostname, like https://gateway.example.com/v1.') : '',
+      gwKey: (v) => gwOn && !v.trim() ? 'Paste the workspace API key, or turn this off.' : ''
+    };
+    const errOf = (k) => (ERR[k] ? ERR[k](f[k] || '') : '');
+    const field = (k, label, ph, hint, type) => { const err = errOf(k); const show = !!(showErr && err); return { label, value: f[k], on: setF(k), ph, hint, type: type || 'text', bd: show ? t.block : t.ctl, inv: show ? 'true' : 'false', did: 'h-' + k, hfg: show ? t.block : t.faint, msg: show ? err : hint }; };
+    const tenantFields = [field('name', 'Display name', 'Northwind Health', 'How the tenant appears in the sidebar.', 'text', true), field('tsg', 'Tenant service group (TSG) ID', '10-digit ID', 'Found in the Strata Cloud Manager tenant list.', 'text', true)];
+    const credFields = [field('clientId', 'Client ID', 'service-account@tsg.iam…', 'A service account with the roles for the products you manage.', 'text', true), field('secret', 'Client secret', 'Paste the secret', 'Saved to the macOS Keychain, never shown again.', 'password', true)];
+    const envs = ['Production', 'Staging', 'Other'].map((e) => ({ label: e, on: env === e ? 'true' : 'false', bg: env === e ? t.paper : 'transparent', sh: env === e ? 'inset 0 -2px 0 ' + t.acc : 'none', pick: () => touch({ env: e }) }));
+    const sw = (on) => ({ track: on ? t.acc : t.inset, ring: on ? t.acc : t.ctl, knobBg: on ? t.accInk : t.ctl, knob: on ? 19 : 3, onStr: on ? 'true' : 'false' });
+    const optCards = [
+      { icon: I.shield, title: 'AI Runtime Security scan API key', text: 'If you use Runtime Security: runs prompts in the Playground and your test cases.', on: scanOn, ...sw(scanOn), toggle: () => touch({ scanOn: !scanOn }), grid: '1fr', fields: [field('scanKey', 'Scan API key', 'Paste the API key', 'Saved to the Keychain. Scans use the profile you choose later.', 'password', false)] },
+      { icon: I.route, title: 'AI Gateway workspace API key', text: 'Lets the Harness answer through your own AI Gateway workspace (https only; the key is saved to the Keychain).', on: gwOn, ...sw(gwOn), toggle: () => touch({ gwOn: !gwOn }), grid: '1fr 1.4fr 1fr', fields: [field('ws', 'Workspace', 'harness-ws', '', 'text', false), field('endpoint', 'Gateway endpoint', 'https://…', '', 'text', false), field('gwKey', 'Workspace API key', 'Paste the key', '', 'password', false)] }
+    ];
+    const errKeys = Object.keys(ERR).filter((k) => errOf(k));
+    const tenantOk = errKeys.length === 0;
+
+    const PRODUCTS = [
+      { id: 'rt', name: 'AI Runtime Security', icon: I.shield, desc: 'LLM and MCP guardrails for prompts, responses and tool calls.', uses: 'Uses OAuth 2.0 · scan API key for the Playground' },
+      { id: 'rtm', name: 'AI Red Teaming', icon: I.cross, desc: 'Automated testing of application, agent and model guardrails.', uses: 'Uses OAuth 2.0 · read-only from the desktop' },
+      { id: 'sc', name: 'AI Supply Chain', icon: I.box, desc: 'Scans AI artifacts: models, Skills and codebases.', uses: 'Uses OAuth 2.0' },
+      { id: 'gw', name: 'AI Gateway', icon: I.route, desc: 'LLM, MCP and Agent Gateway, integrated with Idira through AIS.', uses: 'Uses OAuth 2.0 · workspace key for Harness inference' },
+      { id: 'ais', name: 'Agentic Identity Security', icon: I.idcard, isNew: true, desc: 'MCP tool invocation security with Idira and AI Gateway.', uses: 'Uses OAuth 2.0' },
+      { id: 'aes', name: 'Agentic Endpoint Security', icon: I.laptop, isNew: true, desc: 'Discovers and governs the AI supply chain on endpoints (formerly Koi).', uses: 'Uses OAuth 2.0' }
+    ];
+    const prods = s.prods || (preset ? { rt: true, rtm: true, gw: true, ais: true, aes: true } : { rt: true });
+    const sig = JSON.stringify([f.name, f.tsg, f.clientId, f.secret, f.scanKey, f.ws, f.endpoint, f.gwKey, env, region, scanOn, gwOn, prods]);
+    const nSel = PRODUCTS.filter((p) => prods[p.id]).length;
+    const prodCards = PRODUCTS.map((p) => { const on = !!prods[p.id]; return { ...p, isNew: !!p.isNew, on, onStr: on ? 'true' : 'false', bd: on ? t.acc : t.rule, bg: on ? t.paper : t.paper, cbd: on ? t.acc : t.ctl, cbg: on ? t.acc : 'transparent', tileBg: on ? t.accSoft : t.inset, tileFg: on ? t.acc : t.soft,
+      toggle: () => touch({ prods: Object.assign({}, prods, { [p.id]: !on }) }) }; });
+
+    const failActive = this.props.verify === 'fail' && !s.failCleared;
+    const vsRaw = failActive ? 'fail' : (s.vs || (this.props.verify === 'done' || startFull > 3 ? 'done' : 'idle'));
+    const sigStale = vsRaw === 'done' && s.vsig != null && s.vsig !== sig;
+    const vs = sigStale ? 'idle' : vsRaw;
+    const vsStale = !!s.vsStale || sigStale;
+    const aesFixed = !!s.aesFixed;
+    const DETAIL = { rt: 'Management API · read and write · 3 profiles, 4 custom topics found', rtm: 'Results readable · scans stay read-only from the desktop', sc: 'Model, Skill and codebase scans readable', gw: 'Gateway API reachable · 3 workspaces visible', ais: 'Tool policies readable · Idira directory linked' };
+    const C = [
+      { name: 'Save credentials to the Keychain', st: 'ok', detail: 'Saved to your login keychain · only Prisma AIRS can read them', time: '0.1 s' },
+      { name: 'Get an OAuth 2.0 token', st: 'ok', detail: 'Token issued · 6 scopes · renews automatically', time: '0.6 s', failDetail: 'invalid_client: the client secret was rejected. Copy it again from the service account.' },
+      { name: 'Reach tenant ' + (f.tsg || '—'), st: 'ok', detail: 'Found "' + (f.name || 'tenant') + '" · ' + env + ' · ' + region, time: '0.4 s' }
+    ].concat(PRODUCTS.filter((p) => prods[p.id]).map((p) => p.id === 'aes' && !aesFixed
+      ? { name: p.name, st: 'warn', detail: 'The service account is missing the Endpoint Security read role. Add the role and check again, or continue without AES.', time: '0.5 s', fixable: true }
+      : { name: p.name, st: 'ok', detail: p.id === 'aes' ? 'Role found · 1,206 endpoints visible' : DETAIL[p.id], time: '0.' + (3 + p.name.length % 5) + ' s' }))
+      .concat([
+        scanOn && f.scanKey ? { name: 'Scan API key', st: 'ok', detail: 'Test scan of a harmless prompt · Allowed · 184 ms', time: '0.2 s' } : { name: 'Scan API key', st: 'skip', detail: 'Skipped · no scan key. The Playground stays off until you add one.', time: '' },
+        gwOn && f.gwKey ? { name: 'AI Gateway workspace ' + (f.ws || ''), st: 'ok', detail: 'Test answer through the workspace · 1.2 s · the Harness will use it', time: '1.2 s' } : { name: 'AI Gateway workspace', st: 'skip', detail: 'Skipped · no workspace key. The Harness will ask you to choose a model later.', time: '' }
+      ]);
+    const vi = s.vi != null ? s.vi : 0;
+    const look = { ok: [t.okBg, t.ok, I.check], warn: [t.flagBg, t.flag, I.alert], fail: [t.blockBg, t.block, I.x], skip: [t.inset, t.faint, I.dash], run: [t.accSoft, t.acc, I.clock], wait: [t.inset, t.faint, I.dot] };
+    const checks = C.map((c, i) => {
+      let st = c.st, detail = c.detail, time = c.time;
+      if (vs === 'idle') { st = 'wait'; detail = 'Not checked yet'; time = ''; }
+      else if (vs === 'running') { if (i === vi) { st = 'run'; detail = 'Checking…'; time = ''; } else if (i > vi) { st = 'wait'; detail = 'Waiting'; time = ''; } }
+      else if (vs === 'fail') { if (i === 1) { st = 'fail'; detail = c.failDetail; time = '0.7 s'; } else if (i > 1) { st = 'skip'; detail = 'Not checked · needs a token first'; time = ''; } }
+      const [bg, fg, icon] = look[st];
+      return { name: c.name, detail, time, bg, fg, icon, dfg: st === 'fail' ? t.block : st === 'warn' ? t.flag : t.soft, top: i === 0 ? 'transparent' : t.rule, fixable: !!c.fixable && vs === 'done' };
+    });
+    const nWarn = vs === 'done' ? C.filter((c) => c.st === 'warn').length : 0;
+    const stopRun = () => { if (this._tm) { clearInterval(this._tm); this._tm = null; } };
+    const run = () => { const n = C.length; let i = 0; stopRun(); set({ vs: 'running', vi: 0, vsStale: false, vsig: sig, failCleared: true });
+      this._tm = setInterval(() => { if ((this.state || {}).vs !== 'running') return stopRun(); i += 1; if (i >= n) { stopRun(); this.setState({ vs: 'done', vi: n }); } else this.setState({ vi: i }); }, 380); };
+
+    const PACKS = [
+      ['rtStarter', 'Runtime starter pack', 24, 'rt', I.shield, 'Prompt injection, sensitive data, toxic content and harmless controls.'],
+      ['topics', 'Custom topic examples', 8, 'rt', I.shield, 'Should-match and should-not-match prompts for common custom topics.'],
+      ['rtmSeeds', 'Red Teaming seeds', 6, 'rtm', I.cross, 'Attack specifications to hand to AI Red Teaming. Not run from the desktop.'],
+      ['scSamples', 'Supply chain specimens', 5, 'sc', I.box, 'Model and Skill samples with known findings.'],
+      ['gwRoutes', 'Gateway route checks', 4, 'gw', I.route, 'Budget, fallback and guardrail coverage specifications.'],
+      ['aisTools', 'MCP tool-abuse cases', 7, 'ais', I.idcard, 'Tool calls that AIS policies should deny or ask about.'],
+      ['aesDisc', 'Endpoint discovery checks', 4, 'aes', I.laptop, 'Unsanctioned MCP servers and extensions AES should find.']
+    ];
+    const pName = { rt: 'AI Runtime Security', rtm: 'AI Red Teaming', sc: 'AI Supply Chain', gw: 'AI Gateway', ais: 'AIS', aes: 'AES' };
+    const packSel = s.packs || {};
+    const packOn = (id, pid) => !!prods[pid] && (packSel[id] != null ? packSel[id] : true);
+    const packs = PACKS.map(([id, name, n, pid, icon, desc], i) => { const avail = !!prods[pid]; const on = packOn(id, pid); return { name, product: pName[pid], icon, desc, on, onStr: on ? 'true' : 'false', offStr: avail ? 'false' : 'true', op: avail ? '1' : '0.45', top: i === 0 ? 'transparent' : t.rule,
+      countTxt: avail ? n + ' cases' : 'Product not selected', cbd: on ? t.acc : t.ctl, cbg: on ? t.acc : 'transparent', toggle: () => { if (avail) set({ packs: Object.assign({}, packSel, { [id]: !on }) }); } }; });
+    const nCases = PACKS.filter(([id, , , pid]) => packOn(id, pid)).reduce((a, p) => a + p[2], 0);
+    const nPacks = PACKS.filter(([id, , , pid]) => packOn(id, pid)).length;
+    const casesState = s.casesState || (startFull > 4 ? 'loaded' : null);
+
+    const acadState = s.acad || (startFull > 5 ? 'created' : null);
+    const af = Object.assign({ email: 'dana.ruiz@northwind.example', dname: 'Dana Ruiz' }, s.af || {});
+    const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(af.email.trim());
+    const emailBad = !!af.email.trim() && !emailOk;
+    const acadFields = [{ label: 'Email', value: af.email, on: (e) => set({ af: Object.assign({}, af, { email: e.target.value }) }), ph: 'you@company.com', hint: 'We send a sign-in link. No password to remember.', type: 'email', bd: emailBad ? t.block : t.ctl, inv: emailBad ? 'true' : 'false', did: 'h-email', hfg: emailBad ? t.block : t.faint, msg: emailBad ? 'Enter a full email address, like you@company.com.' : 'We send a sign-in link. No password to remember.' },
+      { label: 'Name on certificates', value: af.dname, on: (e) => set({ af: Object.assign({}, af, { dname: e.target.value }) }), ph: 'Your name', hint: '', type: 'text', bd: t.ctl, inv: 'false', did: 'h-dname', hfg: t.faint, msg: 'Shown on certificates you earn.' }];
+    const streaks = s.streaks != null ? s.streaks : true;
+    const remind = s.remind != null ? s.remind : false;
+    const acadToggles = [{ title: 'Streaks and XP', text: 'Only shown inside the Academy.', ...sw(streaks), toggle: () => set({ streaks: !streaks }) }, { title: 'Weekly reminder', text: 'A Monday notification with your next lesson.', ...sw(remind), toggle: () => set({ remind: !remind }) }];
+    const PATHS = { rt: ['AI Runtime Security fundamentals', '8 units · about 90 minutes'], rtm: ['Red teaming your AI apps', '8 units · about 2 hours'], sc: ['AI supply chain hygiene', '6 units · about 70 minutes'], gw: ['Running AI Gateway', '7 units · about 80 minutes'], ais: ['Securing agents with AIS', '5 units · about 60 minutes'], aes: ['Endpoint AI governance', '5 units · about 50 minutes'] };
+    const pathIds = PRODUCTS.filter((p) => prods[p.id]).map((p) => p.id);
+    const pathSel = pathIds.indexOf(s.path) >= 0 ? s.path : pathIds[0];
+    const acadPaths = pathIds.map((id, i) => { const on = id === pathSel; return { name: PATHS[id][0], meta: PATHS[id][1], rec: i === 0, onStr: on ? 'true' : 'false', bd: on ? t.acc : t.rule, bg: on ? t.accSoft : 'transparent', ring: on ? '5px solid ' + t.acc : '1.5px solid ' + t.faint, pick: () => set({ path: id }) }; });
+
+    const at = (k) => ORDER.indexOf(k);
+    const goStep = (k) => () => set({ idx: at(k) });
+    const afterCases = isAdd ? 'done' : 'academy';
+    const close = (name) => { if (typeof this.props.onClose === 'function') this.props.onClose(name); else set({ idx: 0 }); };
+    const skipped = { cases: casesState === 'skipped', academy: acadState === 'skipped' };
+    const LABELS = { welcome: 'Welcome', tenant: 'Tenant and credentials', products: 'Products', verify: 'Verify', cases: 'Test cases', academy: 'Academy account', done: 'Done' };
+    const steps = ORDER.map((k, i) => { const done = i < idx && !skipped[k]; const cur = i === idx; return { n: i + 1, label: LABELS[k], opt: (k === 'cases' || k === 'academy') && !skipped[k], skipped: !!skipped[k] && i < idx, done, notDone: !done, cur: cur ? 'step' : 'false',
+      bg: cur ? t.paper : 'transparent', bd: done ? t.ok : cur ? t.acc : t.rule, cbg: done ? t.ok : 'transparent', cfg: done ? t.accInk : cur ? t.acc : t.faint, fg: cur || done ? t.ink : t.faint, w: cur ? '700' : '500' }; });
+
+    const P = {
+      welcome: { label: 'Set up a tenant', ok: true, go: goStep('tenant') },
+      tenant: { label: 'Continue', ok: true, go: () => { if (tenantOk) set({ idx: at('products'), tried: false }); else set({ tried: true }); }, hint: !tenantOk ? (showErr ? errKeys.length + (errKeys.length === 1 ? ' field needs' : ' fields need') + ' attention. Each one says what to fix.' : 'Display name, TSG ID, client ID and secret are required.') : '' },
+      products: { label: 'Continue', ok: nSel > 0, go: goStep('verify'), hint: nSel ? nSel + ' selected' : 'Pick at least one product.' },
+      verify: vs === 'idle' ? { label: vsStale ? 'Run checks again' : 'Run checks', ok: true, go: run, hint: vsStale ? 'Setup changed since the last check, so the results were cleared.' : '' } : vs === 'running' ? { label: 'Checking…', ok: false, go: () => {} } : vs === 'fail' ? { label: 'Edit credentials', ok: true, go: () => set({ idx: at('tenant'), failCleared: true, vs: 'idle' }) } : { label: 'Continue', ok: true, go: goStep('cases'), hint: nWarn ? nWarn + ' warning · you can fix it later in Administration' : 'All checks passed' },
+      cases: { label: nCases ? 'Load ' + nCases + ' cases' : 'Continue', ok: true, go: () => set({ idx: at(afterCases), casesState: nCases ? 'loaded' : 'skipped' }) },
+      academy: { label: 'Create account', ok: emailOk, go: () => set({ idx: at('done'), acad: 'created' }), hint: emailBad ? 'Enter a valid email address to continue.' : '' },
+      done: { label: isAdd ? 'Done' : 'Open Prisma AIRS', ok: true, go: isAdd ? () => close({ name: f.name, env, ws: gwOn ? f.ws : '', tsg: f.tsg, cred: (f.clientId || '').split('@')[0], products: PRODUCTS.filter((p) => prods[p.id]).map((p) => p.id), packs: casesState === 'loaded' ? PACKS.filter(([id, , , pid]) => packOn(id, pid)).map(([id, name, n, pid]) => ({ id, name, n, pid })) : [], scan: !!(scanOn && f.scanKey), gw: !!(gwOn && f.gwKey), warnings: prods.aes && !aesFixed ? { aes: 'Missing Endpoint Security read role' } : {} }) : () => { if (s.opened) return; set({ opened: 'opening' }); setTimeout(() => this.setState({ opened: 'done' }), 900); } }
+    };
+    const pr = P[step];
+    const selNames = PRODUCTS.filter((p) => prods[p.id]).map((p) => p.name.replace('Agentic Identity Security', 'AIS').replace('Agentic Endpoint Security', 'AES'));
+    const sumRow = (k, v, st, editIdx, i) => { const [bg, fg, icon] = look[st]; return { k, v, bg, fg, icon, top: i === 0 ? 'transparent' : t.rule, edit: goStep(editIdx) }; };
+    const summary = [
+      sumRow('Tenant', f.name + ' · ' + env + ' · TSG ' + f.tsg + (gwOn && f.ws ? ' · Gateway workspace ' + f.ws : ''), 'ok', 'tenant', 0),
+      sumRow('Products', selNames.join(', '), 'ok', 'products', 1),
+      sumRow('Checks', aesFixed || !prods.aes ? 'All passed' : 'Passed · 1 warning: AES needs a read role', aesFixed || !prods.aes ? 'ok' : 'warn', 'verify', 2),
+      sumRow('Test cases', casesState === 'skipped' ? 'Skipped · add packs later in Test Cases' : nCases + ' cases in ' + nPacks + ' packs', casesState === 'skipped' ? 'skip' : 'ok', 'cases', 3),
+      sumRow('Academy', acadState === 'skipped' ? 'Skipped · join any time from Academy' : 'Account for ' + af.email + ' · starting with ' + (PATHS[pathSel] || PATHS.rt)[0], acadState === 'skipped' ? 'skip' : 'ok', 'academy', 4)
+    ].filter((r) => !(isAdd && r.k === 'Academy'));
+    const nextUp = [
+      { icon: I.home, title: 'Home', text: 'The first read of each product arrives in about a minute. Open the API Client any time to see the request behind a figure.' },
+      { icon: I.inbox, title: 'Inbox', text: 'Anything that needs you, from every product, in one list.' },
+      { icon: I.bot, title: 'Ask the Harness', text: gwOn ? 'Answers through ' + (f.ws || 'your workspace') + '. Tools always ask first.' : 'Choose a model the first time you ask.' }
+    ];
+    const welcomeCards = [
+      { icon: I.key, title: 'Built on the public APIs', text: 'Six products, one place: Runtime Security, Red Teaming, Supply Chain, Gateway, AIS and AES, all through the APIs you can call from your own code.' },
+      { icon: I.bot, title: 'See the calls as you go', text: 'The API Client shows the exact request behind each screen. The Harness investigates with tools, and every tool call waits for your OK.' },
+      { icon: I.cap, title: 'Learn by doing', text: 'Academy lessons and starter test cases run against your own tenant, so what you learn is what you can build.' }
+    ];
+
+    return {
+      t, I, theme, steps, f, envs, tenantFields, credFields, optCards, prodCards, checks, packs, acadFields, acadToggles, acadPaths, summary, nextUp, welcomeCards,
+      isWelcome: step === 'welcome', isTenant: step === 'tenant', isProducts: step === 'products', isVerify: step === 'verify', isCases: step === 'cases', isAcademy: step === 'academy', isDone: step === 'done',
+      toggleTheme: () => set({ theme: theme === 'dark' ? 'light' : 'dark' }), themeName: theme === 'dark' ? 'Light' : 'Dark',
+      fillSample: () => touch({ f: Object.assign({}, SAMPLE), scanOn: true, gwOn: true, tried: false }),
+      rtNoScan: !!prods.rt && !(scanOn && f.scanKey), goTenantScan: () => touch({ idx: at('tenant'), scanOn: true }),
+      nameField: tenantFields[0], tsgFields: tenantFields.slice(1),
+      vBanner: vs === 'done' || vs === 'fail', isFail: vs === 'fail',
+      vbBg: vs === 'fail' ? t.blockBg : nWarn ? t.flagBg : t.okBg, vbFg: vs === 'fail' ? t.block : nWarn ? t.flag : t.ok, vbIcon: vs === 'fail' ? I.x : nWarn ? I.alert : I.check,
+      vbTitle: vs === 'fail' ? 'The connection did not work' : nWarn ? 'Connected, with 1 warning' : 'Everything checks out',
+      vbText: vs === 'fail' ? 'Nothing was saved to ' + (f.name || 'the tenant') + '. Fix the credentials and run the checks again.' : nWarn ? 'Required checks passed. AES needs one more role; you can continue now and fix it later.' : 'Credentials are saved and every product you picked is reachable.',
+      editCreds: () => set({ idx: at('tenant'), failCleared: true, vs: 'idle' }), recheckAes: () => set({ aesFixed: true }), dropAes: () => set({ prods: Object.assign({}, prods, { aes: false }) }),
+      caseSummary: nCases ? nCases + ' cases from ' + nPacks + ' packs will be loaded into ' + (f.name || 'this tenant') + '.' : 'No packs selected. You can load packs later from Test Cases.',
+      showBack: idx > 0 && step !== 'done', back: () => { stopRun(); set({ idx: idx - 1, vs: step === 'verify' && vs === 'running' ? 'idle' : s.vs }); },
+      region, onRegion: (e) => touch({ region: e.target.value }), helpOpen: !!s.help, helpStr: s.help ? 'true' : 'false', toggleHelp: () => set({ help: !s.help }),
+      canSkip: step === 'cases' || step === 'academy', skip: () => set(step === 'cases' ? { idx: at(afterCases), casesState: 'skipped' } : { idx: at('done'), acad: 'skipped' }),
+      primary: pr.ok ? pr.go : () => {}, primaryDisabled: !pr.ok, primaryLabel: step === 'done' && s.opened === 'opening' ? 'Opening…' : step === 'done' && s.opened === 'done' ? 'Prisma AIRS is open' : pr.label,
+      openedDone: step === 'done' && s.opened === 'done', primaryBg: pr.ok ? t.acc : t.inset, primaryFg: pr.ok ? t.accInk : t.faint,
+      hint: pr.hint || '', hintFg: step === 'tenant' && showErr && !tenantOk ? t.block : t.faint, hintRole: step === 'tenant' && showErr && !tenantOk ? 'alert' : 'status',
+      progress: step === 'welcome' || step === 'done' ? '' : 'Step ' + (ORDER.filter((k) => k !== 'welcome' && k !== 'done').indexOf(step) + 1) + ' of ' + ORDER.filter((k) => k !== 'welcome' && k !== 'done').length,
+      isAdd, cancel: () => close(), W: isAdd ? 1160 : 1440, H: isAdd ? 780 : 900, railW: isAdd ? 244 : 320, railPad: isAdd ? '16px 14px 18px' : '16px 22px 18px', showLights: !isAdd, brandTop: isAdd ? 8 : 0,
+      railTitle: isAdd ? 'Add a tenant' : 'Prisma AIRS', railSub: isAdd ? 'About 3 minutes' : 'Setup · about 5 minutes', railCtx: (f.name || '').trim() && step !== 'welcome' ? f.name.trim() + ' · ' + env + (f.tsg ? ' · TSG ' + f.tsg : '') : '', mainPad: isAdd ? '34px 44px 24px' : '32px 44px 28px', footPad: 44
+    };
+  }
+}
+</script>
+</body>
+</html>

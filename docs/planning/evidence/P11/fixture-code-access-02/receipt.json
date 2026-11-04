@@ -1,0 +1,34 @@
+{
+  "schema": "airs-desktop/p11-fixture-code-access/1",
+  "started_utc": "2026-11-04T18:42:15.943153+00:00",
+  "finished_utc": "2026-11-04T18:42:15.983477+00:00",
+  "host": "worf-vm",
+  "argv": [
+    "/Users/admin/.agent-workflows/airs-p11-fixture-acl-20261104/append-fixture-app-acl-v02",
+    "--apply"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+  "exit_code": 1,
+  "source_sha256": "aa2960955dd8e3e58f73597932df55d8f14c043252a013e10415c1ae646e6f5b",
+  "binary_sha256": "9d0d71c94536e43fc0fb640d1b1d669f9ab9aa4417a81be04092e37fa942cf0a",
+  "scope": "one synthetic fixture API profile encryption-key item; append exact rebuilt ad-hoc app to decrypt ACL",
+  "database": "/Users/admin/Library/Application Support/io.cdot.airs-desktop.fixture/fixture-credentials.keychain-db",
+  "old_cdhash": "3950c3d4b7e787d94930e3aac9bcd191cf70dd02",
+  "new_cdhash": "a579105e69b36d05fc8e5f66760688e60b8bb4c2",
+  "values_read": false,
+  "values_modified": false,
+  "partition_list_modified": false,
+  "item_recreated": false,
+  "owner_keychains_accessed": false,
+  "prepare": {
+    "path": "docs/planning/evidence/P11/native-build-05-vm/native-prepare.json",
+    "sha256": "cebe0a9a56aa8902a9e39aadcf4b2f0ca901d4f6c5e6b02e381d9f7c061ee6de"
+  },
+  "executable_sha256": "ba72d82de279be8d311c02125597ae0d5d6f7f5f0f2bdcbc2d951dc3d1e42914",
+  "bundle_sha256": "f558aa269e359e9617191ecd47b8eb63016350086e618c36c4fdfc79d45bd535",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "12cec8cf2333d92a466901f0ede6153757d304ecc4d04162ca42885bb2054366",
+  "validation": "Executable signature validated with CheckAllArchitectures|DoNotValidateResources; exact prepared executable and full bundle hashes independently verified. Fixture bundle lacks resource envelope; no bundle bytes changed.",
+  "prior_refused_attempt": "docs/planning/evidence/P11/fixture-code-access-01/receipt.json",
+  "rationale": "recovery-native-01 stopped before assertions when new ad-hoc app did not match preserved synthetic encryption-key ACL. Access metadata transition only; no product correction or evidence replay."
+}

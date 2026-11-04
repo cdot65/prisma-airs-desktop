@@ -94,10 +94,26 @@ export interface Toast {
  * reload and nothing here is authority: every durable fact is observed from
  * the Rust snapshot.
  */
+/** Unresolved preferred-collection recovery survives page navigation, but never a retired native scope or collection choice. */
+interface WorkbenchRecovery {
+    tenant: string | null
+    context: string | null
+    collection: string | null
+    generation: number
+    pending: boolean
+    failed: boolean
+}
+const initialWorkbenchRecovery = (): WorkbenchRecovery => ({ tenant: null, context: null, collection: null, generation: 0, pending: false, failed: false })
+
 interface ShellStore {
     /** The scope the shell shows now (set from each snapshot before it renders): what a notification must belong to. */
     scope: { tenant: string | null; context: string | null; switchReview: string | null }
     setScope(tenant: string | null, context: string | null, switchReview?: string | null): void
+    workbenchRecovery: WorkbenchRecovery
+    observeWorkbench(tenant: string | null, context: string | null, collection: string | null): void
+    beginWorkbenchRestore(tenant: string | null, context: string | null): number | null
+    finishWorkbenchRestore(tenant: string | null, context: string | null, generation: number, failed: boolean): void
+    resolveWorkbenchRestore(tenant: string | null, context: string | null, generation: number): void
     paletteOpen: boolean
     switcherOpen: boolean
     /** The rail's Administration children shown or hidden (C35; the prototype's `adminNav`). */
@@ -170,6 +186,29 @@ export const useShellStore = create<ShellStore>((set, get) => ({
             unconfirmed: s.unconfirmed.filter((u) => unconfirmedInContext(u, context) && (!switchResolution(u.intent) || switchResolution(u.intent)?.review === switchReview)),
             arrival: s.arrival && s.arrival.tenant !== tenant ? null : s.arrival,
         })),
+    workbenchRecovery: initialWorkbenchRecovery(),
+    observeWorkbench: (tenant, context, collection) => set((s) => {
+        const old = s.workbenchRecovery
+        if (old.tenant === tenant && old.context === context && old.collection === collection) return s
+        return { workbenchRecovery: { tenant, context, collection, generation: old.generation + 1, pending: false, failed: false } }
+    }),
+    beginWorkbenchRestore: (tenant, context) => {
+        const old = get().workbenchRecovery
+        if (old.tenant !== tenant || old.context !== context || old.collection !== null || old.pending) return null
+        const generation = old.generation + 1
+        set({ workbenchRecovery: { ...old, generation, pending: true } })
+        return generation
+    },
+    finishWorkbenchRestore: (tenant, context, generation, failed) => set((s) => {
+        const old = s.workbenchRecovery
+        if (old.tenant !== tenant || old.context !== context || old.generation !== generation || !old.pending) return s
+        return { workbenchRecovery: { ...old, pending: false, failed } }
+    }),
+    resolveWorkbenchRestore: (tenant, context, generation) => set((s) => {
+        const old = s.workbenchRecovery
+        if (old.tenant !== tenant || old.context !== context || old.generation !== generation) return s
+        return { workbenchRecovery: { ...old, generation: old.generation + 1, pending: false, failed: false } }
+    }),
     paletteOpen: false,
     switcherOpen: false,
     adminNavOpen: true,
@@ -236,5 +275,5 @@ export const useShellStore = create<ShellStore>((set, get) => ({
 
 /** Test seam: forget everything (each test starts from an empty store). */
 export function resetShellStore() {
-    useShellStore.setState({ scope: { tenant: null, context: null, switchReview: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
+    useShellStore.setState({ workbenchRecovery: initialWorkbenchRecovery(), scope: { tenant: null, context: null, switchReview: null }, paletteOpen: false, switcherOpen: false, adminNavOpen: true, toasts: [], modals: [], unconfirmed: [], toastMs: 6000, inboxSelection: {}, arrival: null, harnessDrafts: {}, harnessFresh: {}, harnessUnsent: {}, harnessSent: {}, playground: null })
 }

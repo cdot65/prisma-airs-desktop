@@ -103,6 +103,7 @@ export function App({ client }: { client: DesktopClient }) {
                     // The shell's scope follows the snapshot before it renders: a
                     // notification for another tenant or context is never surfaced.
                     useShellStore.getState().setScope(next.active?.tenant ?? null, next.active?.context ?? null, next.switchBlocked?.review ?? null)
+                    useShellStore.getState().observeWorkbench(next.active?.tenant ?? null, next.active?.context ?? null, next.workbench.collection?.scope ?? null)
                     setSnapshot(next)
                 },
                 onMenu: (command) => onMenu.current(command),

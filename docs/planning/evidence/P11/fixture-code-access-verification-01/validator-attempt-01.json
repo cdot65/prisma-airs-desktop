@@ -1,0 +1,12 @@
+{
+  "schema": "airs-p11-saved-acl-validator-attempt/1",
+  "status": "failed",
+  "scope": "saved artifact only; no Keychain or UI calls",
+  "source": "validate_metadata_v01.py",
+  "source_sha256": "61bfaa1324275347bedcf06616e40b1a14f2a9fde53abcbc5e93a7a75fd1f260",
+  "failure": "original helper outcome was changed",
+  "cause": "validator resolved relative receipt path from docs rather than repository root; original helper receipt itself was not changed",
+  "correction": "use HERE.parents[4] as exact repository root",
+  "metadata_checks_before_this_path_guard": "passed",
+  "receipt_or_raw_metadata_overwritten": false
+}

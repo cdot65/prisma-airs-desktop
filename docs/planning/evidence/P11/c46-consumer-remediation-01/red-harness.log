@@ -1,0 +1,47 @@
+   Compiling tokio v1.53.3
+   Compiling tokio-util v0.7.20
+   Compiling async-compression v0.4.51
+   Compiling tokio-rustls v0.26.6
+   Compiling tower v0.5.3
+   Compiling h2 v0.4.20
+   Compiling tower-http v0.6.11
+   Compiling scm-sdk v0.2.4
+   Compiling hyper v1.12.0
+   Compiling hyper-util v0.1.21
+   Compiling hyper-rustls v0.27.10
+   Compiling reqwest v0.13.5
+   Compiling desktop-core v1.0.0 (/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/crates/desktop-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 58.23s
+     Running tests/harness_tools/main.rs (/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/debug/deps/harness_tools-1cfe990d1c656c6d)
+
+running 3 tests
+
+thread 'completing_a_tenant_setup_is_the_guarded_switch_path' (4863605) panicked at crates/desktop-core/tests/harness_tools/main.rs:1887:5:
+assertion `left == right` failed
+  left: Err(InvalidInput)
+ right: Err(DecisionPending)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test completing_a_tenant_setup_is_the_guarded_switch_path ... FAILED
+
+thread 'setup_archive_resolution_save_failure_preserves_pending_work' (4863606) panicked at crates/desktop-core/tests/harness_tools/main.rs:1076:5:
+assertion `left == right` failed
+  left: Err(InvalidInput)
+ right: Err(DecisionPending)
+test setup_archive_resolution_save_failure_preserves_pending_work ... FAILED
+
+thread 'setup_discard_resolution_save_failure_preserves_pending_work' (4863607) panicked at crates/desktop-core/tests/harness_tools/main.rs:1076:5:
+assertion `left == right` failed
+  left: Err(InvalidInput)
+ right: Err(DecisionPending)
+test setup_discard_resolution_save_failure_preserves_pending_work ... FAILED
+
+failures:
+
+failures:
+    completing_a_tenant_setup_is_the_guarded_switch_path
+    setup_archive_resolution_save_failure_preserves_pending_work
+    setup_discard_resolution_save_failure_preserves_pending_work
+
+test result: FAILED. 0 passed; 3 failed; 0 ignored; 0 measured; 19 filtered out; finished in 2.74s
+
+error: test failed, to rerun pass `-p desktop-core --test harness_tools`
