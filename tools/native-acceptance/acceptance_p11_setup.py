@@ -23,7 +23,7 @@ def _visible_identity_fields(ctx, tree):
     width, height = window['size']
     for label in ('Display name', 'TSG ID'):
         field = ctx.app.node(tree, 'AXTextField', label)
-        if (not field or field.get('label') != label or field.get('enabled') is False
+        if (not field or not str(field.get('label') or '').startswith(label) or field.get('enabled') is False
                 or not field.get('pos') or not field.get('size')):
             return False
         px, py = field['pos']
@@ -55,7 +55,7 @@ def _type_ready_identity(ctx, label, value, deadline, evidence):
         tree = ctx.app.tree()
         focused = ctx.app.focused(tree) or {}
         if not (_visible_identity_fields(ctx, tree) and focused.get('role') == 'AXTextField'
-                and focused.get('label') == label):
+                and str(focused.get('label') or '').startswith(label)):
             time.sleep(.15)
             continue
         ctx.require(time.monotonic() < deadline, 'draft identity readiness exceeded15seconds before input')
