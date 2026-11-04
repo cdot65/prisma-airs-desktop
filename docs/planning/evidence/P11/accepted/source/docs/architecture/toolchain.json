@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "description": "Build-only toolchain selected for controller commands. Values beginning with $HOME expand against the preserved real HOME; {repo} expands to the checkout root.",
+  "path_dirs": [
+    "{repo}/.tools/bin",
+    "$HOME/.cargo/bin",
+    "$HOME/.nvm/versions/node/v24.21.0/bin",
+    "/usr/bin",
+    "/bin",
+    "/usr/sbin",
+    "/sbin"
+  ],
+  "tools": [
+    {
+      "name": "rustc",
+      "argv": [
+        "rustc",
+        "--version"
+      ],
+      "expect_prefix": "rustc 1.99.0 "
+    },
+    {
+      "name": "cargo",
+      "argv": [
+        "cargo",
+        "--version"
+      ],
+      "expect_prefix": "cargo 1.99.0 "
+    },
+    {
+      "name": "node",
+      "argv": [
+        "node",
+        "--version"
+      ],
+      "expect_prefix": "v24.21.0"
+    },
+    {
+      "name": "pnpm",
+      "argv": [
+        "pnpm",
+        "--version"
+      ],
+      "expect_prefix": "10.6.5"
+    }
+  ],
+  "declared_env": {
+    "RUSTUP_TOOLCHAIN": "1.99.0",
+    "CI": "1",
+    "SOURCEMAPS": "0",
+    "VITE_BASE_PATH": "/",
+    "VITE_API_PROXY_TARGET": "http://127.0.0.1:9",
+    "CARGO_TERM_COLOR": "never",
+    "NO_COLOR": "1",
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "COREPACK_ENABLE_AUTO_PIN": "0"
+  },
+  "preserve_unchanged": [
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "TMPDIR",
+    "LANG",
+    "LC_ALL"
+  ],
+  "reject_inherited": [
+    "RUSTFLAGS",
+    "RUSTDOCFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "RUSTC_WRAPPER",
+    "RUSTC_WORKSPACE_WRAPPER",
+    "CARGO_BUILD_TARGET",
+    "CARGO_TARGET_DIR",
+    "NODE_OPTIONS",
+    "NODE_PATH",
+    "TAURI_CONFIG",
+    "TAURI_SIGNING_PRIVATE_KEY"
+  ],
+  "reject_inherited_prefixes": [
+    "npm_config_",
+    "VITE_",
+    "PNPM_"
+  ]
+}

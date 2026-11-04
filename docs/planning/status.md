@@ -1,3 +1,40 @@
+# Latest accepted refinement — 2026-11-04
+
+P11's 17-item owner refinement is complete. Actual independent C46 attempt-02,
+C47 attempt-02, C48 attempt-03, C49 attempt-02 and P11 attempt-01 each scored
+**9/9/9/9/9**, with empty required fixes, blockers and evidence gaps and passing
+post-review audits. C46/C47/C49 retain their original qualification-03 bindings
+under the explicit unaffected-review carry; C48 and P11 reviewed the final
+qualification-04 candidate. No further development chunk or phase review remains
+for this refinement.
+
+The accepted archive and its verification are recorded in
+[the completion proof](evidence/P11/completion-proof.json) and
+[promotion prerequisites](evidence/P11/accepted/promotion-prerequisites.json).
+Qualification-04 covers all 41 requirements: 35 unaffected results retained at
+their original bindings and six selected executions. Historical failures and
+reviews remain unchanged. The controller's historical completion flag remains
+false; this is the audited manual standing, not a regenerated controller ledger.
+
+The next work is normal integration into authoritative Forgejo main, one
+production macOS ARM64 build, signing/notarization, installed preview and the next
+prerelease. Development and native checks remain in Worf's VM; the approved
+Jadzia runner builds the production app. Signing uses the separately authorized
+signing-only workflow. These release actions have not yet completed for P11.
+The prior published v1.0.0-rc.1 remains unchanged.
+
+C26/P08 stable live acceptance remains deferred by the owner. Linux native
+qualification and AppImage delivery are separate unfinished work; their common
+refinement changes are preserved on refinement/20261104-linux. Epic #1 is a
+separate future workstream. P09, C45/P10, C30/C41 owner decisions and the exhausted
+L19 scope remain unchanged. The real Gateway workspace warning and model-source
+permissions have not been re-probed against live services.
+
+The dated entries below are retained historical checkpoints; they do not reopen
+completed P09, C45/P10 or P11 reviews.
+
+---
+
 Current acceptance update — 2026-11-03: P09attempt02, C45attempt03 and P10attempt01 each passed actual independent9/9/9/9/9 with empty requiredfixes/blockers/evidencegaps and audited fullgates. C45 is integrated on main; exact C45/P10 reviewed source and completion proof are archived under evidence/P10/. Prior C45attempt01/02 scores, D034acceptances, all findings and original qualification records remain unchanged. One exact application/native baseline plus affected synthetic/Python proof checks satisfied150coverage items; merge did not trigger repeats. C30/C41 owner standing unchanged; C31/C32 actual full9 preserved. C26/P08 remains open/manualfallback. No product calls, publication, signing, notarization or installation performed.
 
 # Current state
