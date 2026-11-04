@@ -387,25 +387,23 @@ impl State {
                 .as_ref()
                 .is_some_and(|b| b.workspace.is_none())
             && missing_workspace(&warning.reason)
+            && let Some(check) = &mut warning.recheck
         {
-            if let Some(check) = &mut warning.recheck {
-                check.reason.push_str(" The original check found no selected workspace; the current selection's full setup prerequisites were checked.");
-            }
+            check.reason.push_str(" The original check found no selected workspace; the current selection's full setup prerequisites were checked.");
         }
         if passed && equivalent {
             warning.resolved_secs = Some(at);
         }
-        if self.save_with(&before).is_err() {
-            if let Some(warning) = self
+        if self.save_with(&before).is_err()
+            && let Some(warning) = self
                 .data
                 .tenants
                 .iter_mut()
                 .find(|t| &t.profile.id == tenant)
                 .and_then(|t| t.setup_warnings.iter_mut().find(|w| w.id == id))
-            {
-                warning.recheck = Some(SetupWarningRecheck { checked_secs: at, state: VerifyState::Fail,
+        {
+            warning.recheck = Some(SetupWarningRecheck { checked_secs: at, state: VerifyState::Fail,
                     reason: "The recheck result could not be saved; the original warning remains active. Try again when local storage is available.".to_owned(), equivalent: false, basis: SetupWarningBasis::Unknown });
-            }
         }
     }
 
