@@ -11,6 +11,7 @@ import platform
 import stat
 import subprocess
 import sys
+import argparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'p10'))
 from candidate import bundle_hash, helper_closure, source_inventory, file_identity, digest
@@ -326,5 +327,18 @@ def make(root, check, tests, fingerprint, prepare, native, execution, build, out
 
 
 if __name__ == '__main__':
-    require(len(sys.argv) == 2, 'usage: proof.py SHARED_QUALIFICATION.json')
-    print(json.dumps(verify(Path.cwd().resolve(), Path(sys.argv[1]).resolve()), indent=2))
+    parser = argparse.ArgumentParser(description=__doc__)
+    actions = parser.add_subparsers(dest='action', required=True)
+    inspect = actions.add_parser('verify')
+    inspect.add_argument('record', type=Path)
+    create = actions.add_parser('make')
+    for flag in ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out'):
+        create.add_argument('--' + flag, type=Path, required=True)
+    args = parser.parse_args()
+    root = Path.cwd().resolve()
+    if args.action == 'verify':
+        result = verify(root, args.record.resolve())
+    else:
+        result = make(root, *[getattr(args, key).resolve() for key in
+                             ('check', 'tests', 'fingerprint', 'prepare', 'native', 'execution', 'build', 'out')])
+    print(json.dumps(result, indent=2))
