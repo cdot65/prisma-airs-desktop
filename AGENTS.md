@@ -12,6 +12,26 @@ P09/P10 outcomes, sealed evidence and the published v1.0.0-rc.1 stay unchanged.
 The RC remains a prerelease; full installed live acceptance is deferred by the
 owner. No new live API calls are authorized by this refinement task.
 
+## Execution location — owner correction, 2026-11-04
+
+Automated development, builds, focused checks and native UI tests run inside the
+dedicated Worf macOS VM, reachable as `admin@worf-vm` (formerly `airs-vm`). The
+current isolated checkout is
+`/Users/cdot/development/redtail/p09-queue/refinement-20261104/core`, on
+`refinement/20261104-vm`. Preserve the other VM checkouts and their user changes.
+
+Kirk is for the owner's live acceptance. Do not drive its desktop or start native
+development/test launchers there unless the owner explicitly changes this rule.
+The former Kirk P11 launcher and supervisor are retired. SSH/SCM transport through
+Kirk, when needed for the VM's private Git service route, performs no application
+builds, tests or UI actions.
+
+Use the VM's pinned tools and its granted `agent-desktop` for owned-window
+activation. Bind every native action to the exact fixture bundle, PID and process
+lifetime. Existing source checks executed on Kirk before this correction retain
+their actual original provenance; do not relabel them VM runs or replay unrelated
+suites merely to refresh their source fingerprint.
+
 ## Historical baseline
 
 P09 attempt-02 passed actual independent9/9/9/9/9 and its audit on2026-11-02.
