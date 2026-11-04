@@ -30,7 +30,7 @@ fn reply(status: u16, value: Value) -> Reply {
     if status == 0 {
         return Reply::Hang;
     }
-    let body = serde_json::to_vec(&value).unwrap();
+    let body = serde_json::to_vec(&value).expect("serialize fixture response");
     Reply::Raw {
         head: format!(
             "HTTP/1.1 {status} Status\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close",
@@ -96,16 +96,26 @@ struct Desk {
 }
 impl Desk {
     fn snap(&self) -> ShellSnapshot {
-        match self.handle.observe(ViewScope::Shell).unwrap() {
+        match self
+            .handle
+            .observe(ViewScope::Shell)
+            .expect("observe fixture shell")
+        {
             Observation::Shell { snapshot, .. } => snapshot,
             _ => panic!("shell"),
         }
     }
     fn context(&self) -> String {
-        self.snap().active.unwrap().context.as_str().to_owned()
+        self.snap()
+            .active
+            .expect("fixture tenant is active")
+            .context
+            .as_str()
+            .to_owned()
     }
     fn warning(&self) -> Value {
-        serde_json::to_value(&self.snap().tenants[0].setup_warnings[0]).unwrap()
+        serde_json::to_value(&self.snap().tenants[0].setup_warnings[0])
+            .expect("serialize fixture warning")
     }
     async fn send(&mut self, intent: Value) -> Receipt {
         self.sequence += 1;
@@ -158,11 +168,14 @@ async fn desk_with_tsg(
     let routed = Arc::clone(&script);
     let server = TlsServer::start(
         ca.leaf(&["localhost"]),
-        Reply::Route(Arc::new(move |s| routed.lock().unwrap().route(s))),
+        Reply::Route(Arc::new(move |s| {
+            routed.lock().expect("fixture route lock").route(s)
+        })),
     )
     .await;
     let origin = format!("https://localhost:{}", server.port);
-    let mut state = serde_json::to_value(PersistedState::default()).unwrap();
+    let mut state =
+        serde_json::to_value(PersistedState::default()).expect("serialize default fixture state");
     state["tenants"] = json!([{"id":TENANT,"label":"Fixture","tsgId":tsg,"destination":{"kind":"custom","origin":origin},"environment":"production"}]);
     state["activeTenant"] = json!(TENANT);
     state["onboarding"] = json!("done");
@@ -175,7 +188,7 @@ async fn desk_with_tsg(
     }
     state["tenantWarnings"] = json!([{"tenant":TENANT,"warnings":[warning]}]);
     let (adapters, handles) = fixtures::adapters_with(ScriptedStore::with_state(
-        serde_json::from_value(state).unwrap(),
+        serde_json::from_value(state).expect("decode fixture state"),
     ));
     let core = Core::new(
         CoreConfig {
@@ -191,9 +204,12 @@ async fn desk_with_tsg(
         proxy: ProxyMode::Direct,
         extra_roots: vec![ca.pem.as_bytes().to_vec()],
     })
-    .unwrap();
+    .expect("install fixture TLS transport policy");
     let handle = core.operator();
-    let session = handle.register_delivery_session().unwrap().nonce;
+    let session = handle
+        .register_delivery_session()
+        .expect("register fixture delivery")
+        .nonce;
     let mut desk = Desk {
         _core: core,
         handle,
@@ -246,7 +262,7 @@ async fn legacy_model_warning_requires_dedicated_check_and_preserves_dated_histo
     assert!(warning["resolvedSecs"].as_u64().is_some());
     assert!(!d.snap().inbox.items.iter().any(|i| i.id == "vw-1"));
     assert!(
-        serde_json::to_value(d.handles.store.saved().unwrap()).unwrap()["tenantWarnings"][0]["warnings"][0]["resolvedSecs"].as_u64().is_some()
+        serde_json::to_value(d.handles.store.saved().expect("warning state was saved")).expect("serialize saved warning state")["tenantWarnings"][0]["warnings"][0]["resolvedSecs"].as_u64().is_some()
     );
     assert!(
         d.server
@@ -261,18 +277,18 @@ async fn legacy_model_warning_requires_dedicated_check_and_preserves_dated_histo
 #[tokio::test(flavor = "multi_thread")]
 async fn source_specific_denial_remains_active_then_resolves_after_fresh_complete_check() {
     let mut d = desk("modelSkill", LEGACY_MODEL, Some(known("modelSkill"))).await;
-    d.script.lock().unwrap().model_status[1] = 403;
+    d.script.lock().expect("fixture script lock").model_status[1] = 403;
     d.recheck().await;
     assert!(d.warning().get("resolvedSecs").is_none());
     let reason = d.warning()["recheck"]["reason"]
         .as_str()
-        .unwrap()
+        .expect("warning recheck has a reason")
         .to_owned();
     assert!(
         reason.contains("Skill statistics") && reason.contains("not allowed"),
         "{reason}"
     );
-    d.script.lock().unwrap().model_status[1] = 200;
+    d.script.lock().expect("fixture script lock").model_status[1] = 200;
     d.recheck().await;
     assert_eq!(d.warning()["recheck"]["basis"], "recordedScope");
     assert!(d.warning()["resolvedSecs"].as_u64().is_some());
@@ -291,7 +307,7 @@ async fn unknown_legacy_scope_and_failed_persistence_do_not_clear_warning() {
     assert!(
         d.warning()["recheck"]["reason"]
             .as_str()
-            .unwrap()
+            .expect("warning recheck has a reason")
             .contains("could not be saved")
     );
 }
@@ -302,13 +318,13 @@ async fn reported_legacy_gateway_scope_is_rechecked_with_slug_not_display_uuid()
         format!("Workspace {WS}: partial; scope ws_goshawks_io_2mwlan does not list the workspace");
     let mut d = desk("gateway", &reason, None).await;
     d.workspace().await;
-    d.script.lock().unwrap().scope_slug = WS.to_owned();
+    d.script.lock().expect("fixture script lock").scope_slug = WS.to_owned();
     d.recheck().await;
     assert!(
         d.warning().get("resolvedSecs").is_none(),
         "UUID binding is not the documented slug contract"
     );
-    d.script.lock().unwrap().scope_slug = "goshawks".to_owned();
+    d.script.lock().expect("fixture script lock").scope_slug = "goshawks".to_owned();
     d.recheck().await;
     assert_eq!(d.warning()["recheck"]["basis"], "legacyWorkspaceScope");
     assert!(d.warning()["resolvedSecs"].as_u64().is_some());
@@ -332,7 +348,7 @@ async fn gateway_wrong_workspace_or_unknown_scope_format_remains_unresolved() {
 #[tokio::test(flavor = "multi_thread")]
 async fn replaced_credential_generation_retires_pending_warning_check() {
     let mut d = desk("modelSkill", LEGACY_MODEL, Some(known("modelSkill"))).await;
-    d.script.lock().unwrap().model_status[0] = 0;
+    d.script.lock().expect("fixture script lock").model_status[0] = 0;
     let old_context = d.context();
     d.send(json!({"kind":"recheckSetupWarning","context":old_context,"warning":"vw-1"}))
         .await;
@@ -354,7 +370,7 @@ async fn replaced_credential_generation_retires_pending_warning_check() {
     assert!(eventually(|| d.server.closed_by_client() > 0).await);
     assert!(d.warning().get("resolvedSecs").is_none());
     assert_ne!(d.warning()["recheck"]["state"], "pending");
-    d.script.lock().unwrap().model_status[0] = 200;
+    d.script.lock().expect("fixture script lock").model_status[0] = 200;
     d.recheck().await;
     assert!(d.warning()["resolvedSecs"].as_u64().is_some());
 }
@@ -406,7 +422,7 @@ async fn known_missing_selection_check_is_superseded_only_by_full_selected_prere
     assert!(
         d.warning()["recheck"]["reason"]
             .as_str()
-            .unwrap()
+            .expect("warning recheck has a reason")
             .contains("original check found no selected workspace")
     );
 }
