@@ -1338,7 +1338,7 @@ fn read_opening(
     expected_id: Option<&str>,
 ) -> Result<Opening, WorkbenchProblem> {
     let catalog = project::discover(folder).map_err(WorkbenchProblem::Project)?;
-    if expected_id.is_some_and(|id| id != catalog.id) {
+    if expected_id.is_some_and(|id| id != catalog.id || catalog.root.as_path() != folder) {
         return Err(WorkbenchProblem::Project(ProjectProblem::NotCollection));
     }
     let scope = profile::scope(&catalog.root, &catalog.id);

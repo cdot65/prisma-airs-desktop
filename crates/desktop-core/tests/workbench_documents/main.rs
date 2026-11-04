@@ -237,6 +237,27 @@ async fn refinement_startup_restores_custom_choice_and_does_not_replace_missing_
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn refinement_startup_rejects_a_redirected_custom_root_even_with_the_same_collection_id() {
+    let root = collection();
+    let mut desk = desk().await;
+    desk.open(&root).await;
+    let handles = desk.adapters;
+    drop(desk.core);
+    let moved = root.with_file_name("redirected-api");
+    std::fs::rename(&root, &moved).expect("move owned collection");
+    std::os::unix::fs::symlink(&moved, &root).expect("redirect the remembered path");
+    let before = project_bytes(&moved);
+    let mut again = start(Some(&handles), CoreConfig::default()).await;
+    let restored = again.wb(json!({"kind": "load"})).await;
+    assert_eq!(
+        restored["kind"], "refused",
+        "a copied or redirected folder can retain its collection id: {restored}"
+    );
+    assert!(again.workbench()["collection"].is_null());
+    assert_eq!(project_bytes(&moved), before);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn saves_a_fresh_snapshot_keeping_the_files_layout_and_revisions() {
     let root = collection();
     let mut desk = desk().await;
