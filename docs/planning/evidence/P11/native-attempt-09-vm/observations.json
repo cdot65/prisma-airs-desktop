@@ -1,0 +1,300 @@
+{
+  "schema": "airs-desktop/p11-native-observations/1",
+  "subject": "P11",
+  "complete": false,
+  "argv": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "tools/native-acceptance/acceptance_p11_finish.py",
+    "--previous",
+    "docs/planning/evidence/P11/native-attempt-06-vm/observations.json",
+    "docs/planning/evidence/P11/native-attempt-07-vm/observations.json",
+    "docs/planning/evidence/P11/native-attempt-08-vm/observations.json",
+    "--work",
+    "/var/folders/p7/f_99nxmj7s16qrxbl0cbpz4r0000gn/T/airs-p11-owned-j9e8xcq6",
+    "--prepare",
+    "docs/planning/evidence/P11/native-prepare.json",
+    "--out",
+    "docs/planning/evidence/P11/native-attempt-09-vm"
+  ],
+  "argv_source": "sys.executable + sys.argv",
+  "started_utc": "2026-11-04T16:32:36Z",
+  "finished_utc": "2026-11-04T16:33:42Z",
+  "performed_by": "Codex /root; all native execution on worf-vm admin501 via SSH, owned startup-window activation via agent-desktop; orchestrator sha256 aa43068b12171250c67adeefc6648baf1e496637ed5c577906526090bfd5c28e",
+  "host": "macOS-26.6.2-arm64-arm-64bit",
+  "execution_id": "native-attempt-09-vm",
+  "status": "failed",
+  "exit_code": 1,
+  "executable_sha256": "099669efc96b8b54bc300dda33295be6271e81b59b9d11128434330e8073434d",
+  "bundle_sha256": "eb9f93a1a4394574ca36e0c0affdd2c9206dfb5b3496649368cb24079394c7f5",
+  "helper_closure": {
+    "docs/planning/evidence/P09/native-controller/native_requirements.py": "292cbe4a98ead78199b7a339e9797cdfbe5595138941ac0390c8a68a534301cf",
+    "tools/native-acceptance/academy_catalog.py": "bac6894b5338f89b317a866e85d7691a4496eb2804fd20ba09414eadfb09a84a",
+    "tools/native-acceptance/academy_server.py": "00ee3c3820e921fda723eef0db59baad3c621bb70cb67b8ff14377a6b3215af8",
+    "tools/native-acceptance/acceptance_c01.py": "f278d1ad79699e4d04888bcf2e950f06e0759c50649622c9810a33009ff36b93",
+    "tools/native-acceptance/acceptance_c08.py": "cf323772231f27117787d2f0719b86eb3b5555cd5b786d516d56b0c5cdba1e83",
+    "tools/native-acceptance/acceptance_c09.py": "322ddb02f1aeee3f9da89f7805b489c0715f61f59d59b627a955bdca4dc5d5c8",
+    "tools/native-acceptance/acceptance_c15.py": "1e4777d0dbe871df2242e52e93c56c1584db0feb0b4fb57f0528b44118da825a",
+    "tools/native-acceptance/acceptance_c28.py": "083301c3379d7910fbbe29675f844ab9a08917d41218cdc15ac54c086850a9a6",
+    "tools/native-acceptance/acceptance_c29.py": "b54d6f905f8785bd729dc11088c4938883160ea49de6fc59ded02a94a3a62eb6",
+    "tools/native-acceptance/acceptance_c31.py": "f22b11082166a4f54ea40fb83748e2f47eacedd32ca0276c2e0fda8b15ab21da",
+    "tools/native-acceptance/acceptance_c41.py": "0b4e3a03aed357106f8db0045cea9df212ba108bb2b0fa667bb1704fa804b150",
+    "tools/native-acceptance/acceptance_p11.py": "c7fb1d6f747b47cd2b8f1facba3434e058324a4cd2f8601563caafc0f41cd6a3",
+    "tools/native-acceptance/acceptance_p11_api.py": "bcf93c6c13ecfa04e877eebc51bf30424c806688ef4c3aff04129a4e830eebb8",
+    "tools/native-acceptance/acceptance_p11_continue.py": "a324be5c74d8db6c3ed25f951caf43f19fce67e905c49dc542a1ad54bbef50e8",
+    "tools/native-acceptance/acceptance_p11_credentials.py": "1053bed0372457aa439c6105341f15fc8df729412fea83b8c10e7f907eb3f520",
+    "tools/native-acceptance/acceptance_p11_finish.py": "e758719d74f157f9b12f4bda2355d4bd2098ddd613231d5749fd8ea004241fb8",
+    "tools/native-acceptance/acceptance_p11_resume.py": "6a4d4402e84876706b8b1363fcbc99eb7c49c6c5d3a873010c61c95c2bd8bd91",
+    "tools/native-acceptance/acceptance_p11_roles.py": "0f69b4b9225b6fd258fabab51c31e8d0ba8664f631e0d501755e40de5d9166fd",
+    "tools/native-acceptance/acceptance_p11_settings.py": "813fdb5fdaa28944632faf13f9aa16f0232ed31f5c57e4630062d4216d0f3bc1",
+    "tools/native-acceptance/acceptance_p11_setup.py": "b643b9c61d5bab44050ad889c47c647bf30d885b49888e09e8810798bc3a4255",
+    "tools/native-acceptance/acceptance_p11_shell.py": "1465da7a37c0f911d8b0d879620e99b26d472767f629f83678357763f8d28138",
+    "tools/native-acceptance/administration_coverage.py": "15b46c82124be3eca7099492f7f6d671da026e30e00384b4a8d63c69c2fbc900",
+    "tools/native-acceptance/ax.swift": "e6a9a88485339f89ff2b77cc999b0a16ef92e7ea3fbf5c10a44bd84ece054f80",
+    "tools/native-acceptance/ax_colors.swift": "891961e71df402ff863f83775f568c76ed045fd0b852c8b9cd97013b9e773eec",
+    "tools/native-acceptance/c01_ax_driver.js": "df07cd6079ff49f1357d6f599426c8988787dcc48bc5aa1814b30f5b3fb560eb",
+    "tools/native-acceptance/candidate_process.py": "63cdc26265437457525b33ed9b738e807356f24e225708c47fa8b387a6ae884e",
+    "tools/native-acceptance/fixture_app.py": "f0e31bb5d164a76322caa53f3852811da9f0fabe329e06672c9983c49ec10402",
+    "tools/native-acceptance/mgmt_server.py": "fcacfbcf156b0a7905e583a955691ae8b67f45f36dabb0bda0bcb745511cc6ec",
+    "tools/native-acceptance/native_sheets.py": "698e2d0b5ccf439c146aca79041135729c8b02f0810184ba3aa342959cad6e6a",
+    "tools/native-acceptance/scan_server.py": "29b8141fcdebc2a951a068df36bb1507ee05d9cdeed26045c4630e068c973185",
+    "tools/native-acceptance/type_private_stdin.swift": "8fef292b1bbbe8570c57a420f64f3d01c52475fa279eae481b5e4c80e43837da",
+    "tools/native-acceptance/v2_setup.py": "c3c1d05bee6c0076836d261f0c6abe23ce5346a5151d3a2bdad559049fd23cea",
+    "tools/p10/candidate.py": "bf74e7ba2df4b657bbbcdf8abb9407c766b22b846f642190b777e79d3ce2abb9",
+    "tools/p10/native.py": "836d8a7ddcb8d96c9a42caf0b873b6ef51c8349d756d0fe2666d86e90dd04301"
+  },
+  "binding": {
+    "prepare": {
+      "path": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core/docs/planning/evidence/P11/native-prepare.json",
+      "sha256": "fd694cbc4caca9c6d8e753ade3d5453c3974861d4b05d04ce0fc867eba464431"
+    },
+    "bundle": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/tooling/targets/core/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+    "executable_sha256": "099669efc96b8b54bc300dda33295be6271e81b59b9d11128434330e8073434d",
+    "bundle_sha256": "eb9f93a1a4394574ca36e0c0affdd2c9206dfb5b3496649368cb24079394c7f5",
+    "helper_closure": {
+      "docs/planning/evidence/P09/native-controller/native_requirements.py": "292cbe4a98ead78199b7a339e9797cdfbe5595138941ac0390c8a68a534301cf",
+      "tools/native-acceptance/academy_catalog.py": "bac6894b5338f89b317a866e85d7691a4496eb2804fd20ba09414eadfb09a84a",
+      "tools/native-acceptance/academy_server.py": "00ee3c3820e921fda723eef0db59baad3c621bb70cb67b8ff14377a6b3215af8",
+      "tools/native-acceptance/acceptance_c01.py": "f278d1ad79699e4d04888bcf2e950f06e0759c50649622c9810a33009ff36b93",
+      "tools/native-acceptance/acceptance_c08.py": "cf323772231f27117787d2f0719b86eb3b5555cd5b786d516d56b0c5cdba1e83",
+      "tools/native-acceptance/acceptance_c09.py": "322ddb02f1aeee3f9da89f7805b489c0715f61f59d59b627a955bdca4dc5d5c8",
+      "tools/native-acceptance/acceptance_c15.py": "1e4777d0dbe871df2242e52e93c56c1584db0feb0b4fb57f0528b44118da825a",
+      "tools/native-acceptance/acceptance_c28.py": "083301c3379d7910fbbe29675f844ab9a08917d41218cdc15ac54c086850a9a6",
+      "tools/native-acceptance/acceptance_c29.py": "b54d6f905f8785bd729dc11088c4938883160ea49de6fc59ded02a94a3a62eb6",
+      "tools/native-acceptance/acceptance_c31.py": "f22b11082166a4f54ea40fb83748e2f47eacedd32ca0276c2e0fda8b15ab21da",
+      "tools/native-acceptance/acceptance_c41.py": "0b4e3a03aed357106f8db0045cea9df212ba108bb2b0fa667bb1704fa804b150",
+      "tools/native-acceptance/acceptance_p11.py": "c7fb1d6f747b47cd2b8f1facba3434e058324a4cd2f8601563caafc0f41cd6a3",
+      "tools/native-acceptance/acceptance_p11_api.py": "bcf93c6c13ecfa04e877eebc51bf30424c806688ef4c3aff04129a4e830eebb8",
+      "tools/native-acceptance/acceptance_p11_continue.py": "a324be5c74d8db6c3ed25f951caf43f19fce67e905c49dc542a1ad54bbef50e8",
+      "tools/native-acceptance/acceptance_p11_credentials.py": "1053bed0372457aa439c6105341f15fc8df729412fea83b8c10e7f907eb3f520",
+      "tools/native-acceptance/acceptance_p11_finish.py": "e758719d74f157f9b12f4bda2355d4bd2098ddd613231d5749fd8ea004241fb8",
+      "tools/native-acceptance/acceptance_p11_resume.py": "6a4d4402e84876706b8b1363fcbc99eb7c49c6c5d3a873010c61c95c2bd8bd91",
+      "tools/native-acceptance/acceptance_p11_roles.py": "0f69b4b9225b6fd258fabab51c31e8d0ba8664f631e0d501755e40de5d9166fd",
+      "tools/native-acceptance/acceptance_p11_settings.py": "813fdb5fdaa28944632faf13f9aa16f0232ed31f5c57e4630062d4216d0f3bc1",
+      "tools/native-acceptance/acceptance_p11_setup.py": "b643b9c61d5bab44050ad889c47c647bf30d885b49888e09e8810798bc3a4255",
+      "tools/native-acceptance/acceptance_p11_shell.py": "1465da7a37c0f911d8b0d879620e99b26d472767f629f83678357763f8d28138",
+      "tools/native-acceptance/administration_coverage.py": "15b46c82124be3eca7099492f7f6d671da026e30e00384b4a8d63c69c2fbc900",
+      "tools/native-acceptance/ax.swift": "e6a9a88485339f89ff2b77cc999b0a16ef92e7ea3fbf5c10a44bd84ece054f80",
+      "tools/native-acceptance/ax_colors.swift": "891961e71df402ff863f83775f568c76ed045fd0b852c8b9cd97013b9e773eec",
+      "tools/native-acceptance/c01_ax_driver.js": "df07cd6079ff49f1357d6f599426c8988787dcc48bc5aa1814b30f5b3fb560eb",
+      "tools/native-acceptance/candidate_process.py": "63cdc26265437457525b33ed9b738e807356f24e225708c47fa8b387a6ae884e",
+      "tools/native-acceptance/fixture_app.py": "f0e31bb5d164a76322caa53f3852811da9f0fabe329e06672c9983c49ec10402",
+      "tools/native-acceptance/mgmt_server.py": "fcacfbcf156b0a7905e583a955691ae8b67f45f36dabb0bda0bcb745511cc6ec",
+      "tools/native-acceptance/native_sheets.py": "698e2d0b5ccf439c146aca79041135729c8b02f0810184ba3aa342959cad6e6a",
+      "tools/native-acceptance/scan_server.py": "29b8141fcdebc2a951a068df36bb1507ee05d9cdeed26045c4630e068c973185",
+      "tools/native-acceptance/type_private_stdin.swift": "8fef292b1bbbe8570c57a420f64f3d01c52475fa279eae481b5e4c80e43837da",
+      "tools/native-acceptance/v2_setup.py": "c3c1d05bee6c0076836d261f0c6abe23ce5346a5151d3a2bdad559049fd23cea",
+      "tools/p10/candidate.py": "bf74e7ba2df4b657bbbcdf8abb9407c766b22b846f642190b777e79d3ce2abb9",
+      "tools/p10/native.py": "836d8a7ddcb8d96c9a42caf0b873b6ef51c8349d756d0fe2666d86e90dd04301"
+    },
+    "native_inventory_sha256": "9334060f0bcee9d616588608403378eabcb30811030ef367b2bad71b781858c0",
+    "conditions": {
+      "platform": "macOS-26.6.2-arm64-arm-64bit",
+      "hostname": "worf-vm"
+    }
+  },
+  "artifact_sha256": {
+    "docs/planning/evidence/P11/native-attempt-09-vm/resume-preconditions.json": "56da3f5c47254fee5fba5764012e95af46aa3b854472e65f09819fb774d7c7ab",
+    "docs/planning/evidence/P11/native-attempt-09-vm/endpoint-history-offsets.json": "37a6eca8a501779ed86c78cfc61ecefc03679eb04e2134ad6b4424a49c2e4613",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-owned-scan-replay-precondition.json": "e4e52c4f5a0f60877ee948ebcb27ccd3c974f527fe8f9cc76bb2c5f737d5e8ce",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-1.json": "ef0b63875b22a902059ff197c0321e9848ebbe5df04d0aaed12cfcb563e07e36",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-2.json": "243c72c3f218dc1439e6ebb837a61f551951bb2285089cfe0e0d94926445c77d",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-removed.json": "67fb58909ba34f6991338f0bdd42cf0c90370fac99481517fe0ed4cbd5f7cbfb",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-custom-destination-review-surface.json": "108c1a855fba342b547efca94f19c9d48fd37aea2b56b94e94c17fd0cf524208",
+    "docs/planning/evidence/P11/native-attempt-09-vm/captures/c49-custom-destination-card.png": "20522149e7c1928279c500004715e2226716b9eab098171a24e09aa2a13d6325",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-metadata-edited.json": "3833a88fe80f2f71aab08d2a76c610267ac237bd156060646a92cd20fd2cb7d7",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-delete-target-confirmation.json": "40e3f5e91663285d4bcf23ceabe8efa4ac78f1c876e8d0ae10c701e10ff37598",
+    "docs/planning/evidence/P11/native-attempt-09-vm/c49-add-required-oauth-draft.json": "cd81afd5f0cae03049f2d0f20af9528a9650784bc18a1133106c3f315f7314e7",
+    "docs/planning/evidence/P11/native-attempt-09-vm/captures/c49-add-required-oauth-draft.png": "26fe14bdada727e7baa9496d6261922d6dcd664abbda6e28e29a3277f91dfb72",
+    "docs/planning/evidence/P11/native-attempt-09-vm/failure-tree.json": "d8bb5dcc9ae922399025911224fdddf5d4249deeb4669565121c6b2580ad7631",
+    "docs/planning/evidence/P11/native-attempt-09-vm/management-requests.json": "b02effd6b03b81835a321bbad11b48f5a0ccfe024b67b43197a5bf0e913b03d7",
+    "docs/planning/evidence/P11/native-attempt-09-vm/scan-requests.json": "e277f793e36d39f3db4f23fabaf14de7160383854d1d62dbac16659f8a20e04b",
+    "docs/planning/evidence/P11/native-attempt-09-vm/academy-requests.json": "1377adfb5b226ce652e16c252c4db1ee38c1348eb193e73626506f870a4f6356",
+    "docs/planning/evidence/P11/native-attempt-09-vm/fixture-state-final.json": "e8d4241dfd80b4ce60d1043131d88e9b7206c86b9645744cc23ff7f29d1fb03c"
+  },
+  "checks": [
+    {
+      "id": "C49-N03",
+      "facts": {
+        "scan_and_management_secure_session_choices_selectable": true,
+        "scan_session_save_replace_remove_observed": true,
+        "unsaved_management_secret_cleared_on_navigation": true,
+        "editor_exposed_metadata_fields_only": true,
+        "selected_profile_label_and_environment_restored": true,
+        "delete_confirmation_named_selected_target_and_was_cancelled": true,
+        "custom_https_controls_retained_in_destination_card": true,
+        "add_offered_region_only": true,
+        "add_draft_required_management_before_continue_and_cancelled": true,
+        "bootstrap_management_controls_retained": true
+      },
+      "evidence": [
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-1.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-2.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-removed.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-custom-destination-review-surface.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-metadata-edited.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-delete-target-confirmation.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-add-required-oauth-draft.json"
+      ],
+      "visual": [
+        "docs/planning/evidence/P11/native-attempt-09-vm/captures/c49-custom-destination-card.png",
+        "docs/planning/evidence/P11/native-attempt-09-vm/captures/c49-add-required-oauth-draft.png"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "type": "RuntimeError",
+      "message": "owned window resize did not reach requested geometry: [1440, 852, 0, 0] != [0, 30, 1440, 848]"
+    }
+  ],
+  "log": [
+    {
+      "t": "16:32:49",
+      "step": "typed",
+      "field": "Client secret",
+      "attempts": 1
+    },
+    {
+      "action": "c49-scan-session-mode-before-input",
+      "ordinal": 1
+    },
+    {
+      "t": "16:32:54",
+      "step": "typed",
+      "field": "AIRS API key",
+      "attempts": 1
+    },
+    {
+      "action": "c49-scan-session-mode-before-input",
+      "ordinal": 2
+    },
+    {
+      "t": "16:32:57",
+      "step": "typed",
+      "field": "AIRS API key",
+      "attempts": 1
+    },
+    {
+      "t": "16:33:06",
+      "step": "typed",
+      "field": "Display name",
+      "attempts": 1
+    },
+    {
+      "t": "16:33:14",
+      "step": "typed",
+      "field": "Display name",
+      "attempts": 1
+    },
+    {
+      "t": "16:33:23",
+      "step": "typed",
+      "field": "Display name",
+      "attempts": 1
+    },
+    {
+      "t": "16:33:26",
+      "step": "typed",
+      "field": "TSG ID",
+      "attempts": 1
+    },
+    {
+      "t": "16:33:28",
+      "step": "typed",
+      "field": "Client secret",
+      "attempts": 1
+    },
+    {
+      "action": "owned-window-resize",
+      "pid": 63269,
+      "requested": [
+        1440,
+        848,
+        0,
+        0
+      ],
+      "measured": [
+        320,
+        95,
+        1440,
+        848
+      ],
+      "utc": "2026-11-04T16:33:38Z"
+    }
+  ],
+  "meaning": "Actual fixture AX/keyboard/geometry observations. Pixels and production-interface results need separate bound review; no unrun assertion is a pass.",
+  "continuation": {
+    "observations": {
+      "path": "docs/planning/evidence/P11/native-attempt-08-vm/observations.json",
+      "sha256": "5f3d07ebb98169a019c5aa305deaac3f6d0c4847d209e05eb09a7ea5ece03a7f"
+    },
+    "origins": [
+      {
+        "path": "docs/planning/evidence/P11/native-attempt-06-vm/observations.json",
+        "sha256": "951119b91e9c3d57246921225f83f38b06c91177c01a8b0b308e69641c9b3bcb"
+      },
+      {
+        "path": "docs/planning/evidence/P11/native-attempt-07-vm/observations.json",
+        "sha256": "941671343acff542ebc2822c3a14bd98f6613da51e804f4647374a0b329920b6"
+      },
+      {
+        "path": "docs/planning/evidence/P11/native-attempt-08-vm/observations.json",
+        "sha256": "5f3d07ebb98169a019c5aa305deaac3f6d0c4847d209e05eb09a7ea5ece03a7f"
+      }
+    ],
+    "completed_ids": [
+      "C46-N01",
+      "C48-N01",
+      "C48-N02",
+      "C48-N03",
+      "C49-N01",
+      "C49-N02"
+    ],
+    "remaining_ids": [
+      "C46-N02",
+      "C46-N03",
+      "C47-N01",
+      "C47-N02",
+      "C47-N03",
+      "C49-N03"
+    ],
+    "work": "/private/var/folders/p7/f_99nxmj7s16qrxbl0cbpz4r0000gn/T/airs-p11-owned-j9e8xcq6",
+    "fixture_state_semantically_equal": true,
+    "owned_inputs_sha256": {
+      "scan/ca.pem": "ae6063b93b25cb55f45b6c89667714d9b6ce8d0463791abbc5a292d644afedc6",
+      "scan/leaf.pem": "892f9773e10d62ed307f19b3d238f03730edaba4bf5aec665b22ae581633b105",
+      "scan/leaf.key": "5442382d0da1c3362801c7df983addc6224f7c2453e1589ede0a56f5e2450c25",
+      "scan/mode.json": "74b864184c3c398695a2642a1bdf9dfff7a87d50199c25001e12de775ccbf083",
+      "mgmt/mode.json": "245e57aee7233da6146a7ca4871d8fcaceeddcfff1448717cbe772e33114a22a",
+      "mgmt/issued.json": "f255da802720a9dd3efab76d32bcfcc4328cf32985ea646f9ae2ccb4bbc6ac66",
+      "mgmt/idp-key.pem": "bcfdb5732017b18cb23652a9765e6e550ab2bfbef587c59387561f9f232f5165",
+      "academy/ca.pem": "ed6b9318869e0e27ec8b421bf7b87a4238e99e327468956f869c6cba42034b9f",
+      "academy/leaf.pem": "6b46c3b4d24b7a49e74f0b286bbfb78bdd06b0f44dbe2edc385422f5cd7a79c2",
+      "academy/leaf.key": "239b6f67a806dbd456d87d7a003aaccc01cd03517f505a8e919e7ae269e66f49",
+      "academy/mode.json": "4a8c3b6a6650f0d1721552c363a79f6c88863a272f7c88f5b0bc23fc8b409d21",
+      "academy/catalog.json": "f439306cd5b132f249a57b61344ef2de364dc72e68f2cd7102d2e1601abeac97"
+    },
+    "installed_roots_sha256": "054d1e0b44330f0ba7009336da2483fd984398379745ecd6b2f76fed8b668bde",
+    "certificate_generation_or_install_executed": false
+  }
+}

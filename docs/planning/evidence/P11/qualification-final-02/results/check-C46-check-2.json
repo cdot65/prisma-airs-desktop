@@ -1,0 +1,40 @@
+{
+  "status": "pass",
+  "exit_code": 0,
+  "execution_id": "check-20261104T133216Z-7f3bf8",
+  "argv": [
+    "cargo",
+    "run",
+    "--locked",
+    "-p",
+    "xtask",
+    "--",
+    "bindings",
+    "--check"
+  ],
+  "cwd": "/Users/cdot/development/redtail/p09-queue/refinement-20261104/core",
+  "started_utc": "2026-11-04T13:32:16Z",
+  "finished_utc": "2026-11-04T13:32:50Z",
+  "required_ids": [
+    "check:C46/check/2"
+  ],
+  "log": {
+    "path": "docs/planning/evidence/P11/runs/check-20261104T133216Z-7f3bf8/logs/C46-check-2.log",
+    "sha256": "9d5744221c82fa71cfa5ace62ac4c92764a670429e0fb214cefe803edbb217b0"
+  },
+  "candidate": {
+    "path": "docs/planning/evidence/P11/qualification-final-02/candidate.json",
+    "sha256": "e4c692309233ced03b6147ea172ce2d572d0ad8e34a21d9db11da961f187088e"
+  },
+  "raw": {
+    "path": "docs/planning/evidence/P11/runs/check-20261104T133216Z-7f3bf8/run.json",
+    "sha256": "c12145316a18af5bc603be983019fc31b63379b4b171559c8196cfde4793ed6b"
+  },
+  "evidence": {},
+  "original_runner_inputs": {
+    "source": "b50f33cdf992603c66ce76ca10174b5c0174317ca831a595bcee7360f0aa5619",
+    "dependencies": "65ef7f60ec3361e31e255ba789bbf995746b4c0b557b2afef87201b5c2fdb9be",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "reason": "The real desktop Modal composition/focus fix and its App-level regressions affect frontend consumers. Current formatting, desktop typecheck and all 12 registered frontend groups executed in worf-vm. Eight Rust test commands and seven other source checks retain original Kirk provenance because their complete conservative source/dependency closure is unchanged and the actual compiler/Cargo/Node/pnpm binaries match; only rustup selector shims differ. No original result is relabelled or reported as a VM execution."
+}

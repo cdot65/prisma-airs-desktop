@@ -1,0 +1,83 @@
+{
+  "host": "worf-vm",
+  "operator": "Codex /root",
+  "orchestrator_sha256": "75cfaab11d0eb2380f520a48835fca586034bc05fff87b7fe65931dd988b831a",
+  "actions": [
+    {
+      "utc": "2026-11-04T16:14:43Z",
+      "action": "owned-startup-window-focus",
+      "pid": 61239,
+      "birth": [
+        1793808882,
+        274204
+      ],
+      "window_id": "w-6598",
+      "result": {
+        "command": "focus-window",
+        "error": {
+          "code": "ACTION_FAILED",
+          "disposition": {
+            "delivery": "unknown",
+            "retry": "unknown"
+          },
+          "message": "Window focus did not settle on the requested window",
+          "suggestion": "Run 'list-windows' to refresh window IDs, then retry."
+        },
+        "ok": false,
+        "version": "2.5"
+      }
+    },
+    {
+      "utc": "2026-11-04T16:14:43Z",
+      "operator_error": "RuntimeError: owned startup activation rejected"
+    },
+    {
+      "utc": "2026-11-04T16:14:43Z",
+      "action": "owned-startup-window-already-focused",
+      "pid": 61239,
+      "birth": [
+        1793808882,
+        274204
+      ],
+      "window_id": "w-6598"
+    },
+    {
+      "utc": "2026-11-04T16:15:28Z",
+      "action": "owned-startup-window-focus",
+      "pid": 61476,
+      "birth": [
+        1793808927,
+        51983
+      ],
+      "window_id": "w-6614",
+      "result": {
+        "command": "focus-window",
+        "error": {
+          "code": "ACTION_FAILED",
+          "disposition": {
+            "delivery": "unknown",
+            "retry": "unknown"
+          },
+          "message": "Window focus did not settle on the requested window",
+          "suggestion": "Run 'list-windows' to refresh window IDs, then retry."
+        },
+        "ok": false,
+        "version": "2.5"
+      }
+    },
+    {
+      "utc": "2026-11-04T16:15:28Z",
+      "operator_error": "RuntimeError: owned startup activation rejected"
+    },
+    {
+      "utc": "2026-11-04T16:15:29Z",
+      "action": "owned-startup-window-already-focused",
+      "pid": 61476,
+      "birth": [
+        1793808927,
+        51983
+      ],
+      "window_id": "w-6614"
+    }
+  ]
+}

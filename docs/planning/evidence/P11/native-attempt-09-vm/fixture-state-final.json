@@ -1,0 +1,112 @@
+{
+  "schema": "prisma-airs-desktop/state/1",
+  "appearance": "system",
+  "tenants": [
+    {
+      "id": "tn-4d64334226aa3beb",
+      "label": "P11 Northwind",
+      "tsgId": "1234567890",
+      "destination": {
+        "kind": "region",
+        "region": "unitedStates"
+      },
+      "environment": "production"
+    },
+    {
+      "id": "tn-a1ec27759b8073ce",
+      "label": "P11 Secondary",
+      "tsgId": "1234567890",
+      "destination": {
+        "kind": "region",
+        "region": "unitedStates"
+      },
+      "environment": "production"
+    }
+  ],
+  "activeTenant": "tn-4d64334226aa3beb",
+  "credentials": [
+    {
+      "record": "cr-35d15d4d3fa678c0",
+      "tenant": "tn-4d64334226aa3beb",
+      "destination": "https://localhost:62780",
+      "class": "management",
+      "clientId": "c08-native@1234567890.iam.panserviceaccount.com"
+    },
+    {
+      "record": "cr-b77303dbc05bf99e",
+      "tenant": "tn-a1ec27759b8073ce",
+      "destination": "https://localhost:62780",
+      "class": "management",
+      "clientId": "c08-native@1234567890.iam.panserviceaccount.com"
+    }
+  ],
+  "pendingCleanup": [],
+  "onboarding": "done",
+  "showCalls": false,
+  "tenantProducts": [
+    {
+      "tenant": "tn-4d64334226aa3beb",
+      "products": [
+        "runtimeSecurity",
+        "modelSkill"
+      ]
+    },
+    {
+      "tenant": "tn-a1ec27759b8073ce",
+      "products": [
+        "runtimeSecurity"
+      ]
+    }
+  ],
+  "tenantWarnings": [
+    {
+      "tenant": "tn-4d64334226aa3beb",
+      "warnings": [
+        {
+          "id": "vw-1",
+          "product": "runtimeSecurity",
+          "reason": "No scan key configured; scanning stays unavailable until one is added in Settings.",
+          "recordedSecs": 1793805758,
+          "check": {
+            "version": 1,
+            "line": "scanKey",
+            "tsgId": "1234567890",
+            "origin": "https://service.api.aisecurity.paloaltonetworks.com",
+            "workspace": null
+          }
+        },
+        {
+          "id": "vw-2",
+          "product": "modelSkill",
+          "reason": "2 of 3 AI Supply Chain Security sources readable. Skill statistics: The management client is not allowed to read this tenant.",
+          "recordedSecs": 1793805758,
+          "check": {
+            "version": 1,
+            "line": "modelSkill",
+            "tsgId": "1234567890",
+            "origin": "https://service.api.aisecurity.paloaltonetworks.com",
+            "workspace": null
+          }
+        }
+      ]
+    },
+    {
+      "tenant": "tn-a1ec27759b8073ce",
+      "warnings": [
+        {
+          "id": "vw-1",
+          "product": "runtimeSecurity",
+          "reason": "No scan key configured; scanning stays unavailable until one is added in Settings.",
+          "recordedSecs": 1793805780,
+          "check": {
+            "version": 1,
+            "line": "scanKey",
+            "tsgId": "1234567890",
+            "origin": "https://service.api.aisecurity.paloaltonetworks.com",
+            "workspace": null
+          }
+        }
+      ]
+    }
+  ]
+}

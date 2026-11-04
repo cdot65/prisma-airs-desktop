@@ -1,0 +1,272 @@
+{
+  "schema": "airs-v2/native-acceptance/1",
+  "subject": "P11",
+  "recorded_utc": "2026-11-04T17:15:17Z",
+  "method": "cua",
+  "performed_by": "Codex /root; all native execution on worf-vm admin501 via SSH, owned startup-window activation via agent-desktop; orchestrator sha256 e4546532ee3f96411240dedefb8a074480303148b0e8e7611f49017e7b8f2a5f",
+  "host": "macOS-26.6.2-arm64-arm-64bit",
+  "app": {
+    "bundle": "target/aarch64-apple-darwin/release/bundle/macos/Prisma AIRS Desktop Fixture.app",
+    "identifier": "io.cdot.airs-desktop.fixture",
+    "executable_sha256": "099669efc96b8b54bc300dda33295be6271e81b59b9d11128434330e8073434d",
+    "fixture": true
+  },
+  "checks": [
+    {
+      "id": "C46-N01",
+      "description": "New first-run and Add/replacement tenant require actual successful management OAuth before commitment. Invalid/missing OAuth cannot complete, product-forbidden OAuth success stays a separate warning, Scan Key can be added later without a validation scan. Cancel leaves prior active tenant and draft credential cleanup intact; bound production-interface regressions establish stale/retry/persistence cases.",
+      "result": "pass",
+      "observation": "Completed measured assertion C46-N01 from native-attempt-06-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/oauth-welcome.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/oauth-required-before-client.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/oauth-denied.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/oauth-success-product-denied.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/add-draft-before-cancel.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-credential-account-lifecycle.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/add-cancelled.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-identity-ready-1.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-identity-ready-2.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-identity-ready-3.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-identity-ready-4.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-identity-ready-5.json",
+        "docs/planning/evidence/P11/native-attempt-06-vm/draft-identity-ready-6.json"
+      ]
+    },
+    {
+      "id": "C46-N02",
+      "description": "Dedicated setup recheck shows precise failing Supply Chain source or Gateway prerequisite, stays active for failed/unknown/different scope, clears only a matching fresh pass and retains original reason/date in Diagnostics. Ordinary Refresh does not clear the finding. Gateway checks listed slug in IAM, not displayed UUID; synthetic fixtures only.",
+      "result": "pass",
+      "observation": "Completed measured assertion C46-N02 from native-attempt-12-vm; contributing process exit 0 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/warning-original.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/warning-recheck-permission-denied.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/warning-dated-history.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/captures/warning-history.png",
+        "docs/planning/evidence/P11/warning-history-visual-01/binding.json",
+        "docs/planning/evidence/P11/warning-history-visual-01/receipt.json",
+        "docs/planning/evidence/P11/warning-history-visual-01/captures/resolved-warning-history.png"
+      ]
+    },
+    {
+      "id": "C46-N03",
+      "description": "Model/Skill Inbox action opens Administration on AI Supply Chain Security through the complete product arrival path; Runtime resource filters still arrive correctly. Original dated diagnostics and latest recheck provenance are readable; navigation never grants remote write authority.",
+      "result": "pass",
+      "observation": "Completed measured assertion C46-N03 from native-attempt-12-vm; contributing process exit 0 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/warning-supply-chain-arrival.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/warning-runtime-resource-arrival.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/warning-dated-history.json",
+        "docs/planning/evidence/P11/native-attempt-12-vm/captures/warning-history.png",
+        "docs/planning/evidence/P11/warning-history-visual-01/binding.json",
+        "docs/planning/evidence/P11/warning-history-visual-01/receipt.json",
+        "docs/planning/evidence/P11/warning-history-visual-01/captures/resolved-warning-history.png"
+      ]
+    },
+    {
+      "id": "C47-N01",
+      "description": "One focusable app-header H1 names the destination; content starts with concise bounded description beside actions. Home, Inbox, Test Cases, API Client, Administration, Settings, Harness and Academy remain usable at ordinary and narrow effective widths/200% zoom. Academy course/unit hierarchy remains intact.",
+      "result": "pass",
+      "observation": "Completed measured assertion C47-N01 from native-attempt-11-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/shell-layout-measurements.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/c47-keyboard-prior-binding.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/c47-api-keyboard-light-100-trace.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/c47-api-keyboard-light-100-focused.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/c47-api-keyboard-dark-200-trace.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/c47-api-keyboard-dark-200-focused.json",
+        "docs/planning/evidence/P11/native-attempt-11-vm/c47-keyboard-supplement-measurements.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-home-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-inbox-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-test-cases-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-api-client-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-administration-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-settings-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-harness-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-academy-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-home-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-inbox-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-test-cases-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-api-client-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-administration-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-settings-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-harness-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-academy-dark-200.png",
+        "docs/planning/evidence/P11/native-attempt-11-vm/captures/c47-api-keyboard-light-100.png",
+        "docs/planning/evidence/P11/native-attempt-11-vm/captures/c47-api-keyboard-dark-200.png"
+      ]
+    },
+    {
+      "id": "C47-N02",
+      "description": "Explain overlays the right without changing page width. Page controls and navigation remain usable; drawer scroll/Close/Escape/focus work, modal priority is preserved, and tenant switch closes/retire previous selection including pending-open race.",
+      "result": "pass",
+      "observation": "Completed measured assertion C47-N02 from native-attempt-10-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/explain-native-observations.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/explain-overlay.png"
+      ]
+    },
+    {
+      "id": "C47-N03",
+      "description": "Redundant header Ask Harness is absent while sidebar navigation remains. Improved sun glyph, existing light/dark action label and checked state are visible and agree with the actual toggle action; keyboard and focus states remain readable in light/dark.",
+      "result": "pass",
+      "observation": "Completed measured assertion C47-N03 from native-attempt-10-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/shell-sun-labels.json",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-sun-dark.png",
+        "docs/planning/evidence/P11/native-attempt-10-vm/captures/shell-sun-light.png"
+      ]
+    },
+    {
+      "id": "C48-N01",
+      "description": "Editable request JSON and complete URL show colored tokens once while native input owns text/cursor/selection/IME/copy. Pretty JSON colors exact large-integer/escape tokens; invalid/truncated preview degrades safely. Raw/copy/saved bytes remain exact; Save is admitted exactly once.",
+      "result": "pass",
+      "observation": "Completed measured assertion C48-N01 from native-attempt-07-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-raw-response.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-invalid-truncated.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-url-selected-token.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-json-body-selection.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-native-dead-key-marked.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-pretty-exact-tokens.png"
+      ]
+    },
+    {
+      "id": "C48-N02",
+      "description": "Request tabs occupy one horizontally scrolling row and reveal selected/focused tabs. Bottom Ready/request-count status shows only displayed request/run/history metrics; late/background/old-collection replies cannot overwrite it. Active Cancel and separate save state remain usable.",
+      "result": "pass",
+      "observation": "Completed measured assertion C48-N02 from native-attempt-07-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-footer-scoped.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-scrolling-tab-focus.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-history-footer-identity.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-current-collection-footer.png"
+      ]
+    },
+    {
+      "id": "C48-N03",
+      "description": "First use loads SCM193; chosen built-in/custom or explicitly closed state survives restart. Missing/replaced/redirected custom root offers recovery without fallback or folder creation. Native Save Response suggests hyphenated whitespace-normalized basename and respects explicitly chosen filename/directory, preserving bytes.",
+      "result": "pass",
+      "observation": "Completed measured assertion C48-N03 from native-attempt-07-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-first-use-carry.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-response-saved.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-missing-custom.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c48-recovered-custom.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c48-missing-custom-recovery.png"
+      ]
+    },
+    {
+      "id": "C49-N01",
+      "description": "Settings uses compact Appearance, Academy and Diagnostics cards, with a dedicated Tenant section containing Scan Key, Management Client, Scan Destination, Update Tenant and Add Tenant cards. Controls remain keyboard-accessible and usable at narrow width/200% zoom.",
+      "result": "pass",
+      "observation": "Completed measured assertion C49-N01 from native-attempt-07-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c49-source-boundary-requirements.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c49-settings-cards.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/c49-keyboard-200-percent.json",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c49-settings-cards-100-percent.png",
+        "docs/planning/evidence/P11/native-attempt-07-vm/captures/c49-settings-keyboard-200-percent.png"
+      ]
+    },
+    {
+      "id": "C49-N02",
+      "description": "Independent Appearance and Theme dropdowns provide Prisma AIRS default and Gruvbox light/dark. Existing Appearance survives restart; alternate theme persists. Representative shell/product, learner and portaled surfaces retain contrast/focus and Academy-owned cosmetics; desktop theme grants no earned skin.",
+      "result": "pass",
+      "observation": "Completed measured assertion C49-N02 from native-attempt-08-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-prisma-airs-light.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-prisma-airs-dark.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-gruvbox-light.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-gruvbox-dark.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-persisted-alternate-theme.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-academy-search-focused-prisma-airs.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-guest-reader-prisma-airs.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-academy-contents-prisma-airs.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-academy-search-focused-gruvbox.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-guest-reader-gruvbox.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/c49-academy-contents-gruvbox.json",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-prisma-airs-light.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-prisma-airs-dark.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-gruvbox-light.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-gruvbox-dark.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-product-gruvbox-dark.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-desktop-portal-prisma-airs.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-academy-search-focused-prisma-airs.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-guest-reader-prisma-airs.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-academy-contents-prisma-airs.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-desktop-portal-gruvbox.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-academy-search-focused-gruvbox.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-guest-reader-gruvbox.png",
+        "docs/planning/evidence/P11/native-attempt-08-vm/captures/c49-academy-contents-gruvbox.png"
+      ]
+    },
+    {
+      "id": "C49-N03",
+      "description": "Credential cards preserve secure/session choices and Replace/Remove; secrets clear before async work and context changes. Add uses isolated required-OAuth draft. Edit changes only selected label/environment without identity/credential rebind; Delete stays target-bound; custom HTTPS destination remains in its reviewed card. Production-interface rollback/isolation regressions are bound alongside native interaction.",
+      "result": "pass",
+      "observation": "Completed measured assertion C49-N03 from native-attempt-09-vm; contributing process exit 1 remains recorded. Capture-specific visual review is separately bound. Source boundaries require the separate qualification; no source suite is relabelled.",
+      "evidence": [
+        "docs/planning/evidence/P11/native-final-01/native-selection.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/observations.json",
+        "docs/planning/evidence/P11/visual-review-01.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-1.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-2.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-session-key-removed.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-custom-destination-review-surface.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-metadata-edited.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-delete-target-confirmation.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/c49-add-required-oauth-draft.json",
+        "docs/planning/evidence/P11/native-attempt-09-vm/captures/c49-custom-destination-card.png",
+        "docs/planning/evidence/P11/native-attempt-09-vm/captures/c49-add-required-oauth-draft.png"
+      ]
+    }
+  ],
+  "limitations": [
+    "Synthetic VM fixture only; no stable/live or Linux acceptance.",
+    "C46-N01 completed in an overall failed earlier process. Its failure is preserved.",
+    "This is per-assertion evidence accounting, not a passing composite process.",
+    "Original warning-history capture shows the container; supplemental evidence shows the resolved history after scrolling, with unchanged fixture state."
+  ],
+  "derived_from": {
+    "path": "docs/planning/evidence/P11/native-final-01/native-acceptance.json",
+    "sha256": "868c3aa7b69ab6249cc5590fab2635004be197b317185a836a2c5e5bb88af09a",
+    "reason": "Add a bound read-only visibility supplement; original native results, observations and acceptance remain unchanged."
+  }
+}

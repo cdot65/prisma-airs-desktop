@@ -1,0 +1,462 @@
+{
+  "prior_count": 9,
+  "new_requests": [
+    {
+      "t": 1793810507.968628,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810507.970253,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/topics/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "25"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810507.970609,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100",
+        "latest": "true"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810507.984502,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810507.985685,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100",
+        "latest": "true"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810598.169649,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810598.171306,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/topics/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "25"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810598.1745112,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100",
+        "latest": "true"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810598.180165,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810598.1813571,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100",
+        "latest": "true"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810631.432601,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810631.433939,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/dashboard/v2/sessions/sessionschart",
+      "query": {
+        "time_interval": "1",
+        "time_unit": "day"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810631.434277,
+      "method": "GET",
+      "path": "/aims/data/v1/scans",
+      "query": {
+        "skip": "0",
+        "limit": "100",
+        "isBackgroundRefresh": "false"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810631.4352372,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/apikeys/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810631.435642,
+      "method": "GET",
+      "path": "/aiag/data/v1/stats/scans",
+      "query": {
+        "time_period": "30_DAYS"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810631.4364002,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810631.4373188,
+      "method": "GET",
+      "path": "/aiag/data/v1/scans",
+      "query": {
+        "skip": "0",
+        "limit": "100",
+        "isBackgroundRefresh": "false"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810663.3814158,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810663.382696,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/dashboard/v2/sessions/sessionschart",
+      "query": {
+        "time_interval": "1",
+        "time_unit": "day"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810663.382934,
+      "method": "GET",
+      "path": "/aims/data/v1/scans",
+      "query": {
+        "skip": "0",
+        "limit": "100",
+        "isBackgroundRefresh": "false"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810663.383667,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/apikeys/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810663.384207,
+      "method": "GET",
+      "path": "/aiag/data/v1/stats/scans",
+      "query": {
+        "time_period": "30_DAYS"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810663.385109,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810663.386088,
+      "method": "GET",
+      "path": "/aiag/data/v1/scans",
+      "query": {
+        "skip": "0",
+        "limit": "100",
+        "isBackgroundRefresh": "false"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810664.541271,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/topics/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "25"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810664.544276,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100",
+        "latest": "true"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810664.54844,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810664.54963,
+      "method": "GET",
+      "path": "/aims/data/v1/scans",
+      "query": {
+        "skip": "0",
+        "limit": "100",
+        "isBackgroundRefresh": "false"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 200
+    },
+    {
+      "t": 1793810664.551449,
+      "method": "GET",
+      "path": "/aiag/data/v1/stats/scans",
+      "query": {
+        "time_period": "30_DAYS"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810664.551511,
+      "method": "GET",
+      "path": "/aisec/v1/mgmt/profiles/tsg/1234567890",
+      "query": {
+        "offset": "0",
+        "limit": "100",
+        "latest": "true"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "status": 403
+    },
+    {
+      "t": 1793810664.552601,
+      "method": "POST",
+      "path": "/oauth2/access_token",
+      "query": {},
+      "auth": "basic-ok",
+      "tsgHeader": null,
+      "xTsgId": null,
+      "scanToken": false,
+      "grantType": "client_credentials",
+      "scope": "tsg_id:1234567890",
+      "secretInBody": false,
+      "status": 200
+    },
+    {
+      "t": 1793810664.5537238,
+      "method": "GET",
+      "path": "/aiag/data/v1/scans",
+      "query": {
+        "skip": "0",
+        "limit": "100",
+        "isBackgroundRefresh": "false"
+      },
+      "auth": "bearer-issued",
+      "tsgHeader": null,
+      "xTsgId": "1234567890",
+      "scanToken": false,
+      "status": 200
+    }
+  ]
+}

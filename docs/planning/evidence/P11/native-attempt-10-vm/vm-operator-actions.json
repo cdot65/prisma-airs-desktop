@@ -1,0 +1,45 @@
+{
+  "host": "worf-vm",
+  "operator": "Codex /root",
+  "orchestrator_sha256": "eea975810d702b533560bcd570c03edae459fd6dc1c1e3fe77dd3479d561da13",
+  "actions": [
+    {
+      "utc": "2026-11-04T16:40:55Z",
+      "action": "owned-startup-window-focus",
+      "pid": 64474,
+      "birth": [
+        1793810454,
+        124362
+      ],
+      "window_id": "w-6655",
+      "result": {
+        "command": "focus-window",
+        "error": {
+          "code": "ACTION_FAILED",
+          "disposition": {
+            "delivery": "unknown",
+            "retry": "unknown"
+          },
+          "message": "Window focus did not settle on the requested window",
+          "suggestion": "Run 'list-windows' to refresh window IDs, then retry."
+        },
+        "ok": false,
+        "version": "2.5"
+      }
+    },
+    {
+      "utc": "2026-11-04T16:40:55Z",
+      "operator_error": "RuntimeError: owned startup activation rejected"
+    },
+    {
+      "utc": "2026-11-04T16:40:55Z",
+      "action": "owned-startup-window-already-focused",
+      "pid": 64474,
+      "birth": [
+        1793810454,
+        124362
+      ],
+      "window_id": "w-6655"
+    }
+  ]
+}

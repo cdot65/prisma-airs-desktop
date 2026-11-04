@@ -1,0 +1,65 @@
+{
+  "schema": "airs-desktop/p11-helper-source-carry/1",
+  "runner_inputs": {
+    "source": "b26f3db26187849732d01fbc360e19f1c0b83626f273fb4526582e07e5657c80",
+    "dependencies": "2c489f82dc23ebf9680a9cb5977071253b226b29c8f019f1fb43db4ff3384326",
+    "build_flags": "2b29a1e96f4c6f878a15a50ae4e202d789ff6d5c93a7519fc8c3e2e32e06d432"
+  },
+  "reason": "Only native drivers, isolated adapters, evidence consumers and their pure tests changed after S2. All 660 application inputs and the exact 099669ef executable/eb9f93a1 bundle remain unchanged. Original VM source QA retains its actual S2 source/log/tool bindings; original Rust outcomes retain D2/Kirk provenance. Current helper-only QA executed separately; no frontend, Rust or native gate is relabelled current.",
+  "baseline_source": {
+    "path": "docs/planning/evidence/P11/impact-selection-01/source-current.json",
+    "sha256": "ddc4a6b54cefe8801fa14848c940935937b1b51c634c34031410e914536fd272"
+  },
+  "baseline_candidate": {
+    "path": "docs/planning/evidence/P11/impact-baseline-S2/candidate.json",
+    "sha256": "e03a2616e285f2c3f122aec01014cbf8a345acb82f909bbf7872cff16523e1a0"
+  },
+  "impact_selection": {
+    "path": "docs/planning/evidence/P11/impact-selection-01/selection.json",
+    "sha256": "8c5807b5eb018231195128b8ab8a60164a3c56c2c369661314253ab72078e1c6"
+  },
+  "current_source": {
+    "path": "docs/planning/evidence/P11/helper-source-carry-final-01/source-current.json",
+    "sha256": "381f83689d497d9c258b3d2945a8537e1d7534a3ae8b782e7c83b86416bd3db8"
+  },
+  "changed_paths": [
+    ".gitattributes",
+    "AGENTS.md",
+    "tools/native-acceptance/acceptance_p11_api.py",
+    "tools/native-acceptance/acceptance_p11_continue.py",
+    "tools/native-acceptance/acceptance_p11_credentials.py",
+    "tools/native-acceptance/acceptance_p11_finish.py",
+    "tools/native-acceptance/acceptance_p11_geometry.py",
+    "tools/native-acceptance/acceptance_p11_keyboard.py",
+    "tools/native-acceptance/acceptance_p11_last.py",
+    "tools/native-acceptance/acceptance_p11_resume.py",
+    "tools/native-acceptance/acceptance_p11_roles.py",
+    "tools/native-acceptance/acceptance_p11_verify.py",
+    "tools/native-acceptance/acceptance_p11_warn.py",
+    "tools/native-acceptance/acceptance_p11_warning_text.py",
+    "tools/native-acceptance/acceptance_p11_warnings.py",
+    "tools/native-acceptance/test_acceptance_p11_api.py",
+    "tools/native-acceptance/test_acceptance_p11_credentials.py",
+    "tools/native-acceptance/test_acceptance_p11_geometry.py",
+    "tools/native-acceptance/test_acceptance_p11_roles.py",
+    "tools/native-acceptance/test_acceptance_p11_warning_text.py",
+    "tools/native-acceptance/test_acceptance_p11_warnings.py",
+    "tools/native-acceptance/test_p11_keyboard.py",
+    "tools/p11/README.md",
+    "tools/p11/native.py",
+    "tools/p11/proof.py",
+    "tools/p11/standing.py",
+    "tools/p11/test_native.py",
+    "tools/p11/test_proof.py"
+  ],
+  "conditions": {
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "hostname": "worf-vm"
+  },
+  "qa": [
+    {
+      "path": "docs/planning/evidence/P11/helper-qa-final-02/record.json",
+      "sha256": "09334a64adb9c0c35b07e7603b1098dfdd69001db107d8d7b9439ad00dba06fd"
+    }
+  ]
+}
