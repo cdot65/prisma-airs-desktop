@@ -34,7 +34,7 @@ class RoleAdmission(unittest.TestCase):
         self.assertEqual(ctx.calls,[('AXButton','Close',3)])
     def test_wrong_name_role_disabled_and_ambiguous_fail_closed(self):
         candidate={'role':'AXPopUpButton','label':'Contents','enabled':True}
-        for tree in [[],[dict(candidate,label='Contents extra')],[dict(candidate,role='AXMenuButton')],[dict(candidate,enabled=False)],[dict(candidate,enabled=None)],[candidate,candidate]]:
+        for tree in [[],[dict(candidate,label='Contents extra')],[dict(candidate,role='AXMenuButton')],[dict(candidate,enabled=False)],[dict(candidate,enabled=None)],[candidate,candidate],[dict(candidate,label='Contents extra'),candidate]]:
             with self.subTest(tree=tree):
                 ctx=Context(tree)
                 with self.assertRaises(RuntimeError):roles.press(ctx,ctx.base,'AXButton','Contents')
