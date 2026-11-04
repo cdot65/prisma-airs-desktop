@@ -10,6 +10,7 @@ or third-party input-method qualification is claimed.
 
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import threading
@@ -184,7 +185,9 @@ def _status_regions(tree):
             if child.get("depth", 0) <= node.get("depth", 0):
                 break
             values.append(str(child.get("label") or child.get("value") or ""))
-        regions.append((node, " ".join(values)))
+        # WebKit can split adjacent text into separate AX nodes, including
+        # a separator that already has surrounding spaces. Join semantically.
+        regions.append((node, " ".join(" ".join(values).split())))
     return regions
 
 
@@ -312,13 +315,56 @@ def _visible(tree, node):
     return node["pos"][0] >= strip["pos"][0] - 1 and node["pos"][0] + node["size"][0] <= strip["pos"][0] + strip["size"][0] + 1
 
 
-def run(ctx):
+def _prior_first_use(ctx, binding):
+    """Bind the original SCM193 observation; reopening it is only a precondition."""
+    root = Path.cwd().resolve()
+    approved = root / "docs/planning/evidence/P11"
+    paths = {}
+    for kind in ("observations", "evidence"):
+        ref = binding.get(kind) if isinstance(binding, dict) else None
+        ctx.require(isinstance(ref, dict) and set(ref) == {"path", "sha256"}, "C48 first-use reference shape")
+        relative = Path(ref["path"])
+        ctx.require(not relative.is_absolute() and ".." not in relative.parts,
+                    "C48 first-use reference must be repository-relative")
+        path = root / relative
+        ctx.require(not path.is_symlink() and path.resolve(strict=True).is_relative_to(approved.resolve()),
+                    "C48 first-use reference escaped P11 evidence")
+        ctx.require(re.fullmatch(r"[0-9a-f]{64}", ref["sha256"]) and
+                    hashlib.sha256(path.read_bytes()).hexdigest() == ref["sha256"],
+                    "C48 first-use reference hash differs")
+        paths[kind] = path
+    original = json.loads(paths["observations"].read_text())
+    ctx.require(original.get("schema") == "airs-desktop/p11-native-observations/1" and
+                original.get("subject") == "P11" and
+                original.get("execution_id") == paths["observations"].parent.name and
+                paths["evidence"].parent == paths["observations"].parent,
+                "C48 first-use original execution binding differs")
+    ctx.require(all(original.get(key) == ctx.prepared[key] for key in ("executable_sha256", "bundle_sha256")),
+                "C48 first-use belongs to another application artifact")
+    ctx.require(original.get("artifact_sha256", {}).get(binding["evidence"]["path"]) == binding["evidence"]["sha256"],
+                "C48 first-use evidence is not bound by its original execution")
+    tree = json.loads(paths["evidence"].read_text())
+    ctx.require(isinstance(tree, list) and ctx.app.has_text(tree, "Collection Strata Cloud Manager") and
+                ctx.app.has_text(tree, "193 requests"), "C48 original first-use observation does not show SCM193")
+    carry = {"schema": "airs-desktop/c48-first-use-carry/1", "observations": binding["observations"],
+             "evidence": binding["evidence"],
+             "original": {key: original.get(key) for key in ("execution_id", "started_utc", "finished_utc",
+                 "performed_by", "host", "argv", "executable_sha256", "bundle_sha256", "helper_closure")},
+             "meaning": "Original first-use observation retained unchanged; current builtin reopening is only setup, not a new first-use execution."}
+    ctx.state["c48_first_use_carry"] = carry
+    return True, ctx.save("c48-first-use-carry", carry)
+
+
+def run(ctx, *, prior_first_use=None):
     import fixture_app as fx
     import native_sheets as sheets
 
     app = ctx.app
+    prior_observation = _prior_first_use(ctx, prior_first_use) if prior_first_use is not None else None
     data = Path(fx.DATA)
-    work = Path(ctx.work) / "c48-owned-api"
+    if prior_first_use is not None:
+        ctx.require(re.fullmatch(r"[A-Za-z0-9_.-]+", ctx.out.name), "C48 unsafe resume scratch suffix")
+    work = Path(ctx.work) / ("c48-owned-api-" + ctx.out.name if prior_first_use is not None else "c48-owned-api")
     ctx.require(not work.exists(), "C48 scratch must be a fresh owned directory")
     work.mkdir(mode=0o700)
     root, replacement = work / "collection", work / "replacement"
@@ -331,10 +377,25 @@ def run(ctx):
         _stage(root, endpoint.origin)
         _stage(replacement, endpoint.origin, True)
         ctx.navigate("API Client")
-        initial = ctx.text("193 requests")
-        first_use = app.has_text(initial, "Collection Strata Cloud Manager") and app.has_text(initial, "193 requests")
-        ctx.require(first_use, "First API use did not open the built-in SCM193")
-        first_evidence = ctx.save("c48-first-use", initial)
+        if prior_first_use is None:
+            initial = ctx.text("193 requests")
+            first_use = app.has_text(initial, "Collection Strata Cloud Manager") and app.has_text(initial, "193 requests")
+            ctx.require(first_use, "First API use did not open the built-in SCM193")
+            first_evidence = ctx.save("c48-first-use", initial)
+        else:
+            first_use, first_evidence = prior_observation
+            current = app.tree()
+            if app.has_text(current, "Collection " + COLLECTION_NAME):
+                _close_collection(ctx, COLLECTION_NAME)
+                _press(ctx, "Open Strata Cloud Manager")
+            elif app.has_text(current, "No collection is open."):
+                _press(ctx, "Open Strata Cloud Manager")
+            else:
+                ctx.require(app.has_text(current, "Collection Strata Cloud Manager"),
+                            "C48 resume found an unexpected collection")
+            initial = ctx.text("193 requests")
+            ctx.require(app.has_text(initial, "Collection Strata Cloud Manager"), "C48 resume builtin precondition missing")
+            ctx.save("c48-resume-builtin-precondition", initial)
         _close_collection(ctx, "Strata Cloud Manager")
         _open_collection(ctx, data, root)
 
